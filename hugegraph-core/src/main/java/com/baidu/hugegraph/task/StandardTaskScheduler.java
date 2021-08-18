@@ -530,6 +530,25 @@ public class StandardTaskScheduler implements TaskScheduler {
     }
 
     @Override
+    public <V> Iterator<HugeTask<V>> tasksProxy(TaskStatus status,
+                                           long limit, String page) {
+        if (status == null) {
+            return this.findAllTaskProxy(limit, page);
+        }
+        return this.findTaskProxy(status, limit, page);
+    }
+
+    public <V> Iterator<HugeTask<V>> findAllTaskProxy(long limit, String page) {
+        return this.queryTaskProxy(ImmutableMap.of(), limit, page);
+    }
+
+    public <V> Iterator<HugeTask<V>> findTaskProxy(TaskStatus status,
+                                              long limit, String page) {
+
+        return this.queryTaskProxy(ImmutableMap.of(P.STATUS, status.code()), limit, page);
+    }
+
+    @Override
     public <V> Iterator<HugeTask<V>> tasks(TaskStatus status,
                                            long limit, String page) {
         if (status == null) {
@@ -700,6 +719,32 @@ public class StandardTaskScheduler implements TaskScheduler {
             Iterator<Vertex> vertices = this.tx().queryVertices(query);
             Iterator<HugeTask<V>> tasks =
                     new MapperIterator<>(vertices, HugeTask::fromVertex);
+            // Convert iterator to list to avoid across thread tx accessed
+            return QueryResults.toList(tasks);
+        });
+    }
+
+    private <V> Iterator<HugeTask<V>> queryTaskProxy(Map<String, Object> conditions,
+                                                long limit, String page) {
+        return this.call(() -> {
+            ConditionQuery query = new ConditionQuery(HugeType.VERTEX);
+            if (page != null) {
+                query.page(page);
+            }
+            VertexLabel vl = this.graph().vertexLabel(P.TASK);
+            query.eq(HugeKeys.LABEL, vl.id());
+            for (Map.Entry<String, Object> entry : conditions.entrySet()) {
+                PropertyKey pk = this.graph().propertyKey(entry.getKey());
+                query.query(Condition.eq(pk.id(), entry.getValue()));
+            }
+            query.showHidden(true);
+            if (limit != NO_LIMIT) {
+                query.limit(limit);
+            }
+            Iterator<Vertex> vertices = this.tx().queryVertices(query);
+            Iterator<HugeTask<V>> tasks =
+                    new MapperIterator<>(vertices, HugeTask::fromVertex);
+
             // Convert iterator to list to avoid across thread tx accessed
             return QueryResults.toList(tasks);
         });

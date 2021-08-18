@@ -192,6 +192,16 @@
             <version>0.11.2</version>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>io.fabric8</groupId>
+            <artifactId>kubernetes-client</artifactId>
+            <version>${fabric8.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.baidu.hugegraph</groupId>
+            <artifactId>computer-k8s</artifactId>
+            <version>0.1.0</version>
+        </dependency>
     </dependencies>
 
     <build>

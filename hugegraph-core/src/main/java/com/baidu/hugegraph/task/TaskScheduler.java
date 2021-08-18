@@ -47,6 +47,8 @@ public interface TaskScheduler {
     public <V> Iterator<HugeTask<V>> tasks(List<Id> ids);
     public <V> Iterator<HugeTask<V>> tasks(TaskStatus status,
                                            long limit, String page);
+    public <V> Iterator<HugeTask<V>> tasksProxy(TaskStatus status,
+                                           long limit, String page);
 
     public boolean close();
 

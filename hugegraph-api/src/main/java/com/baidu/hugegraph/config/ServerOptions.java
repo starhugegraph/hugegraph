@@ -250,4 +250,13 @@ public class ServerOptions extends OptionHolder {
                     null,
                     "hugegraph"
             );
+
+    public static final ConfigOption<String> K8S_KUBE_CONFIG =
+            new ConfigOption<>(
+                    "k8s.kubeconfig",
+                    "The k8s kube config file " +
+                            "when the computer service is enabled.",
+                    null,
+                    "conf/kube.kubeconfig"
+            );
 }

@@ -28,6 +28,7 @@ import java.util.concurrent.Future;
 
 import javax.ws.rs.core.UriBuilder;
 
+import com.baidu.hugegraph.k8s.K8sDriverProxy;
 import org.glassfish.grizzly.CompletionHandler;
 import org.glassfish.grizzly.GrizzlyFuture;
 import org.glassfish.grizzly.http.server.HttpServer;
@@ -59,6 +60,9 @@ public class RestServer {
     public void start() throws IOException {
         String url = this.conf.get(ServerOptions.REST_SERVER_URL);
         URI uri = UriBuilder.fromUri(url).build();
+
+        String kubeConfigPath = this.conf.get(ServerOptions.K8S_KUBE_CONFIG);
+        K8sDriverProxy.setCubeConfig(kubeConfigPath);
 
         ResourceConfig rc = new ApplicationConfig(this.conf);
 
