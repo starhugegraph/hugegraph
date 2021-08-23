@@ -28,7 +28,9 @@ import com.baidu.hugegraph.job.computer.ComputerPool;
 import com.baidu.hugegraph.k8s.K8sDriverProxy;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.JsonUtil;
+import com.baidu.hugegraph.util.Log;
 import org.mockito.Mockito;
+import org.slf4j.Logger;
 
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -40,6 +42,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ComputerDisJob extends SysJob<Object> {
+
+    private static final Logger LOG = Log.logger(ComputerDisJob.class);
 
     private ExecutorService executorService= Executors.newSingleThreadExecutor();
     CompletableFuture<Void> future = null;
@@ -85,12 +89,14 @@ public class ComputerDisJob extends SysJob<Object> {
         JsonObject jsonObject = Json.createReader(new StringReader(args)).readObject();
 
         Map<String, String> params = new HashMap<>();
-        params.put("k8s.worker_instances", jsonObject.get("k8s.worker_instances") == null ?
-                "1" : jsonObject.get("k8s.worker_instances").toString());
+        params.put("k8s.worker_instances", jsonObject.get("worker_instances") == null ?
+                "1" : jsonObject.get("worker_instances").toString());
 
         if (map.containsKey("inner.job_id")) {
             String jobId = (String) map.get("inner.job_id");
-            K8sDriverProxy k8sDriverProxy = new K8sDriverProxy();
+            K8sDriverProxy k8sDriverProxy = new K8sDriverProxy(jsonObject.get("worker_instances").toString(),
+                    jsonObject.get("internal_algorithm").toString(),
+                    jsonObject.get("params_class").toString());
             k8sDriverProxy.getKubernetesDriver().cancelJob(jobId, params);
         }
     }
@@ -112,25 +118,28 @@ public class ComputerDisJob extends SysJob<Object> {
 
         String computer = (String)map.get("computer");
 
-        String args = parameters.get("arguments").toString();
-        JsonObject jsonObject = Json.createReader(new StringReader(args)).readObject();
-
         Map<String, String> params = new HashMap<>();
         params.put("computer", computer);
-        params.put("k8s.worker_instances", jsonObject.get("k8s.worker_instances") == null ?
-                "1" : jsonObject.get("k8s.worker_instances").toString() );
-        params.put("transport.server_port", jsonObject.get("transport.server_port") == null ?
-                "0" : jsonObject.get("transport.server_port").toString());
-        params.put("rpc.server_port", jsonObject.get("rpc.server_port") == null ?
-                "0" : jsonObject.get("rpc.server_port").toString());
+        params.put("k8s.worker_instances", parameters.get("worker_instances") == null ?
+                "1" : parameters.get("worker_instances").toString() );
+        params.put("transport.server_port", parameters.get("transport_server_port") == null ?
+                "0" : parameters.get("transport_server_port").toString());
+        params.put("rpc.server_port", parameters.get("rpc_server_port") == null ?
+                "0" : parameters.get("rpc_server_port").toString());
+
+        LOG.info("exec input:" + this.task().input());
 
         if (status == null || !status.equals("0")) {
             // TODO: DO TASK
-            K8sDriverProxy k8sDriverProxy = new K8sDriverProxy();
+            K8sDriverProxy k8sDriverProxy = new K8sDriverProxy(parameters.get("worker_instances").toString(),
+                    parameters.get("internal_algorithm").toString(),
+                    parameters.get("params_class").toString());
             if (jobId == null) {
                 jobId = k8sDriverProxy.getKubernetesDriver().submitJob(computer, params);
                 map.put("inner.job_id", jobId);
                 this.task().input(JsonUtil.toJson(map));
+
+                LOG.info("exec input:" + this.task().input());
             }
 
             JobObserver jobObserver = Mockito.mock(JobObserver.class);

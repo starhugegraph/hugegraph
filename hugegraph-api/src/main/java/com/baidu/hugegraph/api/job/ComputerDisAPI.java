@@ -40,11 +40,8 @@ import org.apache.groovy.util.Maps;
 import org.slf4j.Logger;
 
 import javax.inject.Singleton;
-import javax.json.Json;
-import javax.json.JsonObject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
-import java.io.StringReader;
 import java.util.*;
 
 import static com.baidu.hugegraph.backend.query.Query.NO_LIMIT;
@@ -65,28 +62,11 @@ public class ComputerDisAPI extends API {
                                 @PathParam("graph") String graph,
                                 @PathParam("computer") String computer,
                                 Map<String, Object> parameters) {
-        LOG.debug("Graph [{}] schedule computer job: {}", graph, parameters);
+        LOG.debug("Graph [{}] schedule computer dis job: {}", graph, parameters);
         E.checkArgument(computer != null && !computer.isEmpty(),
                         "The computer name can't be empty");
-        E.checkArgument(parameters != null && parameters.get("arguments") != null,
-                "The parameters & arguments can't be empty");
-        // 需要Computer服务端或者K8s提供支持的computer列表
-        {
-            // TODO: 判断是否支持 computer 以及参数 parameters.get("arguments")
-        }
-
-        String args = parameters.get("arguments").toString();
-        JsonObject jsonObject = Json.createReader(new StringReader(args)).readObject();
-        Map<String, String> params = new HashMap<>();
-        params.put("computer", computer);
-        params.put("k8s.worker_instances", jsonObject.get("k8s.worker_instances") == null ?
-                "1" : jsonObject.get("k8s.worker_instances").toString() );
-        params.put("transport.server_port", jsonObject.get("transport.server_port") == null ?
-                "0" : jsonObject.get("transport.server_port").toString());
-        params.put("rpc.server_port", jsonObject.get("rpc.server_port") == null ?
-                "0" : jsonObject.get("rpc.server_port").toString());
-
-        // 添加任务到任务管理调度
+        E.checkArgument(parameters != null,
+                "The parameters can't be empty");
         Map<String, Object> input = ImmutableMap.of("computer", computer,
                 "parameters", parameters, "inner.status", "1");
         HugeGraph g = graph(manager, graph);

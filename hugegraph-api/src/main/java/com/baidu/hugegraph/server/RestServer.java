@@ -29,6 +29,7 @@ import java.util.concurrent.Future;
 import javax.ws.rs.core.UriBuilder;
 
 import com.baidu.hugegraph.k8s.K8sDriverProxy;
+import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.CompletionHandler;
 import org.glassfish.grizzly.GrizzlyFuture;
 import org.glassfish.grizzly.http.server.HttpServer;
@@ -61,8 +62,19 @@ public class RestServer {
         String url = this.conf.get(ServerOptions.REST_SERVER_URL);
         URI uri = UriBuilder.fromUri(url).build();
 
-        String kubeConfigPath = this.conf.get(ServerOptions.K8S_KUBE_CONFIG);
-        K8sDriverProxy.setCubeConfig(kubeConfigPath);
+        String k8sApiEnable = this.conf.get(ServerOptions.K8S_API_ENABLE);
+        if (!StringUtils.isEmpty(k8sApiEnable) && k8sApiEnable.equals("true")) {
+            String namespace = this.conf.get(ServerOptions.K8S_NAMESPACE);
+            String kubeConfigPath = this.conf.get(ServerOptions.K8S_KUBE_CONFIG);
+            String hugegraphUrl = this.conf.get(ServerOptions.K8S_HUGEGRAPH_URL);
+            String enableInternalAlgorithm = this.conf.get(ServerOptions.K8S_ENABLE_INTERNAL_ALGORITHM);
+            String internalAlgorithmImageUrl = this.conf.get(ServerOptions.K8S_INTERNAL_ALGORITHM_IMAGE_URL);
+            K8sDriverProxy.setCubeConfig(namespace,
+                    kubeConfigPath,
+                    hugegraphUrl,
+                    enableInternalAlgorithm,
+                    internalAlgorithmImageUrl);
+        }
 
         ResourceConfig rc = new ApplicationConfig(this.conf);
 
