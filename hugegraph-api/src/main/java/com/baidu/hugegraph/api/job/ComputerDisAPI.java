@@ -147,9 +147,9 @@ public class ComputerDisAPI extends API {
         TaskScheduler scheduler = graph(manager, graph).taskScheduler();
         Iterator<HugeTask<Object>> iter;
         if (status == null) {
-            iter = scheduler.tasks(null, limit, page);
+            iter = scheduler.tasksProxy(null, limit, page);
         } else {
-            iter = scheduler.tasks(parseStatus(status), limit, page);
+            iter = scheduler.tasksProxy(parseStatus(status), limit, page);
         }
 
         List<Object> tasks = new ArrayList<>();
