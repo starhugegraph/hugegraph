@@ -64,20 +64,24 @@ public class RestServer {
 
         String k8sApiEnable = this.conf.get(ServerOptions.K8S_API_ENABLE);
         if (!StringUtils.isEmpty(k8sApiEnable) && k8sApiEnable.equals("true")) {
-            String namespace = this.conf.get(ServerOptions.K8S_NAMESPACE);
-            String kubeConfigPath = this.conf.get(ServerOptions.K8S_KUBE_CONFIG);
-            String hugegraphUrl = this.conf.get(ServerOptions.K8S_HUGEGRAPH_URL);
-            String enableInternalAlgorithm = this.conf.get(ServerOptions.K8S_ENABLE_INTERNAL_ALGORITHM);
-            String internalAlgorithmImageUrl = this.conf.get(ServerOptions.K8S_INTERNAL_ALGORITHM_IMAGE_URL);
+            String namespace = this.conf.get(
+                   ServerOptions.K8S_NAMESPACE);
+            String kubeConfigPath = this.conf.get(
+                   ServerOptions.K8S_KUBE_CONFIG);
+            String hugegraphUrl = this.conf.get(
+                   ServerOptions.K8S_HUGEGRAPH_URL);
+            String enableInternalAlgorithm = this.conf.get(
+                   ServerOptions.K8S_ENABLE_INTERNAL_ALGORITHM);
+            String internalAlgorithmImageUrl = this.conf.get(
+                   ServerOptions.K8S_INTERNAL_ALGORITHM_IMAGE_URL);
             K8sDriverProxy.setCubeConfig(namespace,
-                    kubeConfigPath,
-                    hugegraphUrl,
-                    enableInternalAlgorithm,
-                    internalAlgorithmImageUrl);
+                                         kubeConfigPath,
+                                         hugegraphUrl,
+                                         enableInternalAlgorithm,
+                                         internalAlgorithmImageUrl);
         }
 
         ResourceConfig rc = new ApplicationConfig(this.conf);
-
         this.httpServer = this.configHttpServer(uri, rc);
         try {
             this.httpServer.start();

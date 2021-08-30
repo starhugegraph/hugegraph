@@ -27,6 +27,7 @@ import com.baidu.hugegraph.backend.page.PageInfo;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.job.ComputerDisJob;
 import com.baidu.hugegraph.job.JobBuilder;
+import com.baidu.hugegraph.k8s.K8sDriverProxy;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.task.HugeTask;
 import com.baidu.hugegraph.task.TaskScheduler;
@@ -59,24 +60,26 @@ public class ComputerDisAPI extends API {
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public Map<String, Object> post(@Context GraphManager manager,
-                                @PathParam("graph") String graph,
-                                @PathParam("computer") String computer,
-                                Map<String, Object> parameters) {
+                                    @PathParam("graph") String graph,
+                                    @PathParam("computer") String computer,
+                                    Map<String, Object> parameters) {
         LOG.debug("Graph [{}] schedule computer dis job: {}", graph, parameters);
+        E.checkArgument(K8sDriverProxy.isK8sApiEnabled() == true,
+                        "The k8s api is not enable.");
         E.checkArgument(computer != null && !computer.isEmpty(),
                         "The computer name can't be empty");
         E.checkArgument(parameters != null,
-                "The parameters can't be empty");
+                        "The parameters can't be empty");
         Map<String, Object> input = ImmutableMap.of("computer", computer,
-                "parameters", parameters, "inner.status", "1");
+                                                    "parameters", parameters,
+                                                    "inner.status", "1");
         HugeGraph g = graph(manager, graph);
         JobBuilder<Object> builder = JobBuilder.of(g);
         builder.name("computer-proxy:" + computer)
-                .input(JsonUtil.toJson(input))
-                .job(new ComputerDisJob());
+               .input(JsonUtil.toJson(input))
+               .job(new ComputerDisJob());
         HugeTask<Object> task = builder.schedule();
-        return ImmutableMap.of("task_id", task.id(),
-                "message", "success");
+        return ImmutableMap.of("task_id", task.id(), "message", "success");
     }
 
     @DELETE
@@ -86,11 +89,13 @@ public class ComputerDisAPI extends API {
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public Map<String, Object> delete(@Context GraphManager manager,
-                                @PathParam("graph") String graph,
-                                @PathParam("taskId") String taskId) {
+                                      @PathParam("graph") String graph,
+                                      @PathParam("taskId") String taskId) {
         LOG.debug("Graph [{}] delete computer job: {}", graph, taskId);
+        E.checkArgument(K8sDriverProxy.isK8sApiEnabled() == true,
+                        "The k8s api is not enable.");
         E.checkArgument(taskId != null && !taskId.isEmpty(),
-                "The computer name can't be empty");
+                        "The computer name can't be empty");
         TaskScheduler scheduler = graph(manager, graph).taskScheduler();
         HugeTask<?> task = scheduler.delete(IdGenerator.of(taskId));
         E.checkArgument(task != null, "There is no task with id '%s'", taskId);
@@ -107,8 +112,10 @@ public class ComputerDisAPI extends API {
                                       @PathParam("graph") String graph,
                                       @PathParam("taskId") String taskId) {
         LOG.debug("Graph [{}] cancel computer job: {}", graph, taskId);
+        E.checkArgument(K8sDriverProxy.isK8sApiEnabled() == true,
+                        "The k8s api is not enable.");
         E.checkArgument(taskId != null && !taskId.isEmpty(),
-                "The computer name can't be empty");
+                        "The computer name can't be empty");
 
         TaskScheduler scheduler = graph(manager, graph).taskScheduler();
         HugeTask<?> task = scheduler.task(IdGenerator.of(taskId));
@@ -128,9 +135,11 @@ public class ComputerDisAPI extends API {
     @Path("/{taskId}")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public Map<String, Object> get(@Context GraphManager manager,
-                               @PathParam("graph") String graph,
-                               @PathParam("taskId") String taskId) {
+                                   @PathParam("graph") String graph,
+                                   @PathParam("taskId") String taskId) {
         LOG.debug("Graph [{}] get task info", graph);
+        E.checkArgument(K8sDriverProxy.isK8sApiEnabled() == true,
+                        "The k8s api is not enable.");
         TaskScheduler scheduler = graph(manager, graph).taskScheduler();
         return scheduler.task(IdGenerator.of(taskId)).asMap();
     }
@@ -139,11 +148,13 @@ public class ComputerDisAPI extends API {
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public Map<String, Object> list(@Context GraphManager manager,
-                                @PathParam("graph") String graph,
-                                @QueryParam("status") String status,
-                                @QueryParam("limit") @DefaultValue("100") long limit,
-                                @QueryParam("page") String page) {
+                                    @PathParam("graph") String graph,
+                                    @QueryParam("status") String status,
+                                    @QueryParam("limit") @DefaultValue("100") long limit,
+                                    @QueryParam("page") String page) {
         LOG.debug("Graph [{}] get task list", graph);
+        E.checkArgument(K8sDriverProxy.isK8sApiEnabled() == true,
+                        "The k8s api is not enable.");
         TaskScheduler scheduler = graph(manager, graph).taskScheduler();
         Iterator<HugeTask<Object>> iter;
         if (status == null) {

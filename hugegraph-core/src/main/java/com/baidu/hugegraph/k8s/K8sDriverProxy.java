@@ -31,21 +31,22 @@ public class K8sDriverProxy {
 
     static {
         OptionSpace.register("computer-driver",
-                "com.baidu.hugegraph.computer.driver.config" +
-                        ".ComputerOptions");
+                             "com.baidu.hugegraph.computer.driver.config" +
+                             ".ComputerOptions");
         OptionSpace.register("computer-k8s-driver",
-                "com.baidu.hugegraph.computer.k8s.config" +
-                        ".KubeDriverOptions");
+                             "com.baidu.hugegraph.computer.k8s.config" +
+                             ".KubeDriverOptions");
         OptionSpace.register("computer-k8s-spec",
-                "com.baidu.hugegraph.computer.k8s.config" +
-                        ".KubeSpecOptions");
+                             "com.baidu.hugegraph.computer.k8s.config" +
+                             ".KubeSpecOptions");
     }
 
     public static void setCubeConfig(String namespace,
                                      String cubeConfigPath,
                                      String hugegraphUrl,
                                      String enableInternalAlgorithm,
-                                     String internalAlgorithmImageUrl) throws IOException {
+                                     String internalAlgorithmImageUrl)
+                                     throws IOException {
         File kubeConfigFile = new File(USER_DIR + "/" + cubeConfigPath);
         if (!kubeConfigFile.exists() || StringUtils.isEmpty(hugegraphUrl)) {
             throw new IOException("[K8s API] k8s config fail");
@@ -63,14 +64,14 @@ public class K8sDriverProxy {
         return K8S_API_ENABLED;
     }
 
-    public K8sDriverProxy(String partitionsCount, String internalAlgorithm, String paramsClass) {
+    public K8sDriverProxy(String partitionsCount,
+                          String internalAlgorithm,
+                          String paramsClass) {
         try {
             if (!K8sDriverProxy.K8S_API_ENABLED) {
-                throw new UnsupportedOperationException("The k8s api not enabled.");
+                throw new UnsupportedOperationException(
+                      "The k8s api not enabled.");
             }
-
-            LOG.info("partitionsCount:" + partitionsCount + "\tinternalAlgorithm:" + internalAlgorithm +
-                    "\tparamsClass:" + paramsClass);
             this.initConfig(partitionsCount, internalAlgorithm, paramsClass);
             this.initKubernetesDriver();
         } catch (Throwable throwable) {
@@ -78,16 +79,6 @@ public class K8sDriverProxy {
         }
     }
 
-    /**
-     * options.put("k8s.internal_algorithm_image_url", "hugegraph/hugegraph-computer-based-algorithm:beta1");
-     * options.put("k8s.internal_algorithm", "[pagerank, test]");
-     * options.put("algorithm.params_class", "com.baidu.hugegraph.computer.algorithm.rank.pagerank.PageRankParams");
-     *
-     * options.put("k8s.internal_algorithm", "[pagerank, test]");
-     * options.put("algorithm.params_class", "com.baidu.hugegraph.computer.algorithm.rank.pagerank.PageRankParams");
-     *
-     * @param partitionsCount
-     */
     protected void initConfig(String partitionsCount,
                               String internalAlgorithm,
                               String paramsClass) {
@@ -97,14 +88,16 @@ public class K8sDriverProxy {
         options.put("k8s.namespace", K8sDriverProxy.NAMESPACE);
         options.put("k8s.kube_config", K8sDriverProxy.CUBE_CONFIG_PATH);
         options.put("hugegraph.url", K8sDriverProxy.HUGEGRAPH_URL);
-        options.put("k8s.enable_internal_algorithm", K8sDriverProxy.ENABLE_INTERNAL_ALGORITHM);
-        options.put("k8s.internal_algorithm_image_url", K8sDriverProxy.INTERNAL_ALGORITHM_IMAGE_URL);
+        options.put("k8s.enable_internal_algorithm",
+                    K8sDriverProxy.ENABLE_INTERNAL_ALGORITHM);
+        options.put("k8s.internal_algorithm_image_url",
+                    K8sDriverProxy.INTERNAL_ALGORITHM_IMAGE_URL);
 
         // from rest api params
-        options.put("job.partitions_count", partitionsCount);   // partitionsCount >= worker_instances
+        // partitionsCount >= worker_instances
+        options.put("job.partitions_count", partitionsCount);
         options.put("k8s.internal_algorithm", internalAlgorithm);
         options.put("algorithm.params_class", paramsClass);
-        LOG.info("config options: " + options.toString());
         MapConfiguration mapConfig = new MapConfiguration(options);
         this.config = new HugeConfig(mapConfig);
     }

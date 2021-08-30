@@ -45,7 +45,8 @@ public class ComputerDisJob extends SysJob<Object> {
 
     private static final Logger LOG = Log.logger(ComputerDisJob.class);
 
-    private ExecutorService executorService= Executors.newSingleThreadExecutor();
+    private ExecutorService executorService =
+                            Executors.newSingleThreadExecutor();
     CompletableFuture<Void> future = null;
 
     public static final String COMPUTER = "computer-proxy";
@@ -57,10 +58,6 @@ public class ComputerDisJob extends SysJob<Object> {
         }
         computer.checkParameters(parameters);
         return true;
-    }
-
-    public String computerConfigPath() {
-        return this.params().configuration().get(CoreOptions.COMPUTER_CONFIG);
     }
 
     @Override
@@ -76,28 +73,34 @@ public class ComputerDisJob extends SysJob<Object> {
             executorService.shutdown();
         }
 
-
         String input = this.task().input();
         E.checkArgumentNotNull(input, "The input can't be null");
         @SuppressWarnings("unchecked")
         Map<String, Object> map = JsonUtil.fromJson(input, Map.class);
         Object value = map.get("parameters");
-        E.checkArgument(value instanceof Map, "Invalid computer parameters '%s'", value);
+        E.checkArgument(value instanceof Map,
+                        "Invalid computer parameters '%s'",
+                        value);
         @SuppressWarnings("unchecked")
         Map<String, Object> parameters = (Map<String, Object>) value;
         String args = parameters.get("arguments").toString();
-        JsonObject jsonObject = Json.createReader(new StringReader(args)).readObject();
-
+        JsonObject jsonObject =
+                   Json.createReader(new StringReader(args)).readObject();
+        String workerInstances = jsonObject.get("worker_instances") == null ?
+               "1" : jsonObject.get("worker_instances").toString();
+        String internalAlgorithm =
+               jsonObject.get("internal_algorithm").toString();
+        String paramsClass = jsonObject.get("params_class").toString();
         Map<String, String> params = new HashMap<>();
-        params.put("k8s.worker_instances", jsonObject.get("worker_instances") == null ?
-                "1" : jsonObject.get("worker_instances").toString());
-
+        params.put("k8s.worker_instances", workerInstances);
         if (map.containsKey("inner.job_id")) {
             String jobId = (String) map.get("inner.job_id");
-            K8sDriverProxy k8sDriverProxy = new K8sDriverProxy(jsonObject.get("worker_instances").toString(),
-                    jsonObject.get("internal_algorithm").toString(),
-                    jsonObject.get("params_class").toString());
+            K8sDriverProxy k8sDriverProxy =
+                           new K8sDriverProxy(workerInstances,
+                                              internalAlgorithm,
+                                              paramsClass);
             k8sDriverProxy.getKubernetesDriver().cancelJob(jobId, params);
+            k8sDriverProxy.close();
         }
     }
 
@@ -108,60 +111,63 @@ public class ComputerDisJob extends SysJob<Object> {
         @SuppressWarnings("unchecked")
         Map<String, Object> map = JsonUtil.fromJson(input, Map.class);
         String status = map.containsKey("inner.status") ?
-                (String) map.get("inner.status") : null;
+               map.get("inner.status").toString() : null;
         String jobId = map.containsKey("inner.job_id") ?
-                (String) map.get("inner.job_id") : null;
+               map.get("inner.job_id").toString() : null;
         Object value = map.get("parameters");
-        E.checkArgument(value instanceof Map, "Invalid computer parameters '%s'", value);
+        E.checkArgument(value instanceof Map,
+                        "Invalid computer parameters '%s'",
+                        value);
         @SuppressWarnings("unchecked")
         Map<String, Object> parameters = (Map<String, Object>) value;
-
-        String computer = (String)map.get("computer");
-
+        String computer = map.get("computer").toString();
+        String workerInstances = parameters.get("worker_instances") == null ?
+               "1" : parameters.get("worker_instances").toString();
+        String transportServerPort =
+               parameters.get("transport_server_port") == null ? "0" :
+               parameters.get("transport_server_port").toString();
+        String rpcServerPort = parameters.get("rpc_server_port") == null ?
+               "0" : parameters.get("rpc_server_port").toString();
+        String internalAlgorithm =
+               parameters.get("internal_algorithm").toString();
+        String paramsClass = parameters.get("params_class").toString();
         Map<String, String> params = new HashMap<>();
         params.put("computer", computer);
-        params.put("k8s.worker_instances", parameters.get("worker_instances") == null ?
-                "1" : parameters.get("worker_instances").toString() );
-        params.put("transport.server_port", parameters.get("transport_server_port") == null ?
-                "0" : parameters.get("transport_server_port").toString());
-        params.put("rpc.server_port", parameters.get("rpc_server_port") == null ?
-                "0" : parameters.get("rpc_server_port").toString());
-
-        LOG.info("exec input:" + this.task().input());
-
+        params.put("k8s.worker_instances", workerInstances);
+        params.put("transport.server_port", transportServerPort);
+        params.put("rpc.server_port", rpcServerPort);
         if (status == null || !status.equals("0")) {
             // TODO: DO TASK
-            K8sDriverProxy k8sDriverProxy = new K8sDriverProxy(parameters.get("worker_instances").toString(),
-                    parameters.get("internal_algorithm").toString(),
-                    parameters.get("params_class").toString());
+            K8sDriverProxy k8sDriverProxy =
+                           new K8sDriverProxy(workerInstances,
+                                              internalAlgorithm,
+                                              paramsClass);
             if (jobId == null) {
-                jobId = k8sDriverProxy.getKubernetesDriver().submitJob(computer, params);
+                jobId = k8sDriverProxy.getKubernetesDriver()
+                                      .submitJob(computer, params);
                 map.put("inner.job_id", jobId);
                 this.task().input(JsonUtil.toJson(map));
-
-                LOG.info("exec input:" + this.task().input());
             }
 
             JobObserver jobObserver = Mockito.mock(JobObserver.class);
             String finalJobId = jobId;
             future = CompletableFuture.runAsync(() -> {
-                k8sDriverProxy.getKubernetesDriver().waitJob(finalJobId, params, jobObserver);
+                k8sDriverProxy.getKubernetesDriver()
+                              .waitJob(finalJobId, params, jobObserver);
             }, executorService);
 
-            /*
             DefaultJobState jobState = new DefaultJobState();
             jobState.jobStatus(JobStatus.INITIALIZING);
             Mockito.verify(jobObserver, Mockito.timeout(15000L).atLeast(1))
-                    .onJobStateChanged(Mockito.eq(jobState));
-             */
+                   .onJobStateChanged(Mockito.eq(jobState));
 
             DefaultJobState jobState2 = new DefaultJobState();
             jobState2.jobStatus(JobStatus.SUCCEEDED);
             Mockito.verify(jobObserver, Mockito.timeout(15000L).atLeast(1))
-                    .onJobStateChanged(Mockito.eq(jobState2));
+                   .onJobStateChanged(Mockito.eq(jobState2));
 
             future.getNow(null);
-
+            k8sDriverProxy.close();
         }
 
         return 0;

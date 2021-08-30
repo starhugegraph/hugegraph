@@ -49,7 +49,8 @@ public class K8sDriverProxyCoreTest extends BaseCoreTest {
 
     private static String INTERNAL_ALGORITHM = "[pagerank]";
     private static String PARAMS_CLASS = "com.baidu.hugegraph.computer." +
-            "algorithm.rank.pagerank.PageRankParams";
+                                         "algorithm.rank.pagerank." +
+                                         "PageRankParams";
 
     private static String COMPUTER = "pagerank";
 
@@ -75,10 +76,10 @@ public class K8sDriverProxyCoreTest extends BaseCoreTest {
 
         try {
             K8sDriverProxy.setCubeConfig(NAMESPACE,
-                    KUBE_CONFIG,
-                    HUGEGRAPH_URL,
-                    ENABLE_INTERNAL_ALGORITHM,
-                    INTERNAL_ALGORITHM_IMAGE_URL);
+                                        KUBE_CONFIG,
+                                        HUGEGRAPH_URL,
+                                        ENABLE_INTERNAL_ALGORITHM,
+                                        INTERNAL_ALGORITHM_IMAGE_URL);
         } catch (IOException e) {
             // ignore
         }
@@ -92,8 +93,8 @@ public class K8sDriverProxyCoreTest extends BaseCoreTest {
         params.put("transport.server_port", "0");
         params.put("rpc.server_port", "0");
         K8sDriverProxy k8sDriverProxy = new K8sDriverProxy("2",
-                INTERNAL_ALGORITHM,
-                PARAMS_CLASS);
+                                                            INTERNAL_ALGORITHM,
+                                                            PARAMS_CLASS);
         String jobId = k8sDriverProxy.getKubernetesDriver()
                 .submitJob(COMPUTER, params);
 
@@ -114,5 +115,6 @@ public class K8sDriverProxyCoreTest extends BaseCoreTest {
                 .onJobStateChanged(Mockito.eq(jobState2));
 
         future.getNow(null);
+        k8sDriverProxy.close();
     }
 }
