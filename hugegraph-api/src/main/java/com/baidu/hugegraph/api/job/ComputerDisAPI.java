@@ -70,6 +70,7 @@ public class ComputerDisAPI extends API {
                         "The computer name can't be empty");
         E.checkArgument(parameters != null,
                         "The parameters can't be empty");
+        String token = manager.authManager().createToken("");
         Map<String, Object> input = ImmutableMap.of("computer", computer,
                                                     "parameters", parameters,
                                                     "inner.status", "1");

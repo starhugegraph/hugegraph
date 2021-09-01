@@ -1524,6 +1524,16 @@ public final class HugeGraphAuthProxy implements HugeGraph {
             this.authManager.logoutUser(token);
         }
 
+        @Override
+        public String createToken(String username) {
+            Context context = getContext();
+            E.checkState(context != null,
+                         "Missing authentication context " +
+                         "when verifying resource permission");
+            username = context.user().username();
+            return this.authManager.createToken(username);
+        }
+
         private void switchAuthManager(AuthManager authManager) {
             this.authManager = authManager;
             HugeGraphAuthProxy.this.hugegraph.switchAuthManager(authManager);
