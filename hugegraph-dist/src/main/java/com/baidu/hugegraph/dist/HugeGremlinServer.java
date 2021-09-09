@@ -49,7 +49,9 @@ public class HugeGremlinServer {
         // Scan graph confs and inject into gremlin server context
         E.checkState(settings.graphs != null,
                      "The GremlinServer's settings.graphs is null");
-        settings.graphs.putAll(ConfigUtil.scanGraphsDir(graphsDir));
+        if (graphsDir != null) {
+            settings.graphs.putAll(ConfigUtil.scanGraphsDir(graphsDir));
+        }
 
         LOG.info("Configuring Gremlin Server from {}", conf);
         ContextGremlinServer server = new ContextGremlinServer(settings, hub);

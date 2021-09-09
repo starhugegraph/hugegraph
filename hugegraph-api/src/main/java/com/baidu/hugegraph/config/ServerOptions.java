@@ -151,6 +151,14 @@ public class ServerOptions extends OptionHolder {
                     "hg-test"
             );
 
+    public static final ConfigOption<Boolean> GRAPH_LOAD_FROM_LOCAL_CONFIG =
+            new ConfigOption<>(
+                    "graph.load_from_local_config",
+                    "Whether to load graphs from local configs.",
+                    disallowEmpty(),
+                    false
+            );
+
     public static final ConfigOption<String> GRAPHS =
             new ConfigOption<>(
                     "graphs",
