@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import org.apache.commons.collections.map.MultiValueMap;
 import org.apache.tinkerpop.gremlin.structure.util.GraphFactory;
@@ -69,8 +70,14 @@ public class InitStore {
 
         String restConf = args[0];
         HugeConfig restServerConfig = new HugeConfig(restConf);
-        boolean loadFromLocalConfig = restServerConfig.getBoolean(
-                ServerOptions.GRAPH_LOAD_FROM_LOCAL_CONFIG.name());
+
+        boolean loadFromLocalConfig;
+        try {
+            loadFromLocalConfig = restServerConfig.getBoolean(
+                    ServerOptions.GRAPH_LOAD_FROM_LOCAL_CONFIG.name());
+        } catch (NoSuchElementException e) {
+            loadFromLocalConfig = false;
+        }
         if (!loadFromLocalConfig) {
             LOG.info("Config '{}' is false, init-store do nothing and exit",
                      ServerOptions.GRAPH_LOAD_FROM_LOCAL_CONFIG.name());
