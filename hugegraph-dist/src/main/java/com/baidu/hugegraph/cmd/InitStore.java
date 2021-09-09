@@ -21,7 +21,6 @@ package com.baidu.hugegraph.cmd;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -69,14 +68,20 @@ public class InitStore {
                         "Expect the parameter is properties config file.");
 
         String restConf = args[0];
+        HugeConfig restServerConfig = new HugeConfig(restConf);
+        boolean loadFromLocalConfig = restServerConfig.getBoolean(
+                ServerOptions.GRAPH_LOAD_FROM_LOCAL_CONFIG.name());
+        if (!loadFromLocalConfig) {
+            LOG.info("Config '{}' is false, init-store do nothing and exit",
+                     ServerOptions.GRAPH_LOAD_FROM_LOCAL_CONFIG.name());
+            return;
+        }
 
         RegisterUtil.registerBackends();
         RegisterUtil.registerPlugins();
         RegisterUtil.registerServer();
 
-        HugeConfig restServerConfig = new HugeConfig(restConf);
         String graphsDir = restServerConfig.get(ServerOptions.GRAPHS);
-
         Map<String, String> graphConfs = ConfigUtil.scanGraphsDir(graphsDir);
         List<String> sortedGraphNames = new ArrayList<>(graphConfs.keySet());
         sortedGraphNames.sort((t0, t1) -> {

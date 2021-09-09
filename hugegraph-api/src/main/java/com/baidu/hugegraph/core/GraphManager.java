@@ -141,8 +141,10 @@ public final class GraphManager {
         this.etcdClient = Client.builder()
                                 .endpoints(etcds.toArray(new String[0]))
                                 .build();
-        // Load graphs configured in local conf/graphs directory
-        this.loadGraphs(ConfigUtil.scanGraphsDir(this.graphsDir));
+        if (conf.get(ServerOptions.GRAPH_LOAD_FROM_LOCAL_CONFIG)) {
+            // Load graphs configured in local conf/graphs directory
+            this.loadGraphs(ConfigUtil.scanGraphsDir(this.graphsDir));
+        }
         // Load graphs configured in etcd
         this.loadGraphsFromEtcd(this.graphConfigs());
 
@@ -363,9 +365,7 @@ public final class GraphManager {
     public void dropGraph(String name, boolean clear) {
         HugeGraph g = this.graph(name);
         E.checkArgumentNotNull(g, "The graph '%s' doesn't exist", name);
-        E.checkArgument(this.graphs.size() > 1,
-                        "The graph '%s' is the only one, " +
-                        "not allowed to delete", name);
+
         if (clear) {
             this.removingGraphs.add(name);
             KV kvClient = this.etcdClient.getKVClient();
