@@ -6,10 +6,7 @@
 scriptEvaluationTimeout: 30000
 
 channelizer: org.apache.tinkerpop.gremlin.server.channel.WsAndHttpChannelizer
-graphs: {
-  hugegraph: conf/hugegraph.properties,
-  system: conf/system.properties
-}
+
 scriptEngines: {
   gremlin-groovy: {
     plugins: {
