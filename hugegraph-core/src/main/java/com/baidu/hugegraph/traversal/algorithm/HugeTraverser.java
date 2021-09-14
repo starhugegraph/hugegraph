@@ -222,19 +222,22 @@ public class HugeTraverser {
                 });
             }
         } else {
-            E.checkArgument(vStep.labels().size() == 1 ,
-                            "The vertex step labels size should be one");
             result = new FilterIterator<>(result, edge -> {
                 HugeEdge hugeEdge = (HugeEdge) edge;
-                HugeVertex vertex = hugeEdge.targetVertex();
-                vertex = (HugeVertex) this.graph.vertex(vertex.id());
+                HugeVertex sVertex = hugeEdge.sourceVertex();
+                HugeVertex tVertex = hugeEdge.targetVertex();
+                sVertex = (HugeVertex) this.graph.vertex(sVertex.id());
+                tVertex = (HugeVertex) this.graph.vertex(tVertex.id());
                 ConditionQuery cq = new ConditionQuery(HugeType.VERTEX);
-                Id vertexLabel = vStep.labels().entrySet()
-                                      .iterator().next().getKey();
-                cq.eq(HugeKeys.LABEL, vertexLabel);
                 TraversalUtil.fillConditionQuery(cq, vStep.properties(),
                                                  this.graph);
-                if (cq.test(vertex)) {
+                if (!vStep.labels().isEmpty()) {
+                    if (!vStep.labels().containsValue(sVertex.label()) ||
+                        !vStep.labels().containsValue(tVertex.label())) {
+                        return false;
+                    }
+                }
+                if (cq.test(sVertex) && cq.test(tVertex)) {
                     return true;
                 } else {
                     return false;

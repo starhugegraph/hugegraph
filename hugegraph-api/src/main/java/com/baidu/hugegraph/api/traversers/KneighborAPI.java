@@ -136,12 +136,7 @@ public class KneighborAPI extends TraverserAPI {
 
         EdgeStep step = step(g, request.step);
         VertexStep vStep = request.vStep == null ? null :
-                                            vertexStep(g, request.vStep);
-        if (vStep != null && vStep.labels().size() > 1) {
-            E.checkArgument(request.vStep.properties == null ||
-                            request.vStep.properties.isEmpty(),
-                            "The vertex_step's properties should be null when multi labels");
-        }
+                           vertexStep(g, request.vStep);
 
         KneighborRecords results;
         try (KneighborTraverser traverser = new KneighborTraverser(g)) {
