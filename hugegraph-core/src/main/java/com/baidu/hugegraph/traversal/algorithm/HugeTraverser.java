@@ -222,15 +222,15 @@ public class HugeTraverser {
                 });
             }
         } else {
+            ConditionQuery cq = new ConditionQuery(HugeType.VERTEX);
+            TraversalUtil.fillConditionQuery(cq, vStep.properties(),
+                                             this.graph);
             result = new FilterIterator<>(result, edge -> {
                 HugeEdge hugeEdge = (HugeEdge) edge;
                 HugeVertex sVertex = hugeEdge.sourceVertex();
                 HugeVertex tVertex = hugeEdge.targetVertex();
                 sVertex = (HugeVertex) this.graph.vertex(sVertex.id());
                 tVertex = (HugeVertex) this.graph.vertex(tVertex.id());
-                ConditionQuery cq = new ConditionQuery(HugeType.VERTEX);
-                TraversalUtil.fillConditionQuery(cq, vStep.properties(),
-                                                 this.graph);
                 if (!vStep.labels().isEmpty()) {
                     if (!vStep.labels().containsValue(sVertex.label()) ||
                         !vStep.labels().containsValue(tVertex.label())) {
