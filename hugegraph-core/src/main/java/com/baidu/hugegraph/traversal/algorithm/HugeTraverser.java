@@ -213,8 +213,10 @@ public class HugeTraverser {
             if (!vStep.labels().isEmpty()) {
                 result = new FilterIterator<>(result, edge -> {
                     HugeEdge hugeEdge = (HugeEdge) edge;
+                    String sourceLabel = hugeEdge.sourceVertex().label();
                     String targetLabel = hugeEdge.targetVertex().label();
-                    if (vStep.labels().containsValue(targetLabel)) {
+                    if (vStep.labels().containsValue(sourceLabel) &&
+                        vStep.labels().containsValue(targetLabel)) {
                         return true;
                     } else {
                         return false;
