@@ -95,7 +95,7 @@ public class Steps {
         vertexSteps = new HashMap<>();
         if (vSteps != null && !vSteps.isEmpty()) {
             for (Map.Entry<String, Map<String, Object>> entry :
-                    vSteps.entrySet()) {
+                 vSteps.entrySet()) {
                 if (entry.getKey() == null || entry.getKey().isEmpty()) {
                     continue;
                 }

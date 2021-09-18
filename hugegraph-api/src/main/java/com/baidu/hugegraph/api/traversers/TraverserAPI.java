@@ -105,7 +105,7 @@ public class TraverserAPI extends API {
 
         @Override
         public String toString() {
-            return String.format("StepItem{label=%s,properties=%s}",
+            return String.format("EVStepEntity{label=%s,properties=%s}",
                                  this.label, this.properties);
         }
     }
