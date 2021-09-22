@@ -72,9 +72,13 @@ public class Steps {
         if (eSteps != null && !eSteps.isEmpty()) {
             for (Map.Entry<String, Map<String, Object>> entry :
                  eSteps.entrySet()) {
-                if (entry.getKey() == null || entry.getKey().isEmpty()) {
+                if ((entry.getKey() == null || entry.getKey().isEmpty()) &&
+                    (entry.getValue() == null || entry.getValue().isEmpty())) {
                     continue;
                 }
+                E.checkArgument(entry.getKey() != null &&
+                                !entry.getKey().isEmpty(),
+                                "The edge step label could not be null");
 
                 EdgeLabel el = g.edgeLabel(entry.getKey());
                 StepEntity stepEntity = null;
@@ -96,9 +100,13 @@ public class Steps {
         if (vSteps != null && !vSteps.isEmpty()) {
             for (Map.Entry<String, Map<String, Object>> entry :
                  vSteps.entrySet()) {
-                if (entry.getKey() == null || entry.getKey().isEmpty()) {
+                if ((entry.getKey() == null || entry.getKey().isEmpty()) &&
+                    (entry.getValue() == null || entry.getValue().isEmpty())) {
                     continue;
                 }
+                E.checkArgument(entry.getKey() != null &&
+                                !entry.getKey().isEmpty(),
+                                "The vertex step label could not be null");
 
                 VertexLabel vl = g.vertexLabel(entry.getKey());
                 StepEntity stepEntity = null;
@@ -162,7 +170,7 @@ public class Steps {
     }
 
     public boolean isVertexEmpty() {
-        if (this.vertexSteps != null && !this.edgeSteps.isEmpty()) {
+        if (this.vertexSteps != null && !this.vertexSteps.isEmpty()) {
             return false;
         }
 
