@@ -39,11 +39,16 @@ public class KoutApiTest extends BaseApiTest {
                                      "\"source\": \"%s\", " +
                                      "\"step\": { " +
                                      " \"direction\": \"BOTH\", " +
-                                     " \"labels\": [\"knows\", " +
-                                     " \"created\"], " +
-                                     "\"properties\": { " +
-                                     " \"weight\": \"P.gt(0.1)\"}, " +
-                                     " \"degree\": 10000, " +
+                                     "\"steps\": { " +
+                                     " \"direction\": \"BOTH\", " +
+                                     "\"edge_steps\": [" +
+                                     "{\"label\":\"knows\"," +
+                                     "\"properties\": {" +
+                                     "\"weight\": \"P.gt(0.1)\"}}," +
+                                     "{\"label\":\"created\"," +
+                                     "\"properties\": {" +
+                                     "\"weight\": \"P.gt(0.1)\"}}]," +
+                                     " \"max_degree\": 10000, " +
                                      " \"skip_degree\": 100000}, " +
                                      "\"max_depth\": 1, " +
                                      "\"nearest\": true, " +
