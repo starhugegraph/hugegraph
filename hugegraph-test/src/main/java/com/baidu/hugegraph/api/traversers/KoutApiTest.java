@@ -37,8 +37,6 @@ public class KoutApiTest extends BaseApiTest {
     final static String path = TRAVERSERS_API + "/kout";
     final static String postParams = "{ " +
                                      "\"source\": \"%s\", " +
-                                     "\"step\": { " +
-                                     " \"direction\": \"BOTH\", " +
                                      "\"steps\": { " +
                                      " \"direction\": \"BOTH\", " +
                                      "\"edge_steps\": [" +
