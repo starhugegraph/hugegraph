@@ -472,37 +472,6 @@ public class HugeTraverser {
         return edgeStep.skipSuperNodeIfNeeded(edges);
     }
 
-    private Iterator<Edge> edgesOfVertexAF(Id source, EdgeStep edgeStep,
-                                           VertexStep vStep,
-                                           boolean mustAllSK) {
-        Id[] edgeLabels = edgeStep.edgeLabels();
-        Query query = GraphTransaction.constructEdgesQuery(
-                      source,
-                      edgeStep.direction(),
-                      edgeLabels);
-        ConditionQuery filter = null;
-        if (mustAllSK) {
-            this.fillFilterBySortKeys(query, edgeLabels, edgeStep.properties());
-        } else {
-            filter = (ConditionQuery) query.copy();
-            this.fillFilterByProperties(filter, edgeStep.properties());
-        }
-        query.capacity(Query.NO_CAPACITY);
-        if (edgeStep.limit() != NO_LIMIT) {
-            query.limit(edgeStep.limit());
-        }
-        Iterator<Edge> edges = this.graph().edges(query);
-        if (filter != null) {
-            ConditionQuery finalFilter = filter;
-            edges = new FilterIterator<>(edges, (e) -> {
-                return finalFilter.test((HugeEdge) e);
-            });
-        }
-
-        edges = edgesOfVertexStep(edges, vStep);
-        return edgeStep.skipSuperNodeIfNeeded(edges);
-    }
-
     private void fillFilterBySortKeys(Query query, Id[] edgeLabels,
                                       Map<Id, Object> properties) {
         if (properties == null || properties.isEmpty()) {
