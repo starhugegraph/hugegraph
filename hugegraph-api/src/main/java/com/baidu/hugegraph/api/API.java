@@ -20,6 +20,8 @@
 package com.baidu.hugegraph.api;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
@@ -45,6 +47,45 @@ import com.google.common.collect.ImmutableMap;
 
 public class API {
 
+    public static class DebugMeasure {
+        public static final String EDGE_ITER = "edge_iters";
+        public static final String VERTICE_ITER = "vertice_iters";
+        public static final String COST = "cost";
+
+        protected long timeStart = System.currentTimeMillis();
+        protected HashMap<String, Object> mapResult = new LinkedHashMap<>();
+
+        public Map<String, Object> getResult() {
+            mapResult.put(COST, System.currentTimeMillis() - timeStart);
+            return mapResult;
+        }
+
+        public void put(String key, String value) {
+            this.mapResult.put(key, value);
+        }
+
+        public void put(String key, long value) {
+            this.mapResult.put(key, value);
+        }
+
+        public void put(String key, int value) {
+            this.mapResult.put(key, value);
+        }
+
+        protected void addCount(String key, long value) {
+            long cur = 0;
+            if (this.mapResult.containsKey(key)) {
+                cur = (long) this.mapResult.get(key);
+            }
+            this.mapResult.put(key, cur + value);
+        }
+
+        public void addIterCount(long verticeIters, long edgeIters) {
+            this.addCount(EDGE_ITER, edgeIters);
+            this.addCount(VERTICE_ITER, verticeIters);
+        }
+    }
+
     private static final Logger LOG = Log.logger(RestServer.class);
 
     public static final String CHARSET = "UTF-8";
@@ -59,6 +100,10 @@ public class API {
     public static final String ACTION_ELIMINATE = "eliminate";
     public static final String ACTION_CLEAR = "clear";
 
+    public static final String USER_NAME_PATTERN = "^[0-9a-zA-Z_]{5,16}$";
+    public static final String USER_PASSWORD_PATTERN =
+           "[a-zA-Z0-9~!@#$%^&*()_+|<>,.?/:;'`\"\\[\\]{}\\\\]{5,16}";
+
     private static final Meter succeedMeter =
                          MetricsUtil.registerMeter(API.class, "commit-succeed");
     private static final Meter illegalArgErrorMeter =
@@ -68,11 +113,13 @@ public class API {
     private static final Meter unknownErrorMeter =
                          MetricsUtil.registerMeter(API.class, "unknown-error");
 
+    public static final String SYSTEM_GRAPH = "system";
+
     public static HugeGraph graph(GraphManager manager, String graph) {
         HugeGraph g = manager.graph(graph);
         if (g == null) {
             throw new NotFoundException(String.format(
-                      "Graph '%s' does not exist",  graph));
+                      "Graph '%s' does not exist", graph));
         }
         return g;
     }
