@@ -26,8 +26,8 @@ import com.baidu.hugegraph.util.E;
 
 public class HstoreMetrics implements BackendMetrics {
 
-    public HstoreMetrics(HstoreSessions tikv) {
-        E.checkArgumentNotNull(tikv, "Tikv connection is not opened");
+    public HstoreMetrics(HstoreSessions hstore) {
+        E.checkArgumentNotNull(hstore, "Hstore connection is not opened");
     }
 
     @Override

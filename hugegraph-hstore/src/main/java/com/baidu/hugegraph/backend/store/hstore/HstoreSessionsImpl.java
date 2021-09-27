@@ -19,19 +19,11 @@
 
 package com.baidu.hugegraph.backend.store.hstore;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-
+import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.tikv.common.TiConfiguration;
-import org.tikv.common.TiSession;
-import org.tikv.common.key.Key;
-import org.tikv.kvproto.Kvrpcpb;
-import org.tikv.raw.RawKVClient;
-import org.tikv.shade.com.google.protobuf.ByteString;
 
 import com.baidu.hugegraph.backend.store.BackendEntry;
 import com.baidu.hugegraph.backend.store.BackendEntry.BackendColumnIterator;
@@ -41,49 +33,44 @@ import com.baidu.hugegraph.util.Bytes;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.StringEncoding;
 
-public class HstoreStdSessions extends HstoreSessions {
+public class HstoreSessionsImpl extends HstoreSessions {
 
     private final HugeConfig config;
-
-    private TiSession tikvSession;
-    private volatile RawKVClient tikvClient;
-
+    private HstoreSession session;
     private final Map<String, Integer> tables;
     private final AtomicInteger refCount;
-
     private static int tableCode = 0;
+    private String graphName;
 
-    public HstoreStdSessions(HugeConfig config, String database, String store) {
+    public HstoreSessionsImpl(HugeConfig config, String database, String store) {
         super(config, database, store);
         this.config = config;
-
-        TiConfiguration conf = TiConfiguration.createRawDefault(
-                this.config.get(HstoreOptions.TIKV_PDS));
-        conf.setBatchGetConcurrency(
-                this.config.get(HstoreOptions.TIKV_BATCH_GET_CONCURRENCY));
-        conf.setBatchPutConcurrency(
-                this.config.get(HstoreOptions.TIKV_BATCH_PUT_CONCURRENCY));
-        conf.setBatchDeleteConcurrency(
-                this.config.get(HstoreOptions.TIKV_BATCH_DELETE_CONCURRENCY));
-        conf.setBatchScanConcurrency(
-                this.config.get(HstoreOptions.TIKV_BATCH_SCAN_CONCURRENCY));
-        conf.setDeleteRangeConcurrency(
-                this.config.get(HstoreOptions.TIKV_DELETE_RANGE_CONCURRENCY));
-        this.tikvSession = TiSession.create(conf);
-        this.tikvClient = this.tikvSession.createRawClient();
-
+        this.graphName=database;
+//        TiConfiguration conf = TiConfiguration.createRawDefault(
+//                this.config.get(HstoreOptions.TIKV_PDS));
+//        conf.setBatchGetConcurrency(
+//                this.config.get(HstoreOptions.TIKV_BATCH_GET_CONCURRENCY));
+//        conf.setBatchPutConcurrency(
+//                this.config.get(HstoreOptions.TIKV_BATCH_PUT_CONCURRENCY));
+//        conf.setBatchDeleteConcurrency(
+//                this.config.get(HstoreOptions.TIKV_BATCH_DELETE_CONCURRENCY));
+//        conf.setBatchScanConcurrency(
+//                this.config.get(HstoreOptions.TIKV_BATCH_SCAN_CONCURRENCY));
+//        conf.setDeleteRangeConcurrency(
+//                this.config.get(HstoreOptions.TIKV_DELETE_RANGE_CONCURRENCY));
+        this.session = new HstoreSession(this.config,database);
         this.tables = new ConcurrentHashMap<>();
         this.refCount = new AtomicInteger(1);
     }
 
     @Override
     public void open() throws Exception {
-        // pass
+       this.session.open();
     }
 
     @Override
     protected boolean opened() {
-        return this.tikvClient != null;
+        return this.session != null;
     }
 
     @Override
@@ -117,7 +104,7 @@ public class HstoreStdSessions extends HstoreSessions {
 
     @Override
     protected final Session newSession() {
-        return new StdSession(this.config());
+        return new HstoreSession(this.config(),this.graphName);
     }
 
     @Override
@@ -128,23 +115,11 @@ public class HstoreStdSessions extends HstoreSessions {
             return;
         }
         assert this.refCount.get() == 0;
-
         this.tables.clear();
-
-        this.tikvClient.close();
-        try {
-            this.tikvSession.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        this.session.close();
     }
 
     private void checkValid() {
-    }
-
-    private RawKVClient tikv() {
-        this.checkValid();
-        return this.tikvClient;
     }
 
     public static final byte[] encode(String string) {
@@ -156,31 +131,46 @@ public class HstoreStdSessions extends HstoreSessions {
     }
 
     /**
-     * StdSession implement for tikv
+     * HstoreSession implement for hstore
      */
-    private final class StdSession extends Session {
+    private final class HstoreSession extends Session {
 
-        private Map<ByteString, ByteString> putBatch;
-        private List<ByteString> deleteBatch;
-        private Set<ByteString> deletePrefixBatch;
-        private Map<ByteString, ByteString> deleteRangeBatch;
+        private Map<String, Map<byte[], byte[]>> putBatch;
+        private Map<String, Set<byte[]>> deleteBatch;
+        private Map<String, Set<byte[]>> deletePrefixBatch;
+        private Map<String, Pair<byte[], byte[]>> deleteRangeBatch;
+        private volatile HstoreClient client;
+        private HstoreGraph graph;
+        private String  graphName;
 
-        public StdSession(HugeConfig conf) {
+        public HstoreSession(HugeConfig conf,String graphName) {
             this.putBatch = new HashMap<>();
-            this.deleteBatch = new ArrayList<>();
-            this.deletePrefixBatch = new HashSet<>();
+            this.deleteBatch = new HashMap<>();
+            this.deletePrefixBatch = new HashMap<>();
             this.deleteRangeBatch = new HashMap<>();
+            this.graphName=graphName;
+        }
+
+        public HstoreClient getClient() {
+            return client;
         }
 
         @Override
         public void open() {
+            this.graph=this.client.open(this.graphName);
             this.opened = true;
         }
 
         @Override
         public void close() {
             assert this.closeable();
-            this.opened = false;
+            try {
+                this.client.close();
+                this.opened = false;
+            }
+            catch(Exception e){
+
+            }
         }
 
         @Override
@@ -190,9 +180,9 @@ public class HstoreStdSessions extends HstoreSessions {
 
         @Override
         public void reset() {
-            this.putBatch = new HashMap<>();
-            this.deleteBatch = new ArrayList<>();
-            this.deletePrefixBatch = new HashSet<>();
+            this.putBatch = new HashMap();
+            this.deleteBatch = new HashMap<>();
+            this.deletePrefixBatch = new HashMap<>();
             this.deleteRangeBatch = new HashMap<>();
         }
 
@@ -216,26 +206,23 @@ public class HstoreStdSessions extends HstoreSessions {
             }
 
             if (this.putBatch.size() > 0) {
-                tikv().batchPut(this.putBatch);
+                this.graph.batchPut(this.putBatch);
                 this.putBatch.clear();
             }
 
             if (this.deleteBatch.size() > 0) {
-                tikv().batchDelete(this.deleteBatch);
+                this.graph.batchDelete(this.deleteBatch);
                 this.deleteBatch.clear();
             }
 
             if (this.deletePrefixBatch.size() > 0) {
-                for (ByteString key : this.deletePrefixBatch) {
-                    tikv().deletePrefix(key);
-                }
+                this.graph.deletePrefix(this.deletePrefixBatch);
+                this.deletePrefixBatch.clear();
             }
 
             if (this.deleteRangeBatch.size() > 0) {
-                for (Map.Entry<ByteString, ByteString> entry :
-                        this.deleteRangeBatch.entrySet()) {
-                    tikv().deleteRange(entry.getKey(), entry.getValue());
-                }
+                this.graph.deleteRange(this.deleteRangeBatch);
+                this.deleteRangeBatch.clear();
             }
 
             return count;
@@ -263,30 +250,44 @@ public class HstoreStdSessions extends HstoreSessions {
          */
         @Override
         public void put(String table, byte[] key, byte[] value) {
-            this.putBatch.put(this.toTikvKey(table, key), ByteString.copyFrom(value));
+            byte[] bs = toKey(table);
+            Map valueMap = this.putBatch.get(table.getBytes());
+            if (valueMap == null) {
+                valueMap = new HashMap();
+                this.putBatch.put(table, valueMap);
+            }
+            valueMap.put(key, value);
         }
 
         @Override
         public synchronized void increase(String table, byte[] key, byte[] value) {
-            long old = 0L;
-            byte[] oldValue = this.get(table, key);
-            if (oldValue.length != 0) {
-                old = this.l(oldValue);
-            }
-            ByteString newValue = ByteString.copyFrom(
-                    this.b(old + this.l(value)));
-            tikv().put(this.toTikvKey(table, key), newValue);
+            this.graph.merge(table, key, value);
         }
 
         @Override
         public void delete(String table, byte[] key) {
-            this.deleteBatch.add(this.toTikvKey(table, key));
+            Map valueMap = this.putBatch.get(table);
+            if (valueMap != null) {
+                if (valueMap.remove(key) != null) {
+                    return;
+                }
+            }
+            Set valueSet = this.deleteBatch.get(table);
+            if (valueSet == null) {
+                valueSet = new HashSet();
+                this.deleteBatch.put(table, valueSet);
+            }
+            valueSet.add(key);
         }
 
         @Override
         public void deletePrefix(String table, byte[] key) {
-            ByteString deleteKey = this.toTikvKey(table, key);
-            this.deletePrefixBatch.add(deleteKey);
+            Set valueSet = this.deletePrefixBatch.get(table);
+            if (valueSet == null) {
+                valueSet = new HashSet();
+                this.deletePrefixBatch.put(table, valueSet);
+            }
+            valueSet.add(key);
         }
 
         /**
@@ -294,92 +295,42 @@ public class HstoreStdSessions extends HstoreSessions {
          */
         @Override
         public void deleteRange(String table, byte[] keyFrom, byte[] keyTo) {
-            ByteString startKey = this.toTikvKey(table, keyFrom);
-            ByteString endKey = this.toTikvKey(table, keyTo);
-            this.deleteRangeBatch.put(startKey, endKey);
+            this.deleteRangeBatch.put(table, new MutablePair<byte[], byte[]>(
+                    keyFrom,
+                    keyTo
+            ));
         }
 
         @Override
         public byte[] get(String table, byte[] key) {
-            Optional<ByteString> values = tikv().get(this.toTikvKey(table, key));
-            return values.isPresent()? values.get().toByteArray() : new byte[0];
+            byte[] values = this.graph.get(table, key);
+            return values !=null ? values : new byte[0];
         }
 
         @Override
         public BackendColumnIterator scan(String table) {
             assert !this.hasChanges();
-            Iterator<Kvrpcpb.KvPair> results = tikv().scanPrefix0(this.toTikvKey(table));
-            return new ColumnIterator(table, results);
+            Iterator results = this.graph.scan(table);
+            return new ColumnIterator(table, (HstoreBackendIterator) results);
         }
 
         @Override
         public BackendColumnIterator scan(String table, byte[] prefix) {
             assert !this.hasChanges();
-            Iterator<Kvrpcpb.KvPair> results = tikv().scanPrefix0(
-                    this.toTikvKey(table, prefix));
-            return new ColumnIterator(table, results);
+            Iterator results = this.graph.scanPrefix(table, prefix);
+            return new ColumnIterator(table, (HstoreBackendIterator)results);
         }
 
         @Override
         public BackendColumnIterator scan(String table, byte[] keyFrom,
                                           byte[] keyTo, int scanType) {
             assert !this.hasChanges();
-            Iterator<Kvrpcpb.KvPair> results;
-            if (keyFrom == null) {
-                results = tikv().scanPrefix0(this.toTikvKey(table));
-            } else {
-                if (keyTo == null) {
-                    results = tikv().scan0(this.toTikvKey(table, keyFrom), Key.toRawKey(this.toTikvKey(table)).nextPrefix().toByteString());
-                } else {
-                    results = tikv().scan0(this.toTikvKey(table, keyFrom), Key.toRawKey(this.toTikvKey(table, keyTo)).nextPrefix().toByteString());
-                }
-            }
-            return new ColumnIterator(table, results, keyFrom, keyTo, scanType);
+            Iterator results = this.graph.scan(table, keyFrom, keyTo, scanType);
+            return new ColumnIterator(table, (HstoreBackendIterator)results, keyFrom, keyTo, scanType);
         }
 
-        protected ByteString toTikvKey(String table) {
-            byte[] prefix = ("t" + table + "_r").getBytes();
-            byte[] actualKey = new byte[prefix.length];
-            System.arraycopy(prefix, 0, actualKey, 0, prefix.length);
-            return ByteString.copyFrom(actualKey);
-            /*
-            byte[] prefix = table.getBytes();
-            byte[] actualKey = new byte[prefix.length + 1];
-            System.arraycopy(prefix, 0, actualKey, 0, prefix.length);
-            actualKey[prefix.length] = (byte) 0xff;
-            return ByteString.copyFrom(actualKey);
-
-             */
-        }
-
-        protected ByteString toTikvKey(String table, byte[] key) {
-            byte[] prefix = ("t" + table + "_r").getBytes();
-            byte[] actualKey = new byte[prefix.length + key.length];
-            System.arraycopy(prefix, 0, actualKey, 0, prefix.length);
-            System.arraycopy(key, 0, actualKey, prefix.length, key.length);
-            return ByteString.copyFrom(actualKey);
-            /*
-            byte[] prefix = table.getBytes();
-            byte[] actualKey = new byte[prefix.length + 1 + key.length];
-            System.arraycopy(prefix, 0, actualKey, 0, prefix.length);
-            actualKey[prefix.length] = (byte) 0xff;
-            System.arraycopy(key, 0, actualKey, prefix.length + 1, key.length);
-            return ByteString.copyFrom(actualKey);
-
-             */
-        }
-
-        private byte[] b(long value) {
-            return ByteBuffer.allocate(Long.BYTES)
-                    .order(ByteOrder.nativeOrder())
-                    .putLong(value).array();
-        }
-
-        private long l(byte[] bytes) {
-            assert bytes.length == Long.BYTES;
-            return ByteBuffer.wrap(bytes)
-                    .order(ByteOrder.nativeOrder())
-                    .getLong();
+        private byte[] toKey(String key) {
+            return key.getBytes();
         }
 
         private int size() {
@@ -388,11 +339,11 @@ public class HstoreStdSessions extends HstoreSessions {
         }
     }
 
-    private static class ColumnIterator implements BackendColumnIterator,
-            Countable {
+    private static class ColumnIterator<T extends HstoreBackendIterator>
+            implements BackendColumnIterator,Countable {
 
         private final String table;
-        private final Iterator<Kvrpcpb.KvPair> iter;
+        private final T iter;
 
         private final byte[] keyBegin;
         private final byte[] keyEnd;
@@ -402,11 +353,15 @@ public class HstoreStdSessions extends HstoreSessions {
         private byte[] value;
         private boolean matched;
 
-        public ColumnIterator(String table, Iterator<Kvrpcpb.KvPair> results) {
+        public ColumnIterator(String table, T results) {
             this(table, results, null, null, 0);
         }
 
-        public ColumnIterator(String table, Iterator<Kvrpcpb.KvPair> results,
+        public T iter() {
+            return  iter;
+        }
+
+        public ColumnIterator(String table, T results,
                               byte[] keyBegin, byte[] keyEnd, int scanType) {
             E.checkNotNull(results, "results");
             this.table = table;
@@ -471,34 +426,23 @@ public class HstoreStdSessions extends HstoreSessions {
             return Session.matchScanType(expected, this.scanType);
         }
 
-        private byte[] toActualKey(String table, ByteString tikvKey) {
-            byte[] prefix = ("t" + table + "_r").getBytes();
-            int length = tikvKey.size() - prefix.length;
-            byte[] key = new byte[length];
-            System.arraycopy(tikvKey.toByteArray(), prefix.length, key, 0, length);
-            /*
-            byte[] prefix = table.getBytes();
-            int length = tikvKey.size() - prefix.length - 1;
-            byte[] key = new byte[length];
-            System.arraycopy(tikvKey.toByteArray(), prefix.length + 1, key, 0, length);
-            */
-            return key;
-        }
-
         @Override
         public boolean hasNext() {
-            // Update position for paging
-            if (!this.iter.hasNext()) {
-                return false;
+
+            this.matched = this.iter().isOwningHandle();
+            if (!this.matched) {
+                // Maybe closed
+                return this.matched;
             }
-            Kvrpcpb.KvPair next = this.iter.next();
 
-            this.position = toActualKey(this.table, next.getKey());
-            this.value = next.getValue().toByteArray();
-
-            // Do filter if not SCAN_ANY
-            if (!this.match(Session.SCAN_ANY)) {
-                this.matched = this.filter(this.position);
+            this.matched = this.iter().isValid();
+            if (this.matched) {
+                // Update position for paging
+                this.position = this.iter().key();
+                // Do filter if not SCAN_ANY
+                if (!this.match(Session.SCAN_ANY)) {
+                    this.matched = this.filter(this.position);
+                }
             }
             if (!this.matched) {
                 // The end

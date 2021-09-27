@@ -60,7 +60,6 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
     public HstoreStore(final BackendStoreProvider provider,
                        final String namespace, final String store) {
         this.tables = new HashMap<>();
-
         this.provider = provider;
         this.namespace = namespace;
         this.store = store;
@@ -131,7 +130,7 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         E.checkNotNull(config, "config");
 
         if (this.sessions == null) {
-            this.sessions = new HstoreStdSessions(config, this.namespace, this.store);
+            this.sessions = new HstoreSessionsImpl(config, this.namespace, this.store);
         }
 
         assert this.sessions != null;
@@ -277,11 +276,11 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
 
     /***************************** Store defines *****************************/
 
-    public static class TikvSchemaStore extends HstoreStore {
+    public static class HstoreSchemaStore extends HstoreStore {
 
         private final HstoreTables.Counters counters;
 
-        public TikvSchemaStore(BackendStoreProvider provider,
+        public HstoreSchemaStore(BackendStoreProvider provider,
                                String namespace, String store) {
             super(provider, namespace, store);
 
@@ -326,9 +325,9 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         }
     }
 
-    public static class TikvGraphStore extends HstoreStore {
+    public static class HstoreGraphStore extends HstoreStore {
 
-        public TikvGraphStore(BackendStoreProvider provider,
+        public HstoreGraphStore(BackendStoreProvider provider,
                               String namespace, String store) {
             super(provider, namespace, store);
 
@@ -370,19 +369,19 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         @Override
         public Id nextId(HugeType type) {
             throw new UnsupportedOperationException(
-                      "TikvGraphStore.nextId()");
+                      "HstoreGraphStore.nextId()");
         }
 
         @Override
         public void increaseCounter(HugeType type, long num) {
             throw new UnsupportedOperationException(
-                      "TikvGraphStore.increaseCounter()");
+                      "HstoreGraphStore.increaseCounter()");
         }
 
         @Override
         public long getCounter(HugeType type) {
             throw new UnsupportedOperationException(
-                      "TikvGraphStore.getCounter()");
+                      "HstoreGraphStore.getCounter()");
         }
     }
 }
