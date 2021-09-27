@@ -21,23 +21,23 @@ package com.baidu.hugegraph.backend.store.hstore;
 
 import com.baidu.hugegraph.backend.store.AbstractBackendStoreProvider;
 import com.baidu.hugegraph.backend.store.BackendStore;
-import com.baidu.hugegraph.backend.store.hstore.HstoreStore.TikvGraphStore;
-import com.baidu.hugegraph.backend.store.hstore.HstoreStore.TikvSchemaStore;
+import com.baidu.hugegraph.backend.store.hstore.HstoreStore.HstoreGraphStore;
+import  com.baidu.hugegraph.backend.store.hstore.HstoreStore.HstoreSchemaStore;
 
 public class HstoreProvider extends AbstractBackendStoreProvider {
 
     protected String namespace() {
         return this.graph().toLowerCase();
     }
-
+    //TODO schema to Store
     @Override
     protected BackendStore newSchemaStore(String store) {
-        return new TikvSchemaStore(this, this.namespace(), store);
+        return new HstoreSchemaStore(this, this.namespace(), store);
     }
 
     @Override
     protected BackendStore newGraphStore(String store) {
-        return new TikvGraphStore(this, this.namespace(), store);
+        return new HstoreGraphStore(this, this.namespace(), store);
     }
 
     @Override
@@ -49,7 +49,7 @@ public class HstoreProvider extends AbstractBackendStoreProvider {
     public String version() {
         /*
          * Versions history:
-         * [1.0] HugeGraph-1328: supports tikv
+         * [1.0] HugeGraph-1328: supports hstore
          */
         return "1.0";
     }

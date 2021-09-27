@@ -44,7 +44,7 @@ public abstract class HstoreSessions extends BackendSessionPool {
     public abstract Session session();
 
     /**
-     * Session for RocksDB
+     * Session for Hstore
      */
     public static abstract class Session extends AbstractBackendSession {
 
