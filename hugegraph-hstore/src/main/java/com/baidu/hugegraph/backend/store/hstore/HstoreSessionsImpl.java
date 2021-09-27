@@ -42,7 +42,6 @@ public class HstoreSessionsImpl extends HstoreSessions {
     private HstoreSession session;
     private final Map<String, Integer> tables;
     private final AtomicInteger refCount;
-    private HstoreClient client;
     private static int tableCode = 0;
 
     public HstoreSessionsImpl(HugeConfig config, String database, String store) {
@@ -61,14 +60,13 @@ public class HstoreSessionsImpl extends HstoreSessions {
 //        conf.setDeleteRangeConcurrency(
 //                this.config.get(HstoreOptions.TIKV_DELETE_RANGE_CONCURRENCY));
         this.session = new HstoreSession(this.config);
-        this.client = this.session.getClient();
         this.tables = new ConcurrentHashMap<>();
         this.refCount = new AtomicInteger(1);
     }
 
     @Override
     public void open() throws Exception {
-        this.client.open();
+       this.session.open();
     }
 
     @Override
@@ -125,11 +123,6 @@ public class HstoreSessionsImpl extends HstoreSessions {
     private void checkValid() {
     }
 
-    private HstoreClient client() {
-        this.checkValid();
-        return this.session.client;
-    }
-
     public static final byte[] encode(String string) {
         return StringEncoding.encode(string);
     }
@@ -143,11 +136,13 @@ public class HstoreSessionsImpl extends HstoreSessions {
      */
     private final class HstoreSession extends Session {
 
-        private Map<ByteString, HashMap<ByteString, ByteString>> putBatch;
-        private Map<ByteString, HashSet<ByteString>> deleteBatch;
-        private Map<ByteString, HashSet<ByteString>> deletePrefixBatch;
-        private Map<ByteString, Pair<ByteString, ByteString>> deleteRangeBatch;
+        private Map<String, Map<byte[], byte[]>> putBatch;
+        private Map<String, Set<byte[]>> deleteBatch;
+        private Map<String, Set<byte[]>> deletePrefixBatch;
+        private Map<String, Pair<byte[], byte[]>> deleteRangeBatch;
         private volatile HstoreClient client;
+        private HstoreGraph graph;
+        private String  graphName;
 
         public HstoreSession(HugeConfig conf) {
             this.putBatch = new HashMap<>();
@@ -162,7 +157,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public void open() {
-            //TODO open client
+            this.graph=this.client.open(this.graphName);
             this.opened = true;
         }
 
@@ -211,22 +206,22 @@ public class HstoreSessionsImpl extends HstoreSessions {
             }
 
             if (this.putBatch.size() > 0) {
-                this.client.batchPut(this.putBatch);
+                this.graph.batchPut(this.putBatch);
                 this.putBatch.clear();
             }
 
             if (this.deleteBatch.size() > 0) {
-                this.client.batchDelete(this.deleteBatch);
+                this.graph.batchDelete(this.deleteBatch);
                 this.deleteBatch.clear();
             }
 
             if (this.deletePrefixBatch.size() > 0) {
-                this.client.deletePrefix(this.deletePrefixBatch);
+                this.graph.deletePrefix(this.deletePrefixBatch);
                 this.deletePrefixBatch.clear();
             }
 
             if (this.deleteRangeBatch.size() > 0) {
-                this.client.deleteRange(this.deleteRangeBatch);
+                this.graph.deleteRange(this.deleteRangeBatch);
                 this.deleteRangeBatch.clear();
             }
 
@@ -255,47 +250,45 @@ public class HstoreSessionsImpl extends HstoreSessions {
          */
         @Override
         public void put(String table, byte[] key, byte[] value) {
-            ByteString bs = ByteString.copyFrom(table.getBytes());
-            HashMap valueMap = this.putBatch.get(bs);
+            byte[] bs = toKey(table);
+            Map valueMap = this.putBatch.get(table.getBytes());
             if (valueMap == null) {
                 valueMap = new HashMap();
-                this.putBatch.put(bs, valueMap);
+                this.putBatch.put(table, valueMap);
             }
-            valueMap.put(ByteString.copyFrom(key), ByteString.copyFrom(value));
+            valueMap.put(key, value);
         }
 
         @Override
         public synchronized void increase(String table, byte[] key, byte[] value) {
-            this.client.merge(table, key, value);
+            this.graph.merge(table, key, value);
         }
 
         @Override
         public void delete(String table, byte[] key) {
-            ByteString bs = ByteString.copyFrom(table.getBytes());
-            HashMap valueMap = this.putBatch.get(bs);
+            Map valueMap = this.putBatch.get(table);
             if (valueMap != null) {
                 ByteString keyBs = ByteString.copyFrom(key);
                 if (valueMap.remove(keyBs) != null) {
                     return;
                 }
             }
-            HashSet valueSet = this.deleteBatch.get(bs);
+            Set valueSet = this.deleteBatch.get(table);
             if (valueSet == null) {
                 valueSet = new HashSet();
-                this.deleteBatch.put(bs, valueSet);
+                this.deleteBatch.put(table, valueSet);
             }
-            valueSet.add(ByteString.copyFrom(key));
+            valueSet.add(key);
         }
 
         @Override
         public void deletePrefix(String table, byte[] key) {
-            ByteString bs = ByteString.copyFrom(table.getBytes());
-            HashSet valueSet = this.deletePrefixBatch.get(bs);
+            Set valueSet = this.deletePrefixBatch.get(table);
             if (valueSet == null) {
                 valueSet = new HashSet();
-                this.deletePrefixBatch.put(bs, valueSet);
+                this.deletePrefixBatch.put(table, valueSet);
             }
-            valueSet.add(ByteString.copyFrom(key));
+            valueSet.add(key);
         }
 
         /**
@@ -303,80 +296,43 @@ public class HstoreSessionsImpl extends HstoreSessions {
          */
         @Override
         public void deleteRange(String table, byte[] keyFrom, byte[] keyTo) {
-            ByteString startKey = this.toKey(keyFrom);
-            ByteString endKey = this.toKey(keyTo);
-            this.deleteRangeBatch.put(toKey(table), new MutablePair<ByteString, ByteString>(
-                    startKey,
-                    endKey
+            this.deleteRangeBatch.put(table, new MutablePair<byte[], byte[]>(
+                    keyFrom,
+                    keyTo
             ));
         }
 
         @Override
         public byte[] get(String table, byte[] key) {
-            Optional<ByteString> values = this.client.get(table, key);
-            return values.isPresent() ? values.get().toByteArray() : new byte[0];
+            byte[] values = this.graph.get(table, key);
+            return values !=null ? values : new byte[0];
         }
 
         @Override
         public BackendColumnIterator scan(String table) {
             assert !this.hasChanges();
-            Iterator results = this.client.scan(this.toKey(table));
-            return new ColumnIterator(table, results);
+            Iterator results = this.graph.scan(table);
+            return new ColumnIterator(table, (HstoreBackendIterator) results);
         }
 
         @Override
         public BackendColumnIterator scan(String table, byte[] prefix) {
             assert !this.hasChanges();
-            Iterator results = this.client.scanPrefix(table, prefix);
-            return new ColumnIterator(table, results);
+            Iterator results = this.graph.scanPrefix(table, prefix);
+            return new ColumnIterator(table, (HstoreBackendIterator)results);
         }
 
         @Override
         public BackendColumnIterator scan(String table, byte[] keyFrom,
                                           byte[] keyTo, int scanType) {
             assert !this.hasChanges();
-            Iterator results = this.client.scan(table, keyFrom, keyTo, scanType);
-            return new ColumnIterator(table, results, keyFrom, keyTo, scanType);
+            Iterator results = this.graph.scan(table, keyFrom, keyTo, scanType);
+            return new ColumnIterator(table, (HstoreBackendIterator)results, keyFrom, keyTo, scanType);
         }
 
-        private ByteString toKey(String key) {
-            return ByteString.copyFrom(key.getBytes());
+        private byte[] toKey(String key) {
+            return key.getBytes();
         }
-
-        private ByteString toKey(byte[] keys) {
-            return ByteString.copyFrom(keys);
-        }
-
-//
-//        protected ByteString toTikvKey(String table, byte[] key) {
-//            byte[] prefix = ("t" + table + "_r").getBytes();
-//            byte[] actualKey = new byte[prefix.length + key.length];
-//            System.arraycopy(prefix, 0, actualKey, 0, prefix.length);
-//            System.arraycopy(key, 0, actualKey, prefix.length, key.length);
-//            return ByteString.copyFrom(actualKey);
-//            /*
-//            byte[] prefix = table.getBytes();
-//            byte[] actualKey = new byte[prefix.length + 1 + key.length];
-//            System.arraycopy(prefix, 0, actualKey, 0, prefix.length);
-//            actualKey[prefix.length] = (byte) 0xff;
-//            System.arraycopy(key, 0, actualKey, prefix.length + 1, key.length);
-//            return ByteString.copyFrom(actualKey);
-//
-//             */
-//        }
-
-//        private byte[] b(long value) {
-//            return ByteBuffer.allocate(Long.BYTES)
-//                    .order(ByteOrder.nativeOrder())
-//                    .putLong(value).array();
-//        }
-//
-//        private long l(byte[] bytes) {
-//            assert bytes.length == Long.BYTES;
-//            return ByteBuffer.wrap(bytes)
-//                    .order(ByteOrder.nativeOrder())
-//                    .getLong();
-//        }
 
         private int size() {
             return this.putBatch.size() + this.deleteBatch.size() +
@@ -384,11 +340,11 @@ public class HstoreSessionsImpl extends HstoreSessions {
         }
     }
 
-    private static class ColumnIterator implements BackendColumnIterator,
-            Countable {
+    private static class ColumnIterator<T extends HstoreBackendIterator>
+            implements BackendColumnIterator,Countable {
 
         private final String table;
-        private final Iterator iter;
+        private final T iter;
 
         private final byte[] keyBegin;
         private final byte[] keyEnd;
@@ -398,15 +354,15 @@ public class HstoreSessionsImpl extends HstoreSessions {
         private byte[] value;
         private boolean matched;
 
-        public ColumnIterator(String table, Iterator results) {
+        public ColumnIterator(String table, T results) {
             this(table, results, null, null, 0);
         }
 
-        public RocksIterator iter() {
-            return (RocksIterator) iter;
+        public T iter() {
+            return  iter;
         }
 
-        public ColumnIterator(String table, Iterator results,
+        public ColumnIterator(String table, T results,
                               byte[] keyBegin, byte[] keyEnd, int scanType) {
             E.checkNotNull(results, "results");
             this.table = table;
