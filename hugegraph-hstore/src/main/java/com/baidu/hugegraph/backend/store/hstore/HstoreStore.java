@@ -60,7 +60,6 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
     public HstoreStore(final BackendStoreProvider provider,
                        final String namespace, final String store) {
         this.tables = new HashMap<>();
-
         this.provider = provider;
         this.namespace = namespace;
         this.store = store;
@@ -268,6 +267,7 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
     public void rollbackTx() {
         this.checkOpened();
         Session session = this.sessions.session();
+
         session.rollback();
     }
 

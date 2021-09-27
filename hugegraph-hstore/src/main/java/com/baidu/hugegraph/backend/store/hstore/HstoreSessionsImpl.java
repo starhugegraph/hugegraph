@@ -22,11 +22,8 @@ package com.baidu.hugegraph.backend.store.hstore;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.rocksdb.RocksIterator;
 
 import com.baidu.hugegraph.backend.store.BackendEntry;
 import com.baidu.hugegraph.backend.store.BackendEntry.BackendColumnIterator;
@@ -43,10 +40,12 @@ public class HstoreSessionsImpl extends HstoreSessions {
     private final Map<String, Integer> tables;
     private final AtomicInteger refCount;
     private static int tableCode = 0;
+    private String graphName;
 
     public HstoreSessionsImpl(HugeConfig config, String database, String store) {
         super(config, database, store);
         this.config = config;
+        this.graphName=database;
 //        TiConfiguration conf = TiConfiguration.createRawDefault(
 //                this.config.get(HstoreOptions.TIKV_PDS));
 //        conf.setBatchGetConcurrency(
@@ -59,7 +58,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
 //                this.config.get(HstoreOptions.TIKV_BATCH_SCAN_CONCURRENCY));
 //        conf.setDeleteRangeConcurrency(
 //                this.config.get(HstoreOptions.TIKV_DELETE_RANGE_CONCURRENCY));
-        this.session = new HstoreSession(this.config);
+        this.session = new HstoreSession(this.config,database);
         this.tables = new ConcurrentHashMap<>();
         this.refCount = new AtomicInteger(1);
     }
@@ -105,7 +104,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
     @Override
     protected final Session newSession() {
-        return new HstoreSession(this.config());
+        return new HstoreSession(this.config(),this.graphName);
     }
 
     @Override
@@ -144,11 +143,12 @@ public class HstoreSessionsImpl extends HstoreSessions {
         private HstoreGraph graph;
         private String  graphName;
 
-        public HstoreSession(HugeConfig conf) {
+        public HstoreSession(HugeConfig conf,String graphName) {
             this.putBatch = new HashMap<>();
             this.deleteBatch = new HashMap<>();
             this.deletePrefixBatch = new HashMap<>();
             this.deleteRangeBatch = new HashMap<>();
+            this.graphName=graphName;
         }
 
         public HstoreClient getClient() {
@@ -268,8 +268,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public void delete(String table, byte[] key) {
             Map valueMap = this.putBatch.get(table);
             if (valueMap != null) {
-                ByteString keyBs = ByteString.copyFrom(key);
-                if (valueMap.remove(keyBs) != null) {
+                if (valueMap.remove(key) != null) {
                     return;
                 }
             }
@@ -426,21 +425,6 @@ public class HstoreSessionsImpl extends HstoreSessions {
         private boolean match(int expected) {
             return Session.matchScanType(expected, this.scanType);
         }
-
-        private byte[] toActualKey(String table, ByteString tikvKey) {
-            byte[] prefix = ("t" + table + "_r").getBytes();
-            int length = tikvKey.size() - prefix.length;
-            byte[] key = new byte[length];
-            System.arraycopy(tikvKey.toByteArray(), prefix.length, key, 0, length);
-            /*
-            byte[] prefix = table.getBytes();
-            int length = tikvKey.size() - prefix.length - 1;
-            byte[] key = new byte[length];
-            System.arraycopy(tikvKey.toByteArray(), prefix.length + 1, key, 0, length);
-            */
-            return key;
-        }
-
 
         @Override
         public boolean hasNext() {

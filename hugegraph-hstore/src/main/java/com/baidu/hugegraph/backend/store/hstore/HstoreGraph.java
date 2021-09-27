@@ -1,13 +1,8 @@
 package com.baidu.hugegraph.backend.store.hstore;
 
-import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.tuple.Pair;
-
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 public interface HstoreGraph {

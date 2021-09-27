@@ -12,8 +12,6 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface HstoreClient {
-
-
     void close();
     HstoreGraph open(String graphName);
 }
