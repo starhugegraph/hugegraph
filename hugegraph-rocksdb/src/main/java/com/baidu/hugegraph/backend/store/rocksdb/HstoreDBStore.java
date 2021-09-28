@@ -8,6 +8,9 @@ import com.baidu.hugegraph.backend.query.Query;
 import com.baidu.hugegraph.backend.store.*;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.iterator.FlatMapperIterator;
+import com.baidu.hugegraph.store.HgSessionManager;
+import com.baidu.hugegraph.store.HgStoreConfig;
+import com.baidu.hugegraph.store.HgStoreSession;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.util.InsertionOrderUtil;
 import com.baidu.hugegraph.util.StringEncoding;
@@ -27,6 +30,9 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
     public String SERVERS = "servers";
     public String SERVER_LOCAL = "local";
     public String SERVER_CLUSTER = "cluster";
+
+    HgSessionManager manager = HgSessionManager.configOf(HgStoreConfig.of());
+    HgStoreSession session = null;
 
     public HstoreDBStore(final BackendStoreProvider provider,
                         final String database, final String store){
@@ -78,7 +84,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
 
     @Override
     public void open(HugeConfig config) {
-
+        session = manager.openSession(this.database);
     }
 
     @Override
@@ -88,7 +94,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
 
     @Override
     public boolean opened() {
-        return false;
+        return session != null;
     }
 
     @Override
@@ -141,10 +147,10 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
             tables.put(tableName, new HashMap<>());
         Map<Id, BackendEntry> table = tables.get(tableName);
         table.put(entry.id(), entry);
-
         for (BackendEntry.BackendColumn col : entry.columns()) {
             System.out.println(tableName + ", " + entry.id() + ", "
                     + StringEncoding.decode(col.name) + ", " + StringEncoding.decode(col.value)) ;
+            session.put(tableName, col.name, col.value);
         }
     }
     @Override
