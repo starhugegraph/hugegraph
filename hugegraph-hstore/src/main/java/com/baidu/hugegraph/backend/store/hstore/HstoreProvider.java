@@ -29,9 +29,6 @@ public class HstoreProvider extends AbstractBackendStoreProvider {
         return this.graph().toLowerCase();
     }
 
-    BackendStore schemaStore;
-
-    //TODO schema to Store
     @Override
     protected synchronized BackendStore newSchemaStore(String store) {
         return new HstoreGraphStore(this, this.namespace(), store);

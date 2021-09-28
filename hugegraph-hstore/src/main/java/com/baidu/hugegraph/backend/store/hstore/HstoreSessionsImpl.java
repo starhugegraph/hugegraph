@@ -483,9 +483,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
             if (!this.matched && !this.hasNext()) {
                 throw new NoSuchElementException();
             }
+            this.iter.next();
             BackendEntry.BackendColumn col = BackendEntry.BackendColumn.of(this.iter.key(),
                     this.iter.value());
-            this.iter.next();
             this.matched = false;
             return col;
         }

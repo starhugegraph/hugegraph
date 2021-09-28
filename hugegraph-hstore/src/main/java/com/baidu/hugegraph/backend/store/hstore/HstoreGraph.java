@@ -23,10 +23,7 @@ public interface HstoreGraph {
 
     Iterator scan(String table);
 
-    Iterator scan(String table, byte[] key);
-
     Iterator scanPrefix(String table, byte[] key);
-
 
     void merge(String table, byte[] key, byte[] value);
 
