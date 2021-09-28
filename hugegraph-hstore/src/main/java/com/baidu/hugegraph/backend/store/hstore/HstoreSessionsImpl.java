@@ -365,12 +365,10 @@ public class HstoreSessionsImpl extends HstoreSessions {
                               byte[] keyBegin, byte[] keyEnd, int scanType) {
             E.checkNotNull(results, "results");
             this.table = table;
-
             this.iter = results;
             this.keyBegin = keyBegin;
             this.keyEnd = keyEnd;
             this.scanType = scanType;
-
             this.position = keyBegin;
             this.value = null;
             this.matched = false;
@@ -379,47 +377,47 @@ public class HstoreSessionsImpl extends HstoreSessions {
         }
 
         private void checkArguments() {
-            E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
-                            this.match(Session.SCAN_PREFIX_END)),
-                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
-                            "SCAN_PREFIX_WITH_END at the same time");
-
-            E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
-                            this.match(Session.SCAN_GT_BEGIN)),
-                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
-                            "SCAN_GT_BEGIN/SCAN_GTE_BEGIN at the same time");
-
-            E.checkArgument(!(this.match(Session.SCAN_PREFIX_END) &&
-                            this.match(Session.SCAN_LT_END)),
-                    "Can't set SCAN_PREFIX_WITH_END and " +
-                            "SCAN_LT_END/SCAN_LTE_END at the same time");
-
-            if (this.match(Session.SCAN_PREFIX_BEGIN)) {
-                E.checkArgument(this.keyBegin != null,
-                        "Parameter `keyBegin` can't be null " +
-                                "if set SCAN_PREFIX_WITH_BEGIN");
-                E.checkArgument(this.keyEnd == null,
-                        "Parameter `keyEnd` must be null " +
-                                "if set SCAN_PREFIX_WITH_BEGIN");
-            }
-
-            if (this.match(Session.SCAN_PREFIX_END)) {
-                E.checkArgument(this.keyEnd != null,
-                        "Parameter `keyEnd` can't be null " +
-                                "if set SCAN_PREFIX_WITH_END");
-            }
-
-            if (this.match(Session.SCAN_GT_BEGIN)) {
-                E.checkArgument(this.keyBegin != null,
-                        "Parameter `keyBegin` can't be null " +
-                                "if set SCAN_GT_BEGIN or SCAN_GTE_BEGIN");
-            }
-
-            if (this.match(Session.SCAN_LT_END)) {
-                E.checkArgument(this.keyEnd != null,
-                        "Parameter `keyEnd` can't be null " +
-                                "if set SCAN_LT_END or SCAN_LTE_END");
-            }
+//            E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
+//                            this.match(Session.SCAN_PREFIX_END)),
+//                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
+//                            "SCAN_PREFIX_WITH_END at the same time");
+//
+//            E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
+//                            this.match(Session.SCAN_GT_BEGIN)),
+//                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
+//                            "SCAN_GT_BEGIN/SCAN_GTE_BEGIN at the same time");
+//
+//            E.checkArgument(!(this.match(Session.SCAN_PREFIX_END) &&
+//                            this.match(Session.SCAN_LT_END)),
+//                    "Can't set SCAN_PREFIX_WITH_END and " +
+//                            "SCAN_LT_END/SCAN_LTE_END at the same time");
+//
+//            if (this.match(Session.SCAN_PREFIX_BEGIN)) {
+//                E.checkArgument(this.keyBegin != null,
+//                        "Parameter `keyBegin` can't be null " +
+//                                "if set SCAN_PREFIX_WITH_BEGIN");
+//                E.checkArgument(this.keyEnd == null,
+//                        "Parameter `keyEnd` must be null " +
+//                                "if set SCAN_PREFIX_WITH_BEGIN");
+//            }
+//
+//            if (this.match(Session.SCAN_PREFIX_END)) {
+//                E.checkArgument(this.keyEnd != null,
+//                        "Parameter `keyEnd` can't be null " +
+//                                "if set SCAN_PREFIX_WITH_END");
+//            }
+//
+//            if (this.match(Session.SCAN_GT_BEGIN)) {
+//                E.checkArgument(this.keyBegin != null,
+//                        "Parameter `keyBegin` can't be null " +
+//                                "if set SCAN_GT_BEGIN or SCAN_GTE_BEGIN");
+//            }
+//
+//            if (this.match(Session.SCAN_LT_END)) {
+//                E.checkArgument(this.keyEnd != null,
+//                        "Parameter `keyEnd` can't be null " +
+//                                "if set SCAN_LT_END or SCAN_LTE_END");
+//            }
         }
 
         private boolean match(int expected) {
@@ -428,26 +426,15 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public boolean hasNext() {
-
-            this.matched = this.iter().isOwningHandle();
-            if (!this.matched) {
-                // Maybe closed
-                return this.matched;
-            }
-
-            this.matched = this.iter().isValid();
-            if (this.matched) {
-                // Update position for paging
+            this.matched = true;
+            if (this.iter().hasNext()) {
                 this.position = this.iter().key();
-                // Do filter if not SCAN_ANY
                 if (!this.match(Session.SCAN_ANY)) {
                     this.matched = this.filter(this.position);
                 }
             }
             if (!this.matched) {
-                // The end
                 this.position = null;
-                // Free the iterator if finished
                 this.close();
             }
             return this.matched;
@@ -493,15 +480,13 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public BackendEntry.BackendColumn next() {
-            if (!this.matched) {
-                if (!this.hasNext()) {
-                    throw new NoSuchElementException();
-                }
+            if (!this.matched && !this.hasNext()) {
+                throw new NoSuchElementException();
             }
-            BackendEntry.BackendColumn col = BackendEntry.BackendColumn.of(
-                    this.position, this.value);
+            BackendEntry.BackendColumn col = BackendEntry.BackendColumn.of(this.iter.key(),
+                    this.iter.value());
+            this.iter.next();
             this.matched = false;
-
             return col;
         }
 
