@@ -63,15 +63,15 @@ public class HstoreTables {
 
         private static byte[] b(long value) {
             return ByteBuffer.allocate(Long.BYTES)
-                             .order(ByteOrder.nativeOrder())
-                             .putLong(value).array();
+                    .order(ByteOrder.nativeOrder())
+                    .putLong(value).array();
         }
 
         private static long l(byte[] bytes) {
             assert bytes.length == Long.BYTES;
             return ByteBuffer.wrap(bytes)
-                             .order(ByteOrder.nativeOrder())
-                             .getLong();
+                    .order(ByteOrder.nativeOrder())
+                    .getLong();
         }
     }
 
@@ -231,7 +231,7 @@ public class HstoreTables {
 
             List<Condition> conds = query.syspropConditions(HugeKeys.ID);
             E.checkArgument(!conds.isEmpty(),
-                            "Please specify the index conditions");
+                    "Please specify the index conditions");
 
             Id prefix = null;
             Id min = null;
@@ -257,7 +257,7 @@ public class HstoreTables {
                         break;
                     default:
                         E.checkArgument(false, "Unsupported relation '%s'",
-                                        r.relation());
+                                r.relation());
                 }
             }
 
@@ -270,7 +270,7 @@ public class HstoreTables {
             if (max == null) {
                 E.checkArgumentNotNull(prefix, "Range index prefix is missing");
                 return session.scan(this.table(), begin, prefix.asBytes(),
-                                    Session.SCAN_PREFIX_END);
+                        Session.SCAN_PREFIX_END);
             } else {
                 byte[] end = max.asBytes();
                 int type = maxEq ? Session.SCAN_LTE_END : Session.SCAN_LT_END;
@@ -288,7 +288,7 @@ public class HstoreTables {
         }
     }
 
-    public static class RangeFloatIndex extends RangeIndex{
+    public static class RangeFloatIndex extends RangeIndex {
 
         public static final String TABLE = HugeType.RANGE_FLOAT_INDEX.string();
 
@@ -306,7 +306,7 @@ public class HstoreTables {
         }
     }
 
-    public static class RangeDoubleIndex extends RangeIndex{
+    public static class RangeDoubleIndex extends RangeIndex {
 
         public static final String TABLE = HugeType.RANGE_DOUBLE_INDEX.string();
 

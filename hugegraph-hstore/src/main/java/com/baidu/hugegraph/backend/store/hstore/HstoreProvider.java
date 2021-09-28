@@ -22,17 +22,19 @@ package com.baidu.hugegraph.backend.store.hstore;
 import com.baidu.hugegraph.backend.store.AbstractBackendStoreProvider;
 import com.baidu.hugegraph.backend.store.BackendStore;
 import com.baidu.hugegraph.backend.store.hstore.HstoreStore.HstoreGraphStore;
-import  com.baidu.hugegraph.backend.store.hstore.HstoreStore.HstoreSchemaStore;
 
 public class HstoreProvider extends AbstractBackendStoreProvider {
 
     protected String namespace() {
         return this.graph().toLowerCase();
     }
+
+    BackendStore schemaStore;
+
     //TODO schema to Store
     @Override
-    protected BackendStore newSchemaStore(String store) {
-        return new HstoreSchemaStore(this, this.namespace(), store);
+    protected synchronized BackendStore newSchemaStore(String store) {
+        return new HstoreGraphStore(this, this.namespace(), store);
     }
 
     @Override
@@ -51,6 +53,6 @@ public class HstoreProvider extends AbstractBackendStoreProvider {
          * Versions history:
          * [1.0] HugeGraph-1328: supports hstore
          */
-        return "1.0";
+        return "1.11";
     }
 }

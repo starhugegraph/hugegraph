@@ -37,7 +37,9 @@ public abstract class HstoreSessions extends BackendSessionPool {
     public abstract Set<String> openedTables();
 
     public abstract void createTable(String... tables);
+
     public abstract void dropTable(String... tables);
+
     public abstract boolean existsTable(String table);
 
     @Override
@@ -63,20 +65,25 @@ public abstract class HstoreSessions extends BackendSessionPool {
         public abstract void increase(String table, byte[] key, byte[] value);
 
         public abstract void delete(String table, byte[] key);
+
         public abstract void deletePrefix(String table, byte[] key);
+
         public abstract void deleteRange(String table,
                                          byte[] keyFrom, byte[] keyTo);
 
         public abstract byte[] get(String table, byte[] key);
 
         public abstract BackendColumnIterator scan(String table);
+
         public abstract BackendColumnIterator scan(String table,
                                                    byte[] prefix);
+
         public BackendColumnIterator scan(String table,
                                           byte[] keyFrom,
                                           byte[] keyTo) {
             return this.scan(table, keyFrom, keyTo, SCAN_LT_END);
         }
+
         public abstract BackendColumnIterator scan(String table,
                                                    byte[] keyFrom,
                                                    byte[] keyTo,

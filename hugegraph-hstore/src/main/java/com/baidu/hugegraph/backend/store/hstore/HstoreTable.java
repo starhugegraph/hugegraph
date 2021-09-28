@@ -71,7 +71,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
     protected void registerMetaHandlers() {
         this.registerMetaHandler("splits", (session, meta, args) -> {
             E.checkArgument(args.length == 1,
-                            "The args count of %s must be 1", meta);
+                    "The args count of %s must be 1", meta);
             long splitSize = (long) args[0];
             return this.shardSpliter.getSplits(session, splitSize);
         });
@@ -204,10 +204,10 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
     protected BackendColumnIterator queryByPrefix(Session session,
                                                   IdPrefixQuery query) {
         int type = query.inclusiveStart() ?
-                   Session.SCAN_GTE_BEGIN : Session.SCAN_GT_BEGIN;
+                Session.SCAN_GTE_BEGIN : Session.SCAN_GT_BEGIN;
         type |= Session.SCAN_PREFIX_END;
         return session.scan(this.table(), query.start().asBytes(),
-                            query.prefix().asBytes(), type);
+                query.prefix().asBytes(), type);
     }
 
     protected BackendColumnIterator queryByRange(Session session,
@@ -227,7 +227,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
                                                 ConditionQuery query) {
         if (query.containsScanCondition()) {
             E.checkArgument(query.relations().size() == 1,
-                            "Invalid scan with multi conditions: %s", query);
+                    "Invalid scan with multi conditions: %s", query);
             Relation scan = query.relations().iterator().next();
             Shard shard = (Shard) scan.value();
             return this.queryByRange(session, shard, query.page());
@@ -242,8 +242,8 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         if (page != null && !page.isEmpty()) {
             byte[] position = PageState.fromString(page).position();
             E.checkArgument(start == null ||
-                                    Bytes.compare(position, start) >= 0,
-                            "Invalid page out of lower bound");
+                            Bytes.compare(position, start) >= 0,
+                    "Invalid page out of lower bound");
             start = position;
         }
         if (start == null) {
@@ -288,8 +288,8 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         @Override
         public List<Shard> getSplits(Session session, long splitSize) {
             E.checkArgument(splitSize >= MIN_SHARD_SIZE,
-                            "The split-size must be >= %s bytes, but got %s",
-                            MIN_SHARD_SIZE, splitSize);
+                    "The split-size must be >= %s bytes, but got %s",
+                    MIN_SHARD_SIZE, splitSize);
 
             Pair<byte[], byte[]> keyRange = session.keyRange(this.table());
             if (keyRange == null || keyRange.getRight() == null) {
@@ -307,7 +307,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
             }
 
             Range range = new Range(keyRange.getLeft(),
-                                    Range.increase(keyRange.getRight()));
+                    Range.increase(keyRange.getRight()));
             List<Shard> splits = new ArrayList<>((int) count);
             splits.addAll(range.splitEven((int) count));
             return splits;

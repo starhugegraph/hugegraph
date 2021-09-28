@@ -22,6 +22,7 @@ package com.baidu.hugegraph.backend.store.hstore;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -45,7 +46,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
     public HstoreSessionsImpl(HugeConfig config, String database, String store) {
         super(config, database, store);
         this.config = config;
-        this.graphName=database;
+        this.graphName = database;
 //        TiConfiguration conf = TiConfiguration.createRawDefault(
 //                this.config.get(HstoreOptions.TIKV_PDS));
 //        conf.setBatchGetConcurrency(
@@ -58,14 +59,14 @@ public class HstoreSessionsImpl extends HstoreSessions {
 //                this.config.get(HstoreOptions.TIKV_BATCH_SCAN_CONCURRENCY));
 //        conf.setDeleteRangeConcurrency(
 //                this.config.get(HstoreOptions.TIKV_DELETE_RANGE_CONCURRENCY));
-        this.session = new HstoreSession(this.config,database);
+        this.session = new HstoreSession(this.config, database);
         this.tables = new ConcurrentHashMap<>();
         this.refCount = new AtomicInteger(1);
     }
 
     @Override
     public void open() throws Exception {
-       this.session.open();
+        this.session.open();
     }
 
     @Override
@@ -104,7 +105,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
     @Override
     protected final Session newSession() {
-        return new HstoreSession(this.config(),this.graphName);
+        return new HstoreSession(this.config(), this.graphName);
     }
 
     @Override
@@ -141,14 +142,14 @@ public class HstoreSessionsImpl extends HstoreSessions {
         private Map<String, Pair<byte[], byte[]>> deleteRangeBatch;
         private volatile HstoreClient client;
         private HstoreGraph graph;
-        private String  graphName;
+        private String graphName;
 
-        public HstoreSession(HugeConfig conf,String graphName) {
+        public HstoreSession(HugeConfig conf, String graphName) {
             this.putBatch = new HashMap<>();
             this.deleteBatch = new HashMap<>();
             this.deletePrefixBatch = new HashMap<>();
             this.deleteRangeBatch = new HashMap<>();
-            this.graphName=graphName;
+            this.graphName = graphName;
         }
 
         public HstoreClient getClient() {
@@ -167,8 +168,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
             try {
                 this.client.close();
                 this.opened = false;
-            }
-            catch(Exception e){
+            } catch (Exception e) {
 
             }
         }
@@ -304,7 +304,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         @Override
         public byte[] get(String table, byte[] key) {
             byte[] values = this.graph.get(table, key);
-            return values !=null ? values : new byte[0];
+            return values != null ? values : new byte[0];
         }
 
         @Override
@@ -318,7 +318,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public BackendColumnIterator scan(String table, byte[] prefix) {
             assert !this.hasChanges();
             Iterator results = this.graph.scanPrefix(table, prefix);
-            return new ColumnIterator(table, (HstoreBackendIterator)results);
+            return new ColumnIterator(table, (HstoreBackendIterator) results);
         }
 
         @Override
@@ -326,7 +326,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                           byte[] keyTo, int scanType) {
             assert !this.hasChanges();
             Iterator results = this.graph.scan(table, keyFrom, keyTo, scanType);
-            return new ColumnIterator(table, (HstoreBackendIterator)results, keyFrom, keyTo, scanType);
+            return new ColumnIterator(table, (HstoreBackendIterator) results, keyFrom, keyTo, scanType);
         }
 
         private byte[] toKey(String key) {
@@ -340,7 +340,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
     }
 
     private static class ColumnIterator<T extends HstoreBackendIterator>
-            implements BackendColumnIterator,Countable {
+            implements BackendColumnIterator, Countable {
 
         private final String table;
         private final T iter;
@@ -358,7 +358,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         }
 
         public T iter() {
-            return  iter;
+            return iter;
         }
 
         public ColumnIterator(String table, T results,
