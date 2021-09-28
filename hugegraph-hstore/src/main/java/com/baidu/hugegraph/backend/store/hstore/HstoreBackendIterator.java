@@ -1,6 +1,7 @@
 package com.baidu.hugegraph.backend.store.hstore;
 
-import com.alipay.sofa.jraft.Iterator;
+
+import java.util.Iterator;
 
 public interface HstoreBackendIterator extends Iterator {
 
