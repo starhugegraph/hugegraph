@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import com.baidu.hugegraph.traversal.algorithm.steps.Steps;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 
 import com.baidu.hugegraph.HugeGraph;
@@ -30,7 +31,6 @@ import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.structure.HugeEdge;
 import com.baidu.hugegraph.traversal.algorithm.records.KneighborRecords;
 import com.baidu.hugegraph.traversal.algorithm.records.record.RecordType;
-import com.baidu.hugegraph.traversal.algorithm.steps.EdgeStep;
 import com.baidu.hugegraph.type.define.Directions;
 import com.baidu.hugegraph.util.E;
 
@@ -70,9 +70,8 @@ public class KneighborTraverser extends OltpTraverser {
         return all;
     }
 
-    public KneighborRecords customizedKneighbor(Id source, EdgeStep step,
-                                                int maxDepth, long limit,
-                                                boolean withEdge) {
+    public KneighborRecords customizedKneighbor(Id source, Steps steps, int maxDepth,
+                                                long limit, boolean withEdge) {
         E.checkNotNull(source, "source vertex id");
         this.checkVertexExist(source, "source vertex");
         checkPositive(maxDepth, "k-neighbor max_depth");
@@ -88,7 +87,7 @@ public class KneighborTraverser extends OltpTraverser {
             if (this.reachLimit(limit, records.size())) {
                 return;
             }
-            Iterator<Edge> edges = edgesOfVertex(v, step);
+            Iterator<Edge> edges = edgesOfVertexAF(v, steps);
             while (!this.reachLimit(limit, records.size())
                    && edges.hasNext()) {
                 HugeEdge edge = (HugeEdge) edges.next();
