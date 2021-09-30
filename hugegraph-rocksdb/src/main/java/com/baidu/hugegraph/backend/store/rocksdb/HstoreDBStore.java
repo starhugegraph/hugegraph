@@ -1,6 +1,6 @@
 package com.baidu.hugegraph.backend.store.rocksdb;
 
-import com.baidu.hugegraph.backend.id.EdgeId;
+
 import com.baidu.hugegraph.backend.id.Id;
 
 import com.baidu.hugegraph.backend.query.ConditionQuery;
@@ -13,11 +13,9 @@ import com.baidu.hugegraph.backend.store.*;
 import com.baidu.hugegraph.config.HugeConfig;
 
 import com.baidu.hugegraph.store.HgKvEntry;
-import com.baidu.hugegraph.store.HgSessionManager;
-import com.baidu.hugegraph.store.HgStoreConfig;
-import com.baidu.hugegraph.store.HgStoreSession;
 
 import com.baidu.hugegraph.type.HugeType;
+import com.baidu.hugegraph.util.Bytes;
 import com.baidu.hugegraph.util.InsertionOrderUtil;
 
 import com.google.common.collect.ImmutableMap;
@@ -38,8 +36,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
     public String SERVER_LOCAL = "local";
     public String SERVER_CLUSTER = "cluster";
 
-    HgSessionManager manager = HgSessionManager.configOf(HgStoreConfig.of());
-    HgStoreSession session = null;
+    HstoreClient hstoreClient;
 
     public HstoreDBStore(final BackendStoreProvider provider,
                          final String database, final String store) {
@@ -92,7 +89,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
 
     @Override
     public void open(HugeConfig config) {
-        session = manager.openSession(this.database + "/" + this.store);
+        hstoreClient = HstoreClient.create(this.database + "/" + this.store);
     }
 
     @Override
@@ -103,7 +100,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
 
     @Override
     public boolean opened() {
-        return session != null;
+        return hstoreClient != null;
     }
 
     @Override
@@ -152,8 +149,8 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
     protected void insert(BackendEntry entry) {
         String tableName = entry.type().string();
         for (BackendEntry.BackendColumn col : entry.columns()) {
-            session.put(tableName, col.name, col.value);
-            System.out.println(this.toString() + "--" + col.toString());
+            hstoreClient.put(tableName, col.name, col.value);
+            System.out.println(this.toString() + "--" + tableName + "--" + new String(col.name) + "--0x" + Bytes.toHex(col.name));
         }
     }
 
@@ -202,7 +199,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
 
     protected Iterator<BackendEntry> queryAll(Query query) {
         String tableName = getQueryTableName(query);
-        List<HgKvEntry> entries = session.scanAll(tableName);
+        List<HgKvEntry> entries = hstoreClient.scanAll(tableName);
         if (!query.noLimit() && query.limit() < entries.size())
             entries = entries.subList(0, (int) query.limit());
         return newEntryIterator(new ColumnIterator(tableName, entries.iterator()), query);
@@ -213,7 +210,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
         Set<Id> ids = query.ids();
         List<HgKvEntry> entries = new LinkedList<>();
         for (Id id : ids) {
-            byte[] value = session.get(tableName, id.asBytes());
+            byte[] value = hstoreClient.get(tableName, id.asBytes());
 
             entries.add(new HgKvEntryWrap(id.asBytes(), value));
         }
@@ -236,7 +233,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
 
     protected Iterator<BackendEntry> queryByPrefix(IdPrefixQuery query) {
         String tableName = getQueryTableName(query);
-        List<HgKvEntry> entries = session.scanPrefix(tableName, query.prefix().asBytes());
+        List<HgKvEntry> entries = hstoreClient.scanPrefix(tableName, query.prefix().asBytes());
         if (entries == null)
             entries = new ArrayList<>();
 
@@ -402,17 +399,17 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
 
             long old = 0L;
             byte[] key = new byte[]{type.code()};
-            byte[] value = this.session.get(counterTbl, key);
+            byte[] value = this.hstoreClient.get(counterTbl, key);
             if (value != null && value.length != 0) {
                 old = this.l(value);
             }
-            this.session.put(counterTbl, key, this.b(old + increment));
+            this.hstoreClient.put(counterTbl, key, this.b(old + increment));
         }
 
         @Override
         public long getCounter(HugeType type) {
             byte[] key = new byte[]{type.code()};
-            byte[] value = this.session.get(counterTbl, key);
+            byte[] value = this.hstoreClient.get(counterTbl, key);
             if (value != null && value.length > 0)
                 return this.l(value);
             return 0L;

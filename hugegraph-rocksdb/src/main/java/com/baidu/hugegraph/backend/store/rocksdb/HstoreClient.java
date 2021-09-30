@@ -23,7 +23,7 @@ public class HstoreClient implements Closeable {
         }
     }
 
-    public HstoreClient create(String graphName){
+    public static HstoreClient create(String graphName){
         HstoreClient client = new HstoreClient();
         client.open(graphName);
 
@@ -32,19 +32,28 @@ public class HstoreClient implements Closeable {
 
     private HgStoreSession sessions[];
     public void open(String graphName){
+        sessions =  new HgStoreSession[hgSessionManagers.length];
         for (int i = 0; i < hgSessionManagers.length; i++) {
             sessions[i] = hgSessionManagers[i].openSession(graphName);
         }
     }
 
+    /**
+     * 根据key获取所在分区
+     * 暂时简化取第一个字节
+     */
+    protected int getPartitionId(byte[] key){
+        return (int)key[0] & 0xFF % sessions.length;
+    }
+
     public boolean put(String table, byte[] key, byte[] value){
-        int parId = key[0] % sessions.length;
-        return sessions[parId].put(table, key, value);
+        int partId = getPartitionId(key);
+        return sessions[partId].put(table, key, value);
     }
 
     public byte[] get(String table, byte[] key) {
-        int parId = key[0] % sessions.length;
-        return sessions[parId].get(table, key);
+        int partId = getPartitionId(key);
+        return sessions[partId].get(table, key);
     }
 
     public List<HgKvEntry> scanAll(String table){
@@ -75,5 +84,18 @@ public class HstoreClient implements Closeable {
     @Override
     public void close() throws IOException {
 
+    }
+
+
+    public static void main(String[] args){
+        HstoreClient client = HstoreClient.create("test");
+        client.put("a", "0".getBytes(), "0".getBytes());
+        client.put("a", "1".getBytes(), "1".getBytes());
+        List<HgKvEntry>  entries = client.scanAll("a");
+        for(HgKvEntry entry : entries){
+            System.out.println(new String(entry.key()) + " -- " + new String(entry.value()));
+        }
+        byte[] key = new byte[1]; key[0] = (byte) -1;
+        System.out.printf("partId " + client.getPartitionId(key));
     }
 }
