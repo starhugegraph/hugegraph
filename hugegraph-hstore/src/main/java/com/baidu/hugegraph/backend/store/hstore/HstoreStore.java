@@ -19,14 +19,6 @@
 
 package com.baidu.hugegraph.backend.store.hstore;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-
 import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.query.Query;
@@ -38,10 +30,16 @@ import com.baidu.hugegraph.backend.store.BackendMutation;
 import com.baidu.hugegraph.backend.store.BackendStoreProvider;
 import com.baidu.hugegraph.backend.store.hstore.HstoreSessions.Session;
 import com.baidu.hugegraph.config.HugeConfig;
-import com.baidu.hugegraph.exception.ConnectionException;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
+import org.slf4j.Logger;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public abstract class HstoreStore extends AbstractBackendStore<Session> {
 
@@ -144,14 +142,8 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
             // NOTE: won't throw error even if connection refused
             this.sessions.open();
         } catch (Exception e) {
-            if (!e.getMessage().contains("Column family not found")) {
-                LOG.error("Failed to open HBase '{}'", this.store, e);
-                throw new ConnectionException("Failed to connect to HBase", e);
-            }
-            if (this.isSchemaStore()) {
-                LOG.info("Failed to open HBase '{}' with database '{}', " +
-                        "try to init CF later", this.store, this.namespace);
-            }
+            LOG.error("Failed to open Hstore '{}'", this.store, e);
+//            throw new BackendException("Failed to open Hstore '{}'", e);
         }
 
         this.sessions.session();
@@ -276,55 +268,55 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
 
     /***************************** Store defines *****************************/
 
-//    public static class HstoreSchemaStore extends RocksDBStore {
-//
-//        private final HstoreTables.Counters counters;
-//
-//        public HstoreSchemaStore(BackendStoreProvider provider,
-//                               String namespace, String store) {
-//            super(provider, namespace, store);
-//
-//            this.counters = new HstoreTables.Counters(namespace);
-//
-////            registerTableManager(HugeType.VERTEX_LABEL,
-////                                 new HstoreTables.VertexLabel(namespace));
-////            registerTableManager(HugeType.EDGE_LABEL,
-////                                 new HstoreTables.EdgeLabel(namespace));
-////            registerTableManager(HugeType.PROPERTY_KEY,
-////                                 new HstoreTables.PropertyKey(namespace));
-////            registerTableManager(HugeType.INDEX_LABEL,
-////                                 new HstoreTables.IndexLabel(namespace));
-////
-////            registerTableManager(HugeType.SECONDARY_INDEX,
-////                                 new HstoreTables.SecondaryIndex(store));
-//        }
-//
-//        @Override
-//        protected List<String> tableNames() {
-//            List<String> tableNames = super.tableNames();
-//            tableNames.add(this.counters.table());
-//            return tableNames;
-//        }
-//
-//        @Override
-//        public void increaseCounter(HugeType type, long increment) {
-//            super.checkOpened();
-//            this.counters.increaseCounter(super.sessions.session(),
-//                                          type, increment);
-//        }
-//
-//        @Override
-//        public long getCounter(HugeType type) {
-//            super.checkOpened();
-//            return this.counters.getCounter(super.sessions.session(), type);
-//        }
-//
-//        @Override
-//        public boolean isSchemaStore() {
-//            return true;
-//        }
-//    }
-//
+    public static class HstoreSchemaStore extends HstoreStore {
+
+        private final HstoreTables.Counters counters;
+
+        public HstoreSchemaStore(BackendStoreProvider provider,
+                                 String namespace, String store) {
+            super(provider, namespace, store);
+
+            this.counters = new HstoreTables.Counters(namespace);
+            registerTableManager(HugeType.VERTEX_LABEL,
+                    new HstoreTables.VertexLabel(namespace));
+            registerTableManager(HugeType.EDGE_LABEL,
+                    new HstoreTables.EdgeLabel(namespace));
+            registerTableManager(HugeType.PROPERTY_KEY,
+                    new HstoreTables.PropertyKey(namespace));
+            registerTableManager(HugeType.INDEX_LABEL,
+                    new HstoreTables.IndexLabel(namespace));
+
+            registerTableManager(HugeType.SECONDARY_INDEX,
+                    new HstoreTables.SecondaryIndex(store));
+        }
+
+        @Override
+        protected List<String> tableNames() {
+            List<String> tableNames = super.tableNames();
+            tableNames.add(this.counters.table());
+            return tableNames;
+        }
+
+        @Override
+        public void increaseCounter(HugeType type, long increment) {
+            super.checkOpened();
+            this.counters.increaseCounter(super.sessions.session(),
+                    type, increment);
+        }
+
+        @Override
+        public long getCounter(HugeType type) {
+            super.checkOpened();
+            return this.counters.getCounter(super.sessions.session(), type);
+        }
+
+        @Override
+        public boolean isSchemaStore() {
+            return true;
+        }
+    }
+
+    //
     public static class HstoreGraphStore extends HstoreStore {
 
         public HstoreGraphStore(BackendStoreProvider provider,
