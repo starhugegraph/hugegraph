@@ -1,5 +1,6 @@
 package com.baidu.hugegraph.backend.store.hstore;
 
+import com.baidu.hugegraph.store.HgStoreSession;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.Iterator;
@@ -7,7 +8,6 @@ import java.util.Map;
 import java.util.Set;
 
 public interface HstoreGraph {
-
 
     void batchPut(Map<String, Map<byte[], byte[]>> putBatch);
 
@@ -21,13 +21,14 @@ public interface HstoreGraph {
 
     byte[] get(String table, byte[] key);
 
-    Iterator scan(String table);
+    HstoreBackendIterator scan(String table);
 
-    Iterator scanPrefix(String table, byte[] key);
+    HstoreBackendIterator scanPrefix(String table, byte[] key);
 
     void merge(String table, byte[] key, byte[] value);
 
     void deleteRange(Map<String, Pair<byte[], byte[]>> deleteRangeBatch);
 
-    Iterator scan(String table, byte[] keyFrom, byte[] keyTo, int scanType);
+    HstoreBackendIterator scan(String table, byte[] keyFrom, byte[] keyTo, int scanType);
+
 }

@@ -150,6 +150,8 @@ public class HstoreSessionsImpl extends HstoreSessions {
             this.deletePrefixBatch = new HashMap<>();
             this.deleteRangeBatch = new HashMap<>();
             this.graphName = graphName;
+            this.client = new HstoreClientImpl();
+            this.graph = this.client.open(this.graphName);
         }
 
         public HstoreClient getClient() {
@@ -158,7 +160,6 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public void open() {
-            this.graph=this.client.open(this.graphName);
             this.opened = true;
         }
 
@@ -250,13 +251,13 @@ public class HstoreSessionsImpl extends HstoreSessions {
          */
         @Override
         public void put(String table, byte[] key, byte[] value) {
-            byte[] bs = toKey(table);
-            Map valueMap = this.putBatch.get(table.getBytes());
+            Map valueMap = this.putBatch.get(table);
             if (valueMap == null) {
                 valueMap = new HashMap();
                 this.putBatch.put(table, valueMap);
             }
             valueMap.put(key, value);
+
         }
 
         @Override
@@ -310,14 +311,14 @@ public class HstoreSessionsImpl extends HstoreSessions {
         @Override
         public BackendColumnIterator scan(String table) {
             assert !this.hasChanges();
-            Iterator results = this.graph.scan(table);
-            return new ColumnIterator(table, (HstoreBackendIterator) results);
+            HstoreBackendIterator results = this.graph.scan(table);
+            return new ColumnIterator(table, results);
         }
 
         @Override
         public BackendColumnIterator scan(String table, byte[] prefix) {
             assert !this.hasChanges();
-            Iterator results = this.graph.scanPrefix(table, prefix);
+            HstoreBackendIterator results = this.graph.scanPrefix(table, prefix);
             return new ColumnIterator(table, (HstoreBackendIterator) results);
         }
 
@@ -325,7 +326,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public BackendColumnIterator scan(String table, byte[] keyFrom,
                                           byte[] keyTo, int scanType) {
             assert !this.hasChanges();
-            Iterator results = this.graph.scan(table, keyFrom, keyTo, scanType);
+            HstoreBackendIterator results = this.graph.scan(table, keyFrom, keyTo, scanType);
             return new ColumnIterator(table, (HstoreBackendIterator) results, keyFrom, keyTo, scanType);
         }
 
@@ -426,7 +427,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public boolean hasNext() {
-            this.matched = true;
+            this.matched = false;
             if (this.iter().hasNext()) {
                 this.position = this.iter().key();
                 if (!this.match(Session.SCAN_ANY)) {

@@ -31,7 +31,7 @@ public class HstoreProvider extends AbstractBackendStoreProvider {
 
     @Override
     protected synchronized BackendStore newSchemaStore(String store) {
-        return new HstoreGraphStore(this, this.namespace(), store);
+        return new HstoreStore.HstoreSchemaStore(this, this.namespace(), store);
     }
 
     @Override
