@@ -55,6 +55,25 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
             results.put(SERVERS, ImmutableMap.of(SERVER_LOCAL, "OK"));
             return results;
         });
+
+        this.registerMetaHandler("metrics", (session, meta, args) -> {
+            return new BackendMetrics(){
+                @Override
+                public Map<String, Object> metrics() {
+                    Map<String, Object> results = InsertionOrderUtil.newMap();
+                    results.put(NODES, 1);
+                    results.put(CLUSTER_ID, SERVER_LOCAL);
+                    try {
+                        Map<String, Object> metrics = new HashMap<>();
+
+                        results.put(SERVERS, ImmutableMap.of(SERVER_LOCAL, metrics));
+                    } catch (Throwable e) {
+                        results.put(EXCEPTION, e.toString());
+                    }
+                    return results;
+                }
+            }.metrics();
+        });
     }
 
     @Override

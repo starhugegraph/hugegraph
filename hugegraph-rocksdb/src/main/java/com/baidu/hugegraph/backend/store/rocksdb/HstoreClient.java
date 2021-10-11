@@ -12,8 +12,7 @@ import java.util.List;
 
 public class HstoreClient implements Closeable {
     public static String storeAddrs[] = {
-        "localhost:9080",
-        "localhost:9081"
+        "localhost:9080"
     };
     static HgSessionManager hgSessionManagers[];
     static {

@@ -162,7 +162,7 @@ public class ServerInfoManager {
 
         HugeServerInfo serverInfo = new HugeServerInfo(server, role);
         serverInfo.maxLoad(this.calcMaxLoad());
-        this.save(serverInfo);
+     //   this.save(serverInfo);
 
         LOG.info("Init server info: {}", serverInfo);
     }
@@ -190,7 +190,7 @@ public class ServerInfoManager {
             return;
         }
         serverInfo.updateTime(DateUtil.now());
-        this.save(serverInfo);
+    //    this.save(serverInfo);
     }
 
     public synchronized void decreaseLoad(int load) {
