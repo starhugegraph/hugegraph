@@ -12,6 +12,7 @@ import com.baidu.hugegraph.backend.serializer.BinaryEntryIterator;
 import com.baidu.hugegraph.backend.store.*;
 import com.baidu.hugegraph.config.HugeConfig;
 
+import com.baidu.hugegraph.iterator.FlatMapperIterator;
 import com.baidu.hugegraph.store.HgKvEntry;
 
 import com.baidu.hugegraph.type.HugeType;
@@ -169,7 +170,9 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
         String tableName = entry.type().string();
         for (BackendEntry.BackendColumn col : entry.columns()) {
             hstoreClient.put(tableName, col.name, col.value);
-            System.out.println(this.toString() + "--" + tableName + "--" + new String(col.name) + "--0x" + Bytes.toHex(col.name));
+            System.out.println(this.toString() + "/" + tableName +
+                    "  name= " + new String(col.name) + "/0x" + Bytes.toHex(col.name)
+                    + " value = " + new String(col.value) + "/0x" + Bytes.toHex(col.value));
         }
     }
 
@@ -202,6 +205,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
         if (query.conditions().isEmpty()) {
             assert !query.ids().isEmpty();
             assert true;
+
             return queryById(query);
         }
 
@@ -225,7 +229,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
     }
 
     protected Iterator<BackendEntry> queryById(Query query) {
-        String tableName = getQueryTableName(query);
+       /* String tableName = getQueryTableName(query);
         Set<Id> ids = query.ids();
         List<HgKvEntry> entries = new LinkedList<>();
         for (Id id : ids) {
@@ -233,21 +237,22 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
 
             entries.add(new HgKvEntryWrap(id.asBytes(), value));
         }
-        return newEntryIterator(new ColumnIterator(tableName, entries.iterator()), query);
-        /*
+       // return newEntryIterator(new ColumnIterator(tableName, entries.iterator()), query);
+        */
+        String tableName = getQueryTableName(query);
 
-        Map<Id, BackendEntry> entries = tables.get(tableName);
+        return newEntryIterator(
+                new BackendEntry.BackendColumnIteratorWrapper(
+                        new FlatMapperIterator<>(
+                                query.ids().iterator(), id -> this.queryById(tableName, id))), query
+        );
+    }
+    protected BackendEntry.BackendColumnIterator queryById(String tableName, Id id) {
+        List<HgKvEntry> entries = hstoreClient.scanPrefix(tableName, id.asBytes());
+        if (entries == null)
+            entries = new ArrayList<>();
 
-        Map<Id, BackendEntry> rs = InsertionOrderUtil.newMap();
-
-        for (Id id : ids) {
-            assert !id.number();
-            if (entries.containsKey(id)) {
-                rs.put(id, entries.get(id));
-            }
-        }
-        return rs.values().iterator();
-         */
+        return new ColumnIterator(tableName, entries.iterator());
     }
 
     protected Iterator<BackendEntry> queryByPrefix(IdPrefixQuery query) {
