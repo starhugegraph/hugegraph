@@ -94,20 +94,20 @@ public final class GraphManager {
 
     private static final Logger LOG = Log.logger(RestServer.class);
 
-    private static final String META_PATH_DELIMETER = "/";
-    private static final String META_PATH_JOIN = "-";
+    public static final String META_PATH_DELIMETER = "/";
+    public static final String META_PATH_JOIN = "-";
 
-    private static final String META_PATH_HUGEGRAPH = "HUGEGRAPH";
-    private static final String META_PATH_NAMESPACE = "NAMESPACE";
-    private static final String META_PATH_CONF = "CONF";
-    private static final String META_PATH_GRAPH = "GRAPH";
-    private static final String META_PATH_AUTH = "AUTH";
-    private static final String META_PATH_USER = "USER";
-    private static final String META_PATH_EVENT = "EVENT";
-    private static final String META_PATH_ADD = "ADD";
-    private static final String META_PATH_REMOVE = "REMOVE";
+    public static final String META_PATH_HUGEGRAPH = "HUGEGRAPH";
+    public static final String META_PATH_NAMESPACE = "NAMESPACE";
+    public static final String META_PATH_CONF = "CONF";
+    public static final String META_PATH_GRAPH = "GRAPH";
+    public static final String META_PATH_AUTH = "AUTH";
+    public static final String META_PATH_USER = "USER";
+    public static final String META_PATH_EVENT = "EVENT";
+    public static final String META_PATH_ADD = "ADD";
+    public static final String META_PATH_REMOVE = "REMOVE";
 
-    private static final String DEFAULT_NAMESPACE = "HG_NS";
+    public static final String DEFAULT_NAMESPACE = "HG_NS";
 
     private final String graphsDir;
     private final String cluster;
