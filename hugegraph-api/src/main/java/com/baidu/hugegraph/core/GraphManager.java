@@ -715,12 +715,12 @@ public final class GraphManager {
     }
 
     private ByteSequence graphConfKey(String namespace, String graph) {
-        // HUGEGRAPH/{cluster}/NAMESPACE/{namespace}/CONF/GRAPH/{graph}
+        // HUGEGRAPH/{cluster}/NAMESPACE/{namespace}/GRAPH/{graph}/CONF
         return toByteSequence(String.join(META_PATH_DELIMETER,
                                           META_PATH_HUGEGRAPH,
                                           this.cluster, META_PATH_NAMESPACE,
-                                          namespace, META_PATH_CONF,
-                                          META_PATH_GRAPH, graph));
+                                          namespace, META_PATH_GRAPH,
+                                          graph, META_PATH_CONF));
     }
 
     private ByteSequence graphConfValue(String config) {
