@@ -319,7 +319,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public BackendColumnIterator scan(String table, byte[] prefix) {
             assert !this.hasChanges();
             HstoreBackendIterator results = this.graph.scanPrefix(table, prefix);
-            return new ColumnIterator(table, (HstoreBackendIterator) results);
+            return new ColumnIterator(table, results);
         }
 
         @Override
@@ -327,7 +327,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                           byte[] keyTo, int scanType) {
             assert !this.hasChanges();
             HstoreBackendIterator results = this.graph.scan(table, keyFrom, keyTo, scanType);
-            return new ColumnIterator(table, (HstoreBackendIterator) results, keyFrom, keyTo, scanType);
+            return new ColumnIterator(table, results, keyFrom, keyTo, scanType);
         }
 
         private byte[] toKey(String key) {
@@ -428,17 +428,18 @@ public class HstoreSessionsImpl extends HstoreSessions {
         @Override
         public boolean hasNext() {
             this.matched = false;
-            if (this.iter().hasNext()) {
-                this.position = this.iter().key();
-                if (!this.match(Session.SCAN_ANY)) {
-                    this.matched = this.filter(this.position);
-                }
-            }
-            if (!this.matched) {
-                this.position = null;
-                this.close();
-            }
-            return this.matched;
+            return this.iter.hasNext();
+//            if (iter.hasNext()) {
+//                this.position = ((HstoreIterator)iter.next()).key();
+//                if (!this.match(Session.SCAN_ANY)) {
+//                    this.matched = this.filter(this.position);
+//                }
+//            }
+//            if (!this.matched) {
+//                this.position = null;
+//                this.close();
+//            }
+//            return this.matched;
         }
 
         private boolean filter(byte[] key) {

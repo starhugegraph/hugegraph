@@ -16,22 +16,26 @@ public class HstoreGraphImpl implements HstoreGraph {
 
     @Override
     public void batchPut(Map<String, Map<byte[], byte[]>> putBatch) {
-
+        this.session.batchPut(putBatch);
     }
 
     @Override
     public void batchDelete(Map<String, Set<byte[]>> deleteBatch) {
-
+        this.session.batchDelete(deleteBatch);
     }
 
     @Override
     public void deletePrefix(Map<String, Set<byte[]>> key) {
-
+        for (Map.Entry<String, Set<byte[]>> entry : key.entrySet()) {
+            entry.getValue().forEach(value -> {
+                this.session.deletePrefix(entry.getKey(), value);
+            });
+        }
     }
 
     @Override
-    public void deleteRange(String table, byte[] keyFrom, byte[] valueTo) {
-
+    public void deleteRange(String table, byte[] keyFrom, byte[] keyTo) {
+        this.session.deleteRange(table, keyFrom, keyTo);
     }
 
     @Override
@@ -56,7 +60,7 @@ public class HstoreGraphImpl implements HstoreGraph {
 
     @Override
     public void merge(String table, byte[] key, byte[] value) {
-
+        this.session.merge(table, key, value);
     }
 
     @Override
