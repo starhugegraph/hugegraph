@@ -19,10 +19,13 @@
 
 package com.baidu.hugegraph.backend.store.hstore;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import com.baidu.hugegraph.backend.store.BackendMetrics;
 import com.baidu.hugegraph.util.E;
+import com.baidu.hugegraph.util.InsertionOrderUtil;
+import com.google.common.collect.ImmutableMap;
 
 public class HstoreMetrics implements BackendMetrics {
 
@@ -32,6 +35,16 @@ public class HstoreMetrics implements BackendMetrics {
 
     @Override
     public Map<String, Object> metrics() {
-        return null;
+        Map<String, Object> results = InsertionOrderUtil.newMap();
+        results.put(NODES, 1);
+        results.put(CLUSTER_ID, SERVER_LOCAL);
+        try {
+            Map<String, Object> metrics = new HashMap<>();
+
+            results.put(SERVERS, ImmutableMap.of(SERVER_LOCAL, metrics));
+        } catch (Throwable e) {
+            results.put(EXCEPTION, e.toString());
+        }
+        return results;
     }
 }
