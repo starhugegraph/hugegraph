@@ -303,4 +303,19 @@ public class ServerOptions extends OptionHolder {
                     ""
             );
 
+    public static final ConfigOption<String> K8S_INTERNAL_ALGORITHM =
+            new ConfigOption<>(
+                    "k8s.internal_algorithm",
+                    "K8s internal algorithm",
+                    null,
+                    "[]"
+            );
+
+    public static final ConfigListOption<String> K8S_ALGORITHMS =
+            new ConfigListOption<>(
+                    "k8s.algorithms",
+                    "K8s algorithms",
+                    null,
+                    "[]"
+            );
 }

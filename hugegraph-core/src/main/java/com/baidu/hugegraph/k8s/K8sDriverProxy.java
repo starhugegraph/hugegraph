@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 
 public class K8sDriverProxy {
 
@@ -25,6 +26,8 @@ public class K8sDriverProxy {
     private static String HUGEGRAPH_URL = "";
     private static String ENABLE_INTERNAL_ALGORITHM = "";
     private static String INTERNAL_ALGORITHM_IMAGE_URL = "";
+    private static Map<String, String> ALGORITHM_PARAMS = null;
+    private static String INTERNAL_ALGORITHM = "[]";
 
     protected HugeConfig config;
     protected KubernetesDriver driver;
@@ -41,12 +44,13 @@ public class K8sDriverProxy {
                              ".KubeSpecOptions");
     }
 
-    public static void setCubeConfig(String namespace,
-                                     String cubeConfigPath,
-                                     String hugegraphUrl,
-                                     String enableInternalAlgorithm,
-                                     String internalAlgorithmImageUrl)
-                                     throws IOException {
+    public static void setConfig(String namespace, String cubeConfigPath,
+                                 String hugegraphUrl,
+                                 String enableInternalAlgorithm,
+                                 String internalAlgorithmImageUrl,
+                                 String internalAlgorithm,
+                                 Map<String, String> algorithms)
+                                 throws IOException {
         File kubeConfigFile = new File(USER_DIR + "/" + cubeConfigPath);
         if (!kubeConfigFile.exists() || StringUtils.isEmpty(hugegraphUrl)) {
             throw new IOException("[K8s API] k8s config fail");
@@ -58,21 +62,26 @@ public class K8sDriverProxy {
         HUGEGRAPH_URL = hugegraphUrl;
         ENABLE_INTERNAL_ALGORITHM = enableInternalAlgorithm;
         INTERNAL_ALGORITHM_IMAGE_URL = internalAlgorithmImageUrl;
+        ALGORITHM_PARAMS = algorithms;
+        INTERNAL_ALGORITHM = internalAlgorithm;
     }
 
     public static boolean isK8sApiEnabled() {
         return K8S_API_ENABLED;
     }
 
-    public K8sDriverProxy(String partitionsCount,
-                          String internalAlgorithm,
-                          String paramsClass) {
+    public static boolean isValidAlgorithm(String algorithm) {
+        return ALGORITHM_PARAMS.containsKey(algorithm);
+    }
+
+    public K8sDriverProxy(String partitionsCount, String algorithm) {
         try {
             if (!K8sDriverProxy.K8S_API_ENABLED) {
                 throw new UnsupportedOperationException(
                       "The k8s api not enabled.");
             }
-            this.initConfig(partitionsCount, internalAlgorithm, paramsClass);
+            String paramsClass = ALGORITHM_PARAMS.get(algorithm);
+            this.initConfig(partitionsCount, INTERNAL_ALGORITHM, paramsClass);
             this.initKubernetesDriver();
         } catch (Throwable throwable) {
             LOG.error("Failed to start K8sDriverProxy ", throwable);

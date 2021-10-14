@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
@@ -63,9 +64,9 @@ public class RestServer {
         URI uri = UriBuilder.fromUri(url).build();
 
         String k8sApiEnable = this.conf.get(ServerOptions.K8S_API_ENABLE);
-        if (!StringUtils.isEmpty(k8sApiEnable) && k8sApiEnable.equals("true")) {
-            String namespace = this.conf.get(
-                   ServerOptions.K8S_NAMESPACE);
+        if (!StringUtils.isEmpty(k8sApiEnable) &&
+            k8sApiEnable.equals("true")) {
+            String namespace = this.conf.get(ServerOptions.K8S_NAMESPACE);
             String kubeConfigPath = this.conf.get(
                    ServerOptions.K8S_KUBE_CONFIG);
             String hugegraphUrl = this.conf.get(
@@ -74,11 +75,16 @@ public class RestServer {
                    ServerOptions.K8S_ENABLE_INTERNAL_ALGORITHM);
             String internalAlgorithmImageUrl = this.conf.get(
                    ServerOptions.K8S_INTERNAL_ALGORITHM_IMAGE_URL);
-            K8sDriverProxy.setCubeConfig(namespace,
-                                         kubeConfigPath,
-                                         hugegraphUrl,
-                                         enableInternalAlgorithm,
-                                         internalAlgorithmImageUrl);
+            String internalAlgorithm = this.conf.get(
+                   ServerOptions.K8S_INTERNAL_ALGORITHM);
+            Map<String, String> algorithms = this.conf.getMap(
+                                ServerOptions.K8S_ALGORITHMS);
+            K8sDriverProxy.setConfig(namespace, kubeConfigPath,
+                                     hugegraphUrl,
+                                     enableInternalAlgorithm,
+                                     internalAlgorithmImageUrl,
+                                     internalAlgorithm,
+                                     algorithms);
         }
 
         ResourceConfig rc = new ApplicationConfig(this.conf);

@@ -27,10 +27,6 @@ import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.JsonUtil;
 import com.baidu.hugegraph.util.Log;
 import org.slf4j.Logger;
-
-import javax.json.Json;
-import javax.json.JsonObject;
-import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,7 +34,9 @@ public class ComputerDisJob extends SysJob<Object> {
 
     private static final Logger LOG = Log.logger(ComputerDisJob.class);
 
-    public static final String COMPUTER = "computer-proxy";
+    public static final String COMPUTER_DIS = "computer-dis";
+    public static final String INNER_STATUS = "inner.status";
+    public static final String INNER_JOB_ID = "inner.job.id";
 
     public static boolean check(String name, Map<String, Object> parameters) {
         Computer computer = ComputerPool.instance().find(name);
@@ -51,40 +49,40 @@ public class ComputerDisJob extends SysJob<Object> {
 
     @Override
     public String type() {
-        return COMPUTER;
+        return COMPUTER_DIS;
     }
 
     @Override
     protected void cancelled() {
         super.cancelled();
-
         String input = this.task().input();
         E.checkArgumentNotNull(input, "The input can't be null");
         @SuppressWarnings("unchecked")
         Map<String, Object> map = JsonUtil.fromJson(input, Map.class);
-        Object value = map.get("parameters");
+        String algorithm = map.get("algorithm").toString();
+        String graph = map.get("graph").toString();
+        String token = map.get("token").toString();
+        int worker = Integer.valueOf(map.get("worker").toString());
+        Object value = map.get("params");
         E.checkArgument(value instanceof Map,
                         "Invalid computer parameters '%s'",
                         value);
         @SuppressWarnings("unchecked")
-        Map<String, Object> parameters = (Map<String, Object>) value;
-        String args = parameters.get("arguments").toString();
-        JsonObject jsonObject =
-                   Json.createReader(new StringReader(args)).readObject();
-        String workerInstances = jsonObject.get("worker_instances") == null ?
-               "1" : jsonObject.get("worker_instances").toString();
-        String internalAlgorithm =
-               jsonObject.get("internal_algorithm").toString();
-        String paramsClass = jsonObject.get("params_class").toString();
-        Map<String, String> params = new HashMap<>();
-        params.put("k8s.worker_instances", workerInstances);
-        if (map.containsKey("inner.job_id")) {
-            String jobId = (String) map.get("inner.job_id");
+        Map<String, Object> params = (Map<String, Object>) value;
+        Map<String, String> k8sParams = new HashMap<>();
+        for (Map.Entry<String, Object> item : params.entrySet()) {
+            k8sParams.put(item.getKey(), item.getValue().toString());
+        }
+
+        k8sParams.put("hugegraph.name", graph);
+        k8sParams.put("hugegraph.token", token);
+        k8sParams.put("k8s.worker_instances", String.valueOf(worker));
+        if (map.containsKey(INNER_JOB_ID)) {
+            String jobId = (String) map.get(INNER_JOB_ID);
             K8sDriverProxy k8sDriverProxy =
-                           new K8sDriverProxy(workerInstances,
-                                              internalAlgorithm,
-                                              paramsClass);
-            k8sDriverProxy.getKubernetesDriver().cancelJob(jobId, params);
+                           new K8sDriverProxy(String.valueOf(worker * 2),
+                                              algorithm);
+            k8sDriverProxy.getKubernetesDriver().cancelJob(jobId, k8sParams);
             k8sDriverProxy.close();
         }
     }
@@ -95,58 +93,57 @@ public class ComputerDisJob extends SysJob<Object> {
         E.checkArgumentNotNull(input, "The input can't be null");
         @SuppressWarnings("unchecked")
         Map<String, Object> map = JsonUtil.fromJson(input, Map.class);
-        String status = map.containsKey("inner.status") ?
-               map.get("inner.status").toString() : null;
-        String jobId = map.containsKey("inner.job_id") ?
-               map.get("inner.job_id").toString() : null;
-        Object value = map.get("parameters");
+        String status = map.containsKey(INNER_STATUS) ?
+               map.get(INNER_STATUS).toString() : null;
+        String jobId = map.containsKey(INNER_JOB_ID) ?
+               map.get(INNER_JOB_ID).toString() : null;
+        Object value = map.get("params");
         E.checkArgument(value instanceof Map,
                         "Invalid computer parameters '%s'",
                         value);
         @SuppressWarnings("unchecked")
-        Map<String, Object> parameters = (Map<String, Object>) value;
-        String computer = map.get("computer").toString();
+        Map<String, Object> params = (Map<String, Object>) value;
+        String algorithm = map.get("algorithm").toString();
         String graph = map.get("graph").toString();
         String token = map.get("token").toString();
-        String workerInstances = parameters.get("worker_instances") == null ?
-               "1" : parameters.get("worker_instances").toString();
-        String internalAlgorithm =
-               parameters.get("internal_algorithm").toString();
-        String paramsClass = parameters.get("params_class").toString();
-        Map<String, String> params = new HashMap<>();
-        params.put("hugegraph.name", graph);
-        params.put("hugegraph.token", token);
-        params.put("k8s.worker_instances", workerInstances);
+        int worker = Integer.valueOf(map.get("worker").toString());
+
+        Map<String, String> k8sParams = new HashMap<>();
+        for (Map.Entry<String, Object> item : params.entrySet()) {
+            k8sParams.put(item.getKey(), item.getValue().toString());
+        }
+        k8sParams.put("hugegraph.name", graph);
+        k8sParams.put("hugegraph.token", token);
+        k8sParams.put("k8s.worker_instances", String.valueOf(worker));
         if (status == null) {
             // TODO: DO TASK
             K8sDriverProxy k8sDriverProxy =
-                           new K8sDriverProxy(workerInstances,
-                                              internalAlgorithm,
-                                              paramsClass);
+                           new K8sDriverProxy(String.valueOf(worker * 2),
+                                              algorithm);
             if (jobId == null) {
                 jobId = k8sDriverProxy.getKubernetesDriver()
-                                      .submitJob(computer, params);
+                                      .submitJob(algorithm, k8sParams);
                 map = JsonUtil.fromJson(this.task().input(), Map.class);
-                map.put("inner.job_id", jobId);
+                map.put(INNER_JOB_ID, jobId);
                 this.task().input(JsonUtil.toJson(map));
             }
 
             k8sDriverProxy.getKubernetesDriver()
-                          .waitJob(jobId, params, observer -> {
+                          .waitJob(jobId, k8sParams, observer -> {
                 JobStatus jobStatus = observer.jobStatus();
                 Map<String, Object> innerMap = JsonUtil.fromJson(
                                     this.task().input(), Map.class);
-                innerMap.put("inner.status", jobStatus);
+                innerMap.put(INNER_STATUS, jobStatus);
                 this.task().input(JsonUtil.toJson(innerMap));
             });
             k8sDriverProxy.close();
         }
 
         map = JsonUtil.fromJson(this.task().input(), Map.class);
-        status = map.get("inner.status").toString();
-        E.checkArgument(status != null
-                        && status.equals("SUCCEEDED"),
-                        "K8s task failed '%s'", status);
-        return 0;
+        status = map.get(INNER_STATUS).toString();
+        if (status != null && status.equals("FAILED")) {
+            throw new InterruptedException("Computer-dis job failed.");
+        }
+        return status;
     }
 }
