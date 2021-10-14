@@ -63,12 +63,16 @@ public class MetricsAPI extends API {
         JsonUtil.registerModule(new MetricsModule(SECONDS, MILLISECONDS, false));
     }
 
+    //prometheus export syntax header
     private static final String strHelp = "# HELP ";
     private static final String strType = "# TYPE ";
+    //prometheus metrics types for hugegraph
     private static final String histogramType = "histogram";
     private static final String unTyped = "untyped";
+    //prometheus metrics static strings
     private static final String endlStr = "\n";
     private static final String spaceStr = " ";
+    //prometheus metrics prefix
     private static final String countAttr = "{name=\"count\",} ";
     private static final String minAttr = "{name=\"min\",} ";
     private static final String maxAttr = "{name=\"max\",} ";
@@ -134,7 +138,9 @@ public class MetricsAPI extends API {
         result.put("timers", reporter.timers());
         return JsonUtil.toJson(result);
     }
-
+    /**
+     * exportSnapshort export snapshort to prometheus syntax
+     */
     private String exportSnapshort(final String helpName, final Snapshot snapshot){
         if ( snapshot != null ) {
             StringBuilder snapMetrics = new StringBuilder();
@@ -152,7 +158,9 @@ public class MetricsAPI extends API {
         }
         return "";
     }
-
+    /**
+     * prometheuseAll export gauges, histograms, meters, timer to prometheus syntax
+     */
     private String prometheuseAll() {
         StringBuilder promeMetrics = new StringBuilder();
         ServerReporter reporter = ServerReporter.instance();
