@@ -19,10 +19,6 @@
 
 package com.baidu.hugegraph.backend.store.hstore;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.List;
-
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.query.Condition;
 import com.baidu.hugegraph.backend.query.Condition.Relation;
@@ -34,6 +30,10 @@ import com.baidu.hugegraph.backend.store.hstore.HstoreSessions.Session;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.define.HugeKeys;
 import com.baidu.hugegraph.util.E;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.List;
 
 public class HstoreTables {
 
@@ -55,23 +55,20 @@ public class HstoreTables {
             }
         }
 
-        public void increaseCounter(Session session, HugeType type,
-                                    long increment) {
+        public void increaseCounter(Session session, HugeType type, long increment) {
             byte[] key = new byte[]{type.code()};
             session.increase(this.table(), key, b(increment));
         }
 
         private static byte[] b(long value) {
-            return ByteBuffer.allocate(Long.BYTES)
-                    .order(ByteOrder.nativeOrder())
-                    .putLong(value).array();
+            return ByteBuffer.allocate(Long.BYTES).order(
+                    ByteOrder.nativeOrder()).putLong(value).array();
         }
 
         private static long l(byte[] bytes) {
             assert bytes.length == Long.BYTES;
-            return ByteBuffer.wrap(bytes)
-                    .order(ByteOrder.nativeOrder())
-                    .getLong();
+            return ByteBuffer.wrap(bytes).order(
+                    ByteOrder.nativeOrder()).getLong();
         }
     }
 
@@ -225,13 +222,12 @@ public class HstoreTables {
         }
 
         @Override
-        protected BackendColumnIterator queryByCond(Session session,
-                                                    ConditionQuery query) {
+        protected BackendColumnIterator queryByCond(Session session, ConditionQuery query) {
             assert !query.conditions().isEmpty();
 
             List<Condition> conds = query.syspropConditions(HugeKeys.ID);
             E.checkArgument(!conds.isEmpty(),
-                    "Please specify the index conditions");
+                            "Please specify the index conditions");
 
             Id prefix = null;
             Id min = null;
@@ -257,7 +253,7 @@ public class HstoreTables {
                         break;
                     default:
                         E.checkArgument(false, "Unsupported relation '%s'",
-                                r.relation());
+                                        r.relation());
                 }
             }
 
@@ -270,7 +266,7 @@ public class HstoreTables {
             if (max == null) {
                 E.checkArgumentNotNull(prefix, "Range index prefix is missing");
                 return session.scan(this.table(), begin, prefix.asBytes(),
-                        Session.SCAN_PREFIX_END);
+                                    Session.SCAN_PREFIX_END);
             } else {
                 byte[] end = max.asBytes();
                 int type = maxEq ? Session.SCAN_LTE_END : Session.SCAN_LT_END;

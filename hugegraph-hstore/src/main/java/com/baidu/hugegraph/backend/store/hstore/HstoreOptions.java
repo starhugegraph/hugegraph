@@ -19,10 +19,10 @@
 
 package com.baidu.hugegraph.backend.store.hstore;
 
-import static com.baidu.hugegraph.config.OptionChecker.*;
-
 import com.baidu.hugegraph.config.ConfigOption;
 import com.baidu.hugegraph.config.OptionHolder;
+
+import static com.baidu.hugegraph.config.OptionChecker.disallowEmpty;
 
 public class HstoreOptions extends OptionHolder {
 
@@ -40,51 +40,7 @@ public class HstoreOptions extends OptionHolder {
         return instance;
     }
 
-//    public static final ConfigOption<String> TIKV_PDS =
-//            new ConfigOption<>(
-//                    "tikv.pds",
-//                    "The addresses of Tikv pds, separated with commas.",
-//                    disallowEmpty(),
-//                    "localhost"
-//            );
-//
-//    public static final ConfigOption<Integer> TIKV_BATCH_GET_CONCURRENCY =
-//            new ConfigOption<>(
-//                    "tikv.batch_get_concurrency",
-//                    "The number of thread pool size for batch get of tikv client.",
-//                    disallowEmpty(),
-//                    20
-//            );
-//
-//    public static final ConfigOption<Integer> TIKV_BATCH_PUT_CONCURRENCY =
-//            new ConfigOption<>(
-//                    "tikv.batch_put_concurrency",
-//                    "The number of thread pool size for batch put of tikv client.",
-//                    disallowEmpty(),
-//                    20
-//            );
-//
-//    public static final ConfigOption<Integer> TIKV_BATCH_DELETE_CONCURRENCY =
-//            new ConfigOption<>(
-//                    "tikv.batch_delete_concurrency",
-//                    "The number of thread pool size for batch delete of tikv client.",
-//                    disallowEmpty(),
-//                    20
-//            );
-//
-//    public static final ConfigOption<Integer> TIKV_BATCH_SCAN_CONCURRENCY =
-//            new ConfigOption<>(
-//                    "tikv.batch_scan_concurrency",
-//                    "The number of thread pool size for batch scan of tikv client.",
-//                    disallowEmpty(),
-//                    5
-//            );
-//
-//    public static final ConfigOption<Integer> TIKV_DELETE_RANGE_CONCURRENCY =
-//            new ConfigOption<>(
-//                    "tikv.delete_range_concurrency",
-//                    "The number of thread pool size for delete range of tikv client.",
-//                    disallowEmpty(),
-//                    20
-//            );
+    public static final ConfigOption<String> PD_PEERS = new ConfigOption<>(
+            "pd.peers", "The addresses of store nodes, separated with commas.",
+            disallowEmpty(), "localhost");
 }
