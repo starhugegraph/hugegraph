@@ -279,7 +279,7 @@ public class ServerOptions extends OptionHolder {
             new ConfigOption<>(
                     "k8s.api",
                     "The k8s api start status " +
-                            "when the computer service is enabled.",
+                    "when the computer service is enabled.",
                     null,
                     "false"
             );
@@ -288,7 +288,7 @@ public class ServerOptions extends OptionHolder {
             new ConfigOption<>(
                     "k8s.kubeconfig",
                     "The k8s kube config file " +
-                            "when the computer service is enabled.",
+                    "when the computer service is enabled.",
                     null,
                     ""
             );
@@ -297,7 +297,7 @@ public class ServerOptions extends OptionHolder {
             new ConfigOption<>(
                     "k8s.hugegraph_url",
                     "The hugegraph url for k8s work " +
-                            "when the computer service is enabled.",
+                    "when the computer service is enabled.",
                     null,
                     ""
             );
@@ -306,7 +306,7 @@ public class ServerOptions extends OptionHolder {
             new ConfigOption<>(
                     "k8s.namespace",
                     "The hugegraph url for k8s work " +
-                            "when the computer service is enabled.",
+                    "when the computer service is enabled.",
                     null,
                     ""
             );
