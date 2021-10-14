@@ -1,14 +1,15 @@
 package com.baidu.hugegraph.backend.store.rocksdb;
 
-import com.baidu.hugegraph.store.HgKvEntry;
-import com.baidu.hugegraph.store.HgSessionManager;
-import com.baidu.hugegraph.store.HgStoreConfig;
-import com.baidu.hugegraph.store.HgStoreSession;
+import com.baidu.hugegraph.store.*;
+import com.baidu.hugegraph.store.client.HgStoreNodeManager;
+import javafx.util.Pair;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 public class HstoreClient implements Closeable {
     public static String storeAddrs[] = {
@@ -16,10 +17,12 @@ public class HstoreClient implements Closeable {
     };
     static HgSessionManager hgSessionManagers[];
     static {
-        hgSessionManagers = new HgSessionManager[storeAddrs.length];
-        for (int i = 0; i < storeAddrs.length; i++) {
-            hgSessionManagers[i] = HgSessionManager.configOf(HgStoreConfig.of(storeAddrs[i]));
-        }
+        HgStoreNodeManager node = HgStoreNodeManager.getInstance();
+        node.addNode("hugegraph/g", node.getNodeBuilder().setAddress("localhost:9180").build());
+        node.addNode("hugegraph/g", node.getNodeBuilder().setAddress("localhost:9280").build());
+        node.addNode("hugegraph/g", node.getNodeBuilder().setAddress("localhost:9380").build());
+        node.addNode("hugegraph/s", node.getNodeBuilder().setAddress("localhost:9180").build());
+        node.addNode("hugegraph/m", node.getNodeBuilder().setAddress("localhost:9180").build());
     }
 
     public static HstoreClient create(String graphName){
@@ -29,54 +32,49 @@ public class HstoreClient implements Closeable {
         return client;
     }
 
-    private HgStoreSession sessions[];
+    private HgStoreSession session;
     public void open(String graphName){
-        sessions =  new HgStoreSession[hgSessionManagers.length];
-        for (int i = 0; i < hgSessionManagers.length; i++) {
-            sessions[i] = hgSessionManagers[i].openSession(graphName);
-        }
+        session = HgSessionManager.getInstance().openSession(graphName);
     }
+
+
 
     /**
-     * 根据key获取所在分区
-     * 暂时简化取第一个字节
+     * 1、Storeproxy获取Key所属的点ID
+     * 2、Storeproxy计算点ID所属PartitionID
+     * 3、Storeproxy从PD获取Partition Leader所在的HgStore
+     * 4、Storeproxy发送PartitionID、KV给HgStore
+     * 5、HgStore判断PartitionID是否属于该HgStore
+     * 6、HgStore修改Key，增加PartitonID作为前缀
+     * 7、HgStore调用rocksdb存储修改后的KV
      */
-    protected int getPartitionId(byte[] key){
-        return (int)key[0] & 0xFF % sessions.length;
-    }
+    public boolean put(String table, byte[] owner, byte[] key, byte[] value){
 
-    public boolean put(String table, byte[] key, byte[] value){
-        int partId = getPartitionId(key);
-        return sessions[partId].put(table, key, value);
+        return session.put(table, new HgOwnerKey(owner, key), value);
     }
 
     public byte[] get(String table, byte[] key) {
-        int partId = getPartitionId(key);
-        return sessions[partId].get(table, key);
+
+        return session.get(table, key);
+    }
+
+    public boolean batchPut(String table, Map<byte[],byte[]> pairs){
+        int partId = 0;
+        Map<String, Map<byte[], byte[]>> entries = new HashMap<>();
+        entries.put(table, pairs);
+        return session.batchPut(entries);
     }
 
     public List<HgKvEntry> scanAll(String table){
-        List<HgKvEntry> entries = new LinkedList<>();
-        for(HgStoreSession session : sessions){
-            entries.addAll(session.scanAll(table));
-        }
-        return entries;
+        return session.scanAll(table);
     }
 
     public List<HgKvEntry> scan(String table, byte[] startKey, byte[] endKey, int limit){
-        List<HgKvEntry> entries = new LinkedList<>();
-        for(HgStoreSession session : sessions){
-            entries.addAll(session.scan(table, startKey, endKey, limit));
-        }
-        return entries;
+        return session.scan(table, startKey, endKey, limit);
     }
 
     public List<HgKvEntry> scanPrefix(String table, byte[] keyPrefix){
-        List<HgKvEntry> entries = new LinkedList<>();
-        for(HgStoreSession session : sessions){
-            entries.addAll(session.scanPrefix(table, keyPrefix));
-        }
-        return entries;
+        return session.scanPrefix(table, keyPrefix);
     }
 
 
@@ -87,14 +85,11 @@ public class HstoreClient implements Closeable {
 
 
     public static void main(String[] args){
-        HstoreClient client = HstoreClient.create("test");
-        client.put("a", "0".getBytes(), "0".getBytes());
-        client.put("a", "1".getBytes(), "1".getBytes());
-        List<HgKvEntry>  entries = client.scanAll("a");
-        for(HgKvEntry entry : entries){
-            System.out.println(new String(entry.key()) + " -- " + new String(entry.value()));
-        }
-        byte[] key = new byte[1]; key[0] = (byte) -1;
-        System.out.printf("partId " + client.getPartitionId(key));
+        HgStoreSession session = HgSessionManager.getInstance().openSession("hugegraph/g");
+
+        session.put("a", new HgOwnerKey("0".getBytes(),"0".getBytes()),"0".getBytes());
+        session.put("a", new HgOwnerKey("0".getBytes(),"0".getBytes()),"1".getBytes());
+
+
     }
 }

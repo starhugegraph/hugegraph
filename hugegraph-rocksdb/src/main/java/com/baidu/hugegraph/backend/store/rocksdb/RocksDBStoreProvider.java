@@ -32,8 +32,8 @@ public class RocksDBStoreProvider extends AbstractBackendStoreProvider {
 
     @Override
     protected BackendStore newSchemaStore(String store) {
-        return new HstoreDBStore.HstoreSchemaStore(this, this.database(), store);
-        //return new RocksDBSchemaStore(this, this.database(), store);
+        //return new HstoreDBStore.HstoreSchemaStore(this, this.database(), store);
+        return new RocksDBSchemaStore(this, this.database(), store);
     }
 
     @Override

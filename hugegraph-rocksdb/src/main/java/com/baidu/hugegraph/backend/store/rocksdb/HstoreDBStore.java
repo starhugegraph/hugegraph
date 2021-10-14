@@ -1,6 +1,7 @@
 package com.baidu.hugegraph.backend.store.rocksdb;
 
 
+import com.baidu.hugegraph.backend.id.EdgeId;
 import com.baidu.hugegraph.backend.id.Id;
 
 import com.baidu.hugegraph.backend.query.ConditionQuery;
@@ -20,6 +21,7 @@ import com.baidu.hugegraph.util.Bytes;
 import com.baidu.hugegraph.util.InsertionOrderUtil;
 
 import com.google.common.collect.ImmutableMap;
+import javafx.util.Pair;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -167,17 +169,45 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
     }
 
     protected void insert(BackendEntry entry) {
+        // 基于表名生成分区规则
         String tableName = entry.type().string();
+        byte[] ownerId = getOwnerId(entry);
         for (BackendEntry.BackendColumn col : entry.columns()) {
-            hstoreClient.put(tableName, col.name, col.value);
-            System.out.println(this.toString() + "/" + tableName +
-                    "  name= " + new String(col.name) + "/0x" + Bytes.toHex(col.name)
+            hstoreClient.put(tableName, ownerId, col.name, col.value);
+            System.out.println(this.toString() + "/" + tableName + " ownId= " + new String(ownerId)
+                    + " name= " + new String(col.name) + "/0x" + Bytes.toHex(col.name)
                     + " value = " + new String(col.value) + "/0x" + Bytes.toHex(col.value));
         }
     }
 
-    protected byte[] toHstoreKey(Id id){
-        return id.asBytes();
+    /**
+     * 返回Id所属的点ID
+     * @param entry
+     * @return
+     */
+    protected byte[] getOwnerId(BackendEntry entry) {
+        Id id = null;
+        HugeType type = entry.type();
+        if (type.isVertex() || type.isEdge())
+            id = entry.originId();
+        else if (type.isIndex()) {
+            id = entry.subId();
+        } else {
+            id = entry.originId();
+        }
+        return getOwnerId(id);
+    }
+
+    /**
+     * 返回Id所属的点ID
+     * @param id
+     * @return
+     */
+    protected byte[] getOwnerId(Id id) {
+        if (id.edge()) {
+            id = ((EdgeId) id).ownerVertexId();
+        }
+        return id != null ? id.asBytes() : new byte[]{0};
     }
     @Override
     public Iterator<BackendEntry> query(Query query) {
@@ -198,7 +228,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
         if (query instanceof IdRangeQuery) {
             IdRangeQuery rq = (IdRangeQuery) query;
             assert true;
-            //   return this.queryByRange(rq);
+            return this.queryByRange(rq);
         }
 
         // Query by id
@@ -229,18 +259,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
     }
 
     protected Iterator<BackendEntry> queryById(Query query) {
-       /* String tableName = getQueryTableName(query);
-        Set<Id> ids = query.ids();
-        List<HgKvEntry> entries = new LinkedList<>();
-        for (Id id : ids) {
-            byte[] value = hstoreClient.get(tableName, id.asBytes());
-
-            entries.add(new HgKvEntryWrap(id.asBytes(), value));
-        }
-       // return newEntryIterator(new ColumnIterator(tableName, entries.iterator()), query);
-        */
         String tableName = getQueryTableName(query);
-
         return newEntryIterator(
                 new BackendEntry.BackendColumnIteratorWrapper(
                         new FlatMapperIterator<>(
@@ -262,6 +281,11 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
             entries = new ArrayList<>();
 
         return newEntryIterator(new ColumnIterator(tableName, entries.iterator()), query);
+    }
+
+    protected Iterator<BackendEntry> queryByRange(IdRangeQuery query){
+        throw new UnsupportedOperationException();
+
     }
 
     protected static final BackendEntryIterator newEntryIterator(
@@ -427,7 +451,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
             if (value != null && value.length != 0) {
                 old = this.l(value);
             }
-            this.hstoreClient.put(counterTbl, key, this.b(old + increment));
+            this.hstoreClient.put(counterTbl, new byte[]{0}, key, this.b(old + increment));
         }
 
         @Override
