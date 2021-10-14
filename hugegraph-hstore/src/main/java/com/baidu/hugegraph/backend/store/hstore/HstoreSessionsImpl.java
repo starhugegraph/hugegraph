@@ -19,20 +19,25 @@
 
 package com.baidu.hugegraph.backend.store.hstore;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.commons.lang3.tuple.MutablePair;
-import org.apache.commons.lang3.tuple.Pair;
-
 import com.baidu.hugegraph.backend.store.BackendEntry;
 import com.baidu.hugegraph.backend.store.BackendEntry.BackendColumnIterator;
 import com.baidu.hugegraph.backend.store.BackendEntryIterator;
 import com.baidu.hugegraph.config.HugeConfig;
+import com.baidu.hugegraph.store.client.HgStoreNodeManager;
 import com.baidu.hugegraph.util.Bytes;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.StringEncoding;
+import org.apache.commons.lang3.tuple.MutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class HstoreSessionsImpl extends HstoreSessions {
 
@@ -42,27 +47,47 @@ public class HstoreSessionsImpl extends HstoreSessions {
     private final AtomicInteger refCount;
     private static int tableCode = 0;
     private String graphName;
-
+    private String database;
+    private static volatile Boolean INITIALIZED = Boolean.FALSE;
+    private static volatile Set<String> INITIALIZED_GRAPH = new HashSet();
     public HstoreSessionsImpl(HugeConfig config, String database, String store) {
         super(config, database, store);
         this.config = config;
-        this.graphName = database;
-//        TiConfiguration conf = TiConfiguration.createRawDefault(
-//                this.config.get(HstoreOptions.TIKV_PDS));
-//        conf.setBatchGetConcurrency(
-//                this.config.get(HstoreOptions.TIKV_BATCH_GET_CONCURRENCY));
-//        conf.setBatchPutConcurrency(
-//                this.config.get(HstoreOptions.TIKV_BATCH_PUT_CONCURRENCY));
-//        conf.setBatchDeleteConcurrency(
-//                this.config.get(HstoreOptions.TIKV_BATCH_DELETE_CONCURRENCY));
-//        conf.setBatchScanConcurrency(
-//                this.config.get(HstoreOptions.TIKV_BATCH_SCAN_CONCURRENCY));
-//        conf.setDeleteRangeConcurrency(
-//                this.config.get(HstoreOptions.TIKV_DELETE_RANGE_CONCURRENCY));
+        this.database = database;
+        this.graphName = database + "/" + store;
         this.session = new HstoreSession(this.config, database);
         this.tables = new ConcurrentHashMap<>();
         this.refCount = new AtomicInteger(1);
+        initStoreNode(config);
     }
+
+    private void initStoreNode(HugeConfig config) {
+        if (!INITIALIZED_GRAPH.contains(database)) {
+            synchronized (INITIALIZED_GRAPH) {
+                if (!INITIALIZED_GRAPH.contains(database)) {
+                    String pds = config.get(HstoreOptions.PD_PEERS);
+                    String[] pdPeers = pds.split(",");
+                    HgStoreNodeManager nodeManager = HgStoreNodeManager.getInstance();
+                    for (int i = 0; i < pdPeers.length; i++) {
+                        nodeManager.addNode(database+ "/g",
+                                            nodeManager.getNodeBuilder()
+                                                       .setAddress(pdPeers[i])
+                                                       .build());
+                    }
+                    nodeManager.addNode(database+ "/s",
+                                        nodeManager.getNodeBuilder()
+                                                   .setAddress(pdPeers[0])
+                                                   .build());
+                    nodeManager.addNode(database+ "/m",
+                                        nodeManager.getNodeBuilder()
+                                                   .setAddress(pdPeers[0])
+                                                   .build());
+                    INITIALIZED_GRAPH.add(this.database);
+                }
+            }
+        }
+    }
+
 
     @Override
     public void open() throws Exception {
@@ -143,6 +168,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         private volatile HstoreClient client;
         private HstoreGraph graph;
         private String graphName;
+
 
         public HstoreSession(HugeConfig conf, String graphName) {
             this.putBatch = new HashMap<>();
@@ -268,10 +294,8 @@ public class HstoreSessionsImpl extends HstoreSessions {
         @Override
         public void delete(String table, byte[] key) {
             Map valueMap = this.putBatch.get(table);
-            if (valueMap != null) {
-                if (valueMap.remove(key) != null) {
-                    return;
-                }
+            if (valueMap != null && valueMap.remove(key) != null) {
+                return;
             }
             Set valueSet = this.deleteBatch.get(table);
             if (valueSet == null) {
@@ -296,10 +320,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
          */
         @Override
         public void deleteRange(String table, byte[] keyFrom, byte[] keyTo) {
-            this.deleteRangeBatch.put(table, new MutablePair<byte[], byte[]>(
-                    keyFrom,
-                    keyTo
-            ));
+            this.deleteRangeBatch.put(table,
+                                      new MutablePair<byte[], byte[]>(keyFrom,
+                                                                      keyTo));
         }
 
         @Override
@@ -318,15 +341,16 @@ public class HstoreSessionsImpl extends HstoreSessions {
         @Override
         public BackendColumnIterator scan(String table, byte[] prefix) {
             assert !this.hasChanges();
-            HstoreBackendIterator results = this.graph.scanPrefix(table, prefix);
+            HstoreBackendIterator results = this.graph.scanPrefix(table,
+                                                                  prefix);
             return new ColumnIterator(table, results);
         }
 
         @Override
-        public BackendColumnIterator scan(String table, byte[] keyFrom,
-                                          byte[] keyTo, int scanType) {
+        public BackendColumnIterator scan(String table, byte[] keyFrom, byte[] keyTo, int scanType) {
             assert !this.hasChanges();
-            HstoreBackendIterator results = this.graph.scan(table, keyFrom, keyTo, scanType);
+            HstoreBackendIterator results = this.graph.scan(table, keyFrom,
+                                                            keyTo, scanType);
             return new ColumnIterator(table, results, keyFrom, keyTo, scanType);
         }
 
@@ -335,13 +359,11 @@ public class HstoreSessionsImpl extends HstoreSessions {
         }
 
         private int size() {
-            return this.putBatch.size() + this.deleteBatch.size() +
-                    this.deletePrefixBatch.size() + this.deleteRangeBatch.size();
+            return this.putBatch.size() + this.deleteBatch.size() + this.deletePrefixBatch.size() + this.deleteRangeBatch.size();
         }
     }
 
-    private static class ColumnIterator<T extends HstoreBackendIterator>
-            implements BackendColumnIterator, Countable {
+    private static class ColumnIterator<T extends HstoreBackendIterator> implements BackendColumnIterator, Countable {
 
         private final String table;
         private final T iter;
@@ -362,8 +384,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
             return iter;
         }
 
-        public ColumnIterator(String table, T results,
-                              byte[] keyBegin, byte[] keyEnd, int scanType) {
+        public ColumnIterator(String table, T results, byte[] keyBegin, byte[] keyEnd, int scanType) {
             E.checkNotNull(results, "results");
             this.table = table;
             this.iter = results;
@@ -378,47 +399,47 @@ public class HstoreSessionsImpl extends HstoreSessions {
         }
 
         private void checkArguments() {
-//            E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
-//                            this.match(Session.SCAN_PREFIX_END)),
-//                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
-//                            "SCAN_PREFIX_WITH_END at the same time");
-//
-//            E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
-//                            this.match(Session.SCAN_GT_BEGIN)),
-//                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
-//                            "SCAN_GT_BEGIN/SCAN_GTE_BEGIN at the same time");
-//
-//            E.checkArgument(!(this.match(Session.SCAN_PREFIX_END) &&
-//                            this.match(Session.SCAN_LT_END)),
-//                    "Can't set SCAN_PREFIX_WITH_END and " +
-//                            "SCAN_LT_END/SCAN_LTE_END at the same time");
-//
-//            if (this.match(Session.SCAN_PREFIX_BEGIN)) {
-//                E.checkArgument(this.keyBegin != null,
-//                        "Parameter `keyBegin` can't be null " +
-//                                "if set SCAN_PREFIX_WITH_BEGIN");
-//                E.checkArgument(this.keyEnd == null,
-//                        "Parameter `keyEnd` must be null " +
-//                                "if set SCAN_PREFIX_WITH_BEGIN");
-//            }
-//
-//            if (this.match(Session.SCAN_PREFIX_END)) {
-//                E.checkArgument(this.keyEnd != null,
-//                        "Parameter `keyEnd` can't be null " +
-//                                "if set SCAN_PREFIX_WITH_END");
-//            }
-//
-//            if (this.match(Session.SCAN_GT_BEGIN)) {
-//                E.checkArgument(this.keyBegin != null,
-//                        "Parameter `keyBegin` can't be null " +
-//                                "if set SCAN_GT_BEGIN or SCAN_GTE_BEGIN");
-//            }
-//
-//            if (this.match(Session.SCAN_LT_END)) {
-//                E.checkArgument(this.keyEnd != null,
-//                        "Parameter `keyEnd` can't be null " +
-//                                "if set SCAN_LT_END or SCAN_LTE_END");
-//            }
+            //            E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
+            //                            this.match(Session.SCAN_PREFIX_END)),
+            //                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
+            //                            "SCAN_PREFIX_WITH_END at the same time");
+            //
+            //            E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
+            //                            this.match(Session.SCAN_GT_BEGIN)),
+            //                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
+            //                            "SCAN_GT_BEGIN/SCAN_GTE_BEGIN at the same time");
+            //
+            //            E.checkArgument(!(this.match(Session.SCAN_PREFIX_END) &&
+            //                            this.match(Session.SCAN_LT_END)),
+            //                    "Can't set SCAN_PREFIX_WITH_END and " +
+            //                            "SCAN_LT_END/SCAN_LTE_END at the same time");
+            //
+            //            if (this.match(Session.SCAN_PREFIX_BEGIN)) {
+            //                E.checkArgument(this.keyBegin != null,
+            //                        "Parameter `keyBegin` can't be null " +
+            //                                "if set SCAN_PREFIX_WITH_BEGIN");
+            //                E.checkArgument(this.keyEnd == null,
+            //                        "Parameter `keyEnd` must be null " +
+            //                                "if set SCAN_PREFIX_WITH_BEGIN");
+            //            }
+            //
+            //            if (this.match(Session.SCAN_PREFIX_END)) {
+            //                E.checkArgument(this.keyEnd != null,
+            //                        "Parameter `keyEnd` can't be null " +
+            //                                "if set SCAN_PREFIX_WITH_END");
+            //            }
+            //
+            //            if (this.match(Session.SCAN_GT_BEGIN)) {
+            //                E.checkArgument(this.keyBegin != null,
+            //                        "Parameter `keyBegin` can't be null " +
+            //                                "if set SCAN_GT_BEGIN or SCAN_GTE_BEGIN");
+            //            }
+            //
+            //            if (this.match(Session.SCAN_LT_END)) {
+            //                E.checkArgument(this.keyEnd != null,
+            //                        "Parameter `keyEnd` can't be null " +
+            //                                "if set SCAN_LT_END or SCAN_LTE_END");
+            //            }
         }
 
         private boolean match(int expected) {
@@ -429,17 +450,17 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public boolean hasNext() {
             this.matched = false;
             return this.iter.hasNext();
-//            if (iter.hasNext()) {
-//                this.position = ((HstoreIterator)iter.next()).key();
-//                if (!this.match(Session.SCAN_ANY)) {
-//                    this.matched = this.filter(this.position);
-//                }
-//            }
-//            if (!this.matched) {
-//                this.position = null;
-//                this.close();
-//            }
-//            return this.matched;
+            //            if (iter.hasNext()) {
+            //                this.position = ((HstoreIterator)iter.next()).key();
+            //                if (!this.match(Session.SCAN_ANY)) {
+            //                    this.matched = this.filter(this.position);
+            //                }
+            //            }
+            //            if (!this.matched) {
+            //                this.position = null;
+            //                this.close();
+            //            }
+            //            return this.matched;
         }
 
         private boolean filter(byte[] key) {
@@ -472,10 +493,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
                     return Bytes.compare(key, this.keyEnd) < 0;
                 }
             } else {
-                assert this.match(Session.SCAN_ANY) ||
-                        this.match(Session.SCAN_GT_BEGIN) ||
-                        this.match(Session.SCAN_GTE_BEGIN) :
-                        "Unknow scan type";
+                assert this.match(Session.SCAN_ANY) || this.match(
+                        Session.SCAN_GT_BEGIN) || this.match(
+                        Session.SCAN_GTE_BEGIN) : "Unknow scan type";
                 return true;
             }
         }
@@ -486,8 +506,8 @@ public class HstoreSessionsImpl extends HstoreSessions {
                 throw new NoSuchElementException();
             }
             this.iter.next();
-            BackendEntry.BackendColumn col = BackendEntry.BackendColumn.of(this.iter.key(),
-                    this.iter.value());
+            BackendEntry.BackendColumn col = BackendEntry.BackendColumn.of(
+                    this.iter.key(), this.iter.value());
             this.matched = false;
             return col;
         }
