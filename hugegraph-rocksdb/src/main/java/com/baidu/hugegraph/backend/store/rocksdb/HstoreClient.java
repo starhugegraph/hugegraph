@@ -1,7 +1,9 @@
 package com.baidu.hugegraph.backend.store.rocksdb;
 
+import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.store.*;
 import com.baidu.hugegraph.store.client.HgStoreNodeManager;
+import com.baidu.hugegraph.type.HugeType;
 import javafx.util.Pair;
 
 import java.io.Closeable;
@@ -15,17 +17,22 @@ public class HstoreClient implements Closeable {
     public static String storeAddrs[] = {
         "localhost:9080"
     };
-    static HgSessionManager hgSessionManagers[];
-    static {
+    static boolean initialized = false;
+
+    private static void initNodeManager(HugeConfig config) {
+        if (initialized) return;
+        String peers[] = config.get(RocksDBOptions.PD_PEERS).split(",");
         HgStoreNodeManager node = HgStoreNodeManager.getInstance();
-        node.addNode("hugegraph/g", node.getNodeBuilder().setAddress("localhost:9180").build());
-        node.addNode("hugegraph/g", node.getNodeBuilder().setAddress("localhost:9280").build());
-        node.addNode("hugegraph/g", node.getNodeBuilder().setAddress("localhost:9380").build());
-        node.addNode("hugegraph/s", node.getNodeBuilder().setAddress("localhost:9180").build());
-        node.addNode("hugegraph/m", node.getNodeBuilder().setAddress("localhost:9180").build());
+        for (String peer : peers) {
+            node.addNode("hugegraph/g", node.getNodeBuilder().setAddress(peer).build());
+        }
+        node.addNode("hugegraph/s", node.getNodeBuilder().setAddress(peers[0]).build());
+        node.addNode("hugegraph/m", node.getNodeBuilder().setAddress(peers[0]).build());
+        initialized = true;
     }
 
-    public static HstoreClient create(String graphName){
+    public static HstoreClient create(HugeConfig config, String graphName){
+        initNodeManager(config);
         HstoreClient client = new HstoreClient();
         client.open(graphName);
 
@@ -73,8 +80,8 @@ public class HstoreClient implements Closeable {
         return session.scan(table, startKey, endKey, limit);
     }
 
-    public List<HgKvEntry> scanPrefix(String table, byte[] keyPrefix){
-        return session.scanPrefix(table, keyPrefix);
+    public List<HgKvEntry> scanPrefix(String table, byte[] owner, byte[] keyPrefix){
+        return session.scanPrefix(table, new HgOwnerKey(owner, keyPrefix));
     }
 
 

@@ -32,7 +32,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
     private final String database;
     private final BackendStoreProvider provider;
     private static final BackendFeatures FEATURES = new HstoreFeatures();
-
+    private HugeConfig config;
     public String NODES = "nodes";
     public String CLUSTER_ID = "cluster_id";
     public String SERVERS = "servers";
@@ -111,7 +111,8 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
 
     @Override
     public void open(HugeConfig config) {
-        hstoreClient = HstoreClient.create(this.database + "/" + this.store);
+        this.config = config;
+        hstoreClient = HstoreClient.create(config, this.database + "/" + this.store);
     }
 
     @Override
@@ -204,11 +205,15 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
      * @return
      */
     protected byte[] getOwnerId(Id id) {
+        if ( id instanceof BinaryBackendEntry.BinaryId){
+            id = ((BinaryBackendEntry.BinaryId)id).origin();
+        }
         if (id.edge()) {
             id = ((EdgeId) id).ownerVertexId();
         }
         return id != null ? id.asBytes() : new byte[]{0};
     }
+
     @Override
     public Iterator<BackendEntry> query(Query query) {
         System.out.println(this.toString() + "--" + query);
@@ -267,7 +272,8 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
         );
     }
     protected BackendEntry.BackendColumnIterator queryById(String tableName, Id id) {
-        List<HgKvEntry> entries = hstoreClient.scanPrefix(tableName, id.asBytes());
+        byte[] ownerId = getOwnerId(id);
+        List<HgKvEntry> entries = hstoreClient.scanPrefix(tableName, ownerId, id.asBytes());
         if (entries == null)
             entries = new ArrayList<>();
 
@@ -276,7 +282,8 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
 
     protected Iterator<BackendEntry> queryByPrefix(IdPrefixQuery query) {
         String tableName = getQueryTableName(query);
-        List<HgKvEntry> entries = hstoreClient.scanPrefix(tableName, query.prefix().asBytes());
+        byte[] ownerId = getOwnerId(query.prefix());
+        List<HgKvEntry> entries = hstoreClient.scanPrefix(tableName, ownerId, query.prefix().asBytes());
         if (entries == null)
             entries = new ArrayList<>();
 

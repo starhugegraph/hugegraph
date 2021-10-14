@@ -669,7 +669,8 @@ public class BinarySerializer extends AbstractSerializer {
 
         if (count > 0) {
             assert count == cq.conditions().size();
-            return prefixQuery(cq, new BinaryId(buffer.bytes(), null));
+            // 此处需要测试，如何得到owner点ID @YanJinbing
+            return prefixQuery(cq, new BinaryId(buffer.bytes(), cq.condition(HugeKeys.OWNER_VERTEX)));
         }
 
         return null;
