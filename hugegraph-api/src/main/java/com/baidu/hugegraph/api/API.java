@@ -90,6 +90,10 @@ public class API {
 
     public static final String CHARSET = "UTF-8";
 
+    public static final String APPLICATION_TEXT = MediaType.TEXT_PLAIN;
+    public static final String APPLICATION_TEXT_WITH_CHARSET =
+            APPLICATION_TEXT + ";version=0.0.4;charset=" + CHARSET;
+
     public static final String APPLICATION_JSON = MediaType.APPLICATION_JSON;
     public static final String APPLICATION_JSON_WITH_CHARSET =
                                APPLICATION_JSON + ";charset=" + CHARSET;
