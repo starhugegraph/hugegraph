@@ -39,6 +39,7 @@ public class HstoreClient implements Closeable {
         return client;
     }
 
+    private Map<String, Map<HgOwnerKey, byte[]>> buffers = new HashMap<>();
     private HgStoreSession session;
     public void open(String graphName){
         session = HgSessionManager.getInstance().openSession(graphName);
@@ -56,8 +57,14 @@ public class HstoreClient implements Closeable {
      * 7、HgStore调用rocksdb存储修改后的KV
      */
     public boolean put(String table, byte[] owner, byte[] key, byte[] value){
-
-        return session.put(table, new HgOwnerKey(owner, key), value);
+        Map<HgOwnerKey, byte[]> entries = buffers.get(table);
+        if ( entries == null ) {
+            entries = new HashMap<>();
+            buffers.put(table, entries);
+        }
+        entries.put(new HgOwnerKey(owner, key), value);
+        return true;
+        //return session.put(table, new HgOwnerKey(owner, key), value);
     }
 
     public byte[] get(String table, byte[] key) {
@@ -65,11 +72,11 @@ public class HstoreClient implements Closeable {
         return session.get(table, key);
     }
 
-    public boolean batchPut(String table, Map<byte[],byte[]> pairs){
-        int partId = 0;
-        Map<String, Map<byte[], byte[]>> entries = new HashMap<>();
-        entries.put(table, pairs);
-        return session.batchPut(entries);
+    public boolean commit() {
+        boolean result = session.batchPutOwner(buffers);
+        for (String key : buffers.keySet())
+            buffers.get(key).clear();
+        return result;
     }
 
     public List<HgKvEntry> scanAll(String table){

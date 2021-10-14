@@ -16,6 +16,7 @@ import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.iterator.FlatMapperIterator;
 import com.baidu.hugegraph.store.HgKvEntry;
 
+import com.baidu.hugegraph.store.HgOwnerKey;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.util.Bytes;
 import com.baidu.hugegraph.util.InsertionOrderUtil;
@@ -151,6 +152,7 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
         for (Iterator<BackendAction> it = mutation.mutation(); it.hasNext(); ) {
             this.mutate(it.next());
         }
+        hstoreClient.commit();
     }
 
     protected synchronized void mutate(BackendAction item) {
