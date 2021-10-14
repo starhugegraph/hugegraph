@@ -99,9 +99,13 @@ public class ComputerDisAPI extends API {
                         "The k8s api is not enable.");
         E.checkArgument(id != null && !id.isEmpty(),
                         "The computer name can't be empty");
+
         TaskScheduler scheduler = graph(manager, graph).taskScheduler();
-        HugeTask<?> task = scheduler.delete(IdGenerator.of(id));
-        E.checkArgument(task != null, "There is no task with id '%s'", id);
+        HugeTask<?> task = scheduler.task(IdGenerator.of(id));
+        E.checkArgument(ComputerDisJob.COMPUTER_DIS.equals(task.type()),
+                        "The task is not computer-dis task.");
+
+        scheduler.delete(IdGenerator.of(id));
         return ImmutableMap.of("task_id", id, "message", "success");
     }
 
@@ -124,6 +128,7 @@ public class ComputerDisAPI extends API {
         HugeTask<?> task = scheduler.task(IdGenerator.of(id));
         E.checkArgument(ComputerDisJob.COMPUTER_DIS.equals(task.type()),
                         "The task is not computer-dis task.");
+
         if (!task.completed() && !task.cancelling()) {
             scheduler.cancel(task);
             if (task.cancelling()) {
@@ -163,6 +168,7 @@ public class ComputerDisAPI extends API {
         LOG.debug("Graph [{}] get task list", graph);
         E.checkArgument(K8sDriverProxy.isK8sApiEnabled() == true,
                         "The k8s api is not enable.");
+
         TaskScheduler scheduler = graph(manager, graph).taskScheduler();
         Iterator<HugeTask<Object>> iter  = scheduler.tasksProxy(null,
                                                                 NO_LIMIT, page);
