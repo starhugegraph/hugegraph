@@ -88,7 +88,7 @@ public class HstoreClient implements Closeable {
     }
 
     public List<HgKvEntry> scanPrefix(String table, byte[] owner, byte[] keyPrefix){
-        return session.scanPrefix(table, new HgOwnerKey(owner, keyPrefix));
+        return session.scanPrefix(table, keyPrefix);
     }
 
 

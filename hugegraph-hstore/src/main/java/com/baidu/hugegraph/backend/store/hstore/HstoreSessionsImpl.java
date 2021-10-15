@@ -57,10 +57,10 @@ public class HstoreSessionsImpl extends HstoreSessions {
         this.config = config;
         this.database = database;
         this.graphName = database + "/" + store;
-        this.session = new HstoreSession(this.config, database);
+        initStoreNode(config);
+        this.session = new HstoreSession(this.config, graphName);
         this.tables = new ConcurrentHashMap<>();
         this.refCount = new AtomicInteger(1);
-        initStoreNode(config);
     }
 
     private void initStoreNode(HugeConfig config) {
