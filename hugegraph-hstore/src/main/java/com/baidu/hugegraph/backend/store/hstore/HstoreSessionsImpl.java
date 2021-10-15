@@ -302,7 +302,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
                 valueSet = new HashSet();
                 this.deleteBatch.put(table, valueSet);
             }
-            valueSet.add(new HgOwnerKey(partitionKey, key));
+            valueSet.add(key);
         }
 
         @Override
