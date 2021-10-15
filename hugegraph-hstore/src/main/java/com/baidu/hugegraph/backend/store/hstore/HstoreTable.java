@@ -23,7 +23,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Function;
 
+import com.baidu.hugegraph.backend.id.EdgeId;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 import org.slf4j.Logger;
@@ -87,23 +89,58 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         // pass
     }
 
+    public Function<BackendEntry, byte[]> getPartitionDelegate() {
+        return partitionDelegate;
+    }
+
+    Function<BackendEntry,byte[]> partitionDelegate= (entry)->{
+        if (entry == null) {
+            return new byte[]{0};
+        }
+        Id id = null;
+        HugeType type = entry.type();
+        if (type.isIndex()) {
+            id = entry.subId();
+        } else {
+            id = entry.originId();
+        }
+        return getOwnerId(id);
+    };
+
+    /**
+     * 返回Id所属的点ID
+     * @param id
+     * @return
+     */
+    protected byte[] getOwnerId(Id id) {
+        if ( id instanceof BinaryBackendEntry.BinaryId){
+            id = ((BinaryBackendEntry.BinaryId)id).origin();
+        }
+        if (id.edge()) {
+            id = ((EdgeId) id).ownerVertexId();
+        }
+        return id != null ? id.asBytes() : new byte[]{0};
+    }
+
     @Override
     public void insert(Session session, BackendEntry entry) {
         assert !entry.columns().isEmpty();
+        byte[] partitionKey = partitionDelegate.apply(entry);
         for (BackendColumn col : entry.columns()) {
             assert entry.belongToMe(col) : entry;
-            session.put(this.table(), col.name, col.value);
+            session.put(this.table(),partitionKey, col.name, col.value);
         }
     }
 
     @Override
     public void delete(Session session, BackendEntry entry) {
+        byte[] partitionKey = partitionDelegate.apply(entry);
         if (entry.columns().isEmpty()) {
-            session.delete(this.table(), entry.id().asBytes());
+            session.delete(this.table(),partitionKey, entry.id().asBytes());
         } else {
             for (BackendColumn col : entry.columns()) {
                 assert entry.belongToMe(col) : entry;
-                session.delete(this.table(), col.name);
+                session.delete(this.table(),partitionKey, col.name);
             }
         }
     }

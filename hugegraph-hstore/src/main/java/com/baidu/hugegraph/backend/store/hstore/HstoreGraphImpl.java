@@ -1,5 +1,6 @@
 package com.baidu.hugegraph.backend.store.hstore;
 
+import com.baidu.hugegraph.store.HgOwnerKey;
 import com.baidu.hugegraph.store.HgStoreSession;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -15,8 +16,9 @@ public class HstoreGraphImpl implements HstoreGraph {
     }
 
     @Override
-    public void batchPut(Map<String, Map<byte[], byte[]>> putBatch) {
-        this.session.batchPut(putBatch);
+    public boolean batchPut(Map<String, Map<HgOwnerKey, byte[]>> putBatch) {
+//        this.session.batchPut(putBatch);
+        return  this.session.batchPutOwner(putBatch);
     }
 
     @Override
@@ -39,14 +41,19 @@ public class HstoreGraphImpl implements HstoreGraph {
     }
 
     @Override
-    public void put(String table, byte[] key, byte[] value) {
-        this.session.put(table, key, value);
+    public byte[] get(String table, byte[] key) {
+        return this.session.get(table,key);
     }
 
-    @Override
-    public byte[] get(String table, byte[] key) {
-        return this.session.get(table, key);
-    }
+    //    @Override
+//    public void put(String table, byte[] key, byte[] value) {
+//        this.session.put(table, key, value);
+//    }
+
+//    @Override
+//    public byte[] get(String table, byte[] key) {
+//        return this.session.get(table, key);
+//    }
 
     @Override
     public HstoreBackendIterator scan(String table) {
@@ -59,7 +66,7 @@ public class HstoreGraphImpl implements HstoreGraph {
     }
 
     @Override
-    public void merge(String table, byte[] key, byte[] value) {
+    public void merge(String table, byte[] partitionKey, byte[] key, byte[] value) {
         this.session.merge(table, key, value);
     }
 
@@ -71,5 +78,20 @@ public class HstoreGraphImpl implements HstoreGraph {
     @Override
     public HstoreBackendIterator scan(String table, byte[] keyFrom, byte[] keyTo, int scanType) {
         return new HstoreIterator(this.session.scan(table, keyFrom, keyTo, scanType));
+    }
+
+    @Override
+    public boolean put(String table, HgOwnerKey ownerKey, byte[] value) {
+       return this.session.put(table,ownerKey,value);
+    }
+
+    @Override
+    public byte[] get(String table, HgOwnerKey ownerKey) {
+        return this.session.get(table,ownerKey);
+    }
+
+    @Override
+    public boolean delete(String table, HgOwnerKey ownerKey) {
+        return this.session.delete(table,ownerKey);
     }
 }

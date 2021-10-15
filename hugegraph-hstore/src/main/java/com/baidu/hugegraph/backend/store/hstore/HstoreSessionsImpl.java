@@ -23,6 +23,7 @@ import com.baidu.hugegraph.backend.store.BackendEntry;
 import com.baidu.hugegraph.backend.store.BackendEntry.BackendColumnIterator;
 import com.baidu.hugegraph.backend.store.BackendEntryIterator;
 import com.baidu.hugegraph.config.HugeConfig;
+import com.baidu.hugegraph.store.HgOwnerKey;
 import com.baidu.hugegraph.store.client.HgStoreNodeManager;
 import com.baidu.hugegraph.util.Bytes;
 import com.baidu.hugegraph.util.E;
@@ -50,15 +51,16 @@ public class HstoreSessionsImpl extends HstoreSessions {
     private String database;
     private static volatile Boolean INITIALIZED = Boolean.FALSE;
     private static volatile Set<String> INITIALIZED_GRAPH = new HashSet();
+
     public HstoreSessionsImpl(HugeConfig config, String database, String store) {
         super(config, database, store);
         this.config = config;
         this.database = database;
         this.graphName = database + "/" + store;
-        this.session = new HstoreSession(this.config, database);
+        initStoreNode(config);
+        this.session = new HstoreSession(this.config, graphName);
         this.tables = new ConcurrentHashMap<>();
         this.refCount = new AtomicInteger(1);
-        initStoreNode(config);
     }
 
     private void initStoreNode(HugeConfig config) {
@@ -69,19 +71,16 @@ public class HstoreSessionsImpl extends HstoreSessions {
                     String[] pdPeers = pds.split(",");
                     HgStoreNodeManager nodeManager = HgStoreNodeManager.getInstance();
                     for (int i = 0; i < pdPeers.length; i++) {
-                        nodeManager.addNode(database+ "/g",
-                                            nodeManager.getNodeBuilder()
-                                                       .setAddress(pdPeers[i])
-                                                       .build());
+                        nodeManager.addNode(database + "/g",
+                                            nodeManager.getNodeBuilder().setAddress(
+                                                    pdPeers[i]).build());
                     }
-                    nodeManager.addNode(database+ "/s",
-                                        nodeManager.getNodeBuilder()
-                                                   .setAddress(pdPeers[0])
-                                                   .build());
-                    nodeManager.addNode(database+ "/m",
-                                        nodeManager.getNodeBuilder()
-                                                   .setAddress(pdPeers[0])
-                                                   .build());
+                    nodeManager.addNode(database + "/s",
+                                        nodeManager.getNodeBuilder().setAddress(
+                                                pdPeers[0]).build());
+                    nodeManager.addNode(database + "/m",
+                                        nodeManager.getNodeBuilder().setAddress(
+                                                pdPeers[0]).build());
                     INITIALIZED_GRAPH.add(this.database);
                 }
             }
@@ -156,12 +155,13 @@ public class HstoreSessionsImpl extends HstoreSessions {
         return StringEncoding.decode(bytes);
     }
 
+
     /**
      * HstoreSession implement for hstore
      */
     private final class HstoreSession extends Session {
 
-        private Map<String, Map<byte[], byte[]>> putBatch;
+        private Map<String, Map<HgOwnerKey, byte[]>> putBatch;
         private Map<String, Set<byte[]>> deleteBatch;
         private Map<String, Set<byte[]>> deletePrefixBatch;
         private Map<String, Pair<byte[], byte[]>> deleteRangeBatch;
@@ -276,23 +276,23 @@ public class HstoreSessionsImpl extends HstoreSessions {
          * Add a KV record to a table
          */
         @Override
-        public void put(String table, byte[] key, byte[] value) {
+        public void put(String table, byte[] partitionKey, byte[] key, byte[] value) {
             Map valueMap = this.putBatch.get(table);
             if (valueMap == null) {
                 valueMap = new HashMap();
                 this.putBatch.put(table, valueMap);
             }
-            valueMap.put(key, value);
+            valueMap.put(new HgOwnerKey(partitionKey, key), value);
 
         }
 
         @Override
-        public synchronized void increase(String table, byte[] key, byte[] value) {
-            this.graph.merge(table, key, value);
+        public synchronized void increase(String table, byte[] partitionKey, byte[] key, byte[] value) {
+            this.graph.merge(table,partitionKey, key, value);
         }
 
         @Override
-        public void delete(String table, byte[] key) {
+        public void delete(String table, byte[] partitionKey, byte[] key) {
             Map valueMap = this.putBatch.get(table);
             if (valueMap != null && valueMap.remove(key) != null) {
                 return;
@@ -327,7 +327,13 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public byte[] get(String table, byte[] key) {
-            byte[] values = this.graph.get(table, key);
+            return this.graph.get(table, key);
+        }
+
+        @Override
+        public byte[] get(String table, byte[] partitionKey, byte[] key) {
+            byte[] values = this.graph.get(table,
+                                           new HgOwnerKey(partitionKey, key));
             return values != null ? values : new byte[0];
         }
 
