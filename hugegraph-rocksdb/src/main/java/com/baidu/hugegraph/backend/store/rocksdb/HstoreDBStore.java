@@ -152,10 +152,15 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
         for (Iterator<BackendAction> it = mutation.mutation(); it.hasNext(); ) {
             this.mutate(it.next());
         }
-        hstoreClient.commit();
+        try {
+            hstoreClient.commit();
+        }catch (Throwable e){
+            e.printStackTrace();
+            throw e;
+        }
     }
 
-    protected synchronized void mutate(BackendAction item) {
+    protected void mutate(BackendAction item) {
         BackendEntry entry = item.entry();
         switch (item.action()) {
             case INSERT:
@@ -177,9 +182,6 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
         byte[] ownerId = getOwnerId(entry);
         for (BackendEntry.BackendColumn col : entry.columns()) {
             hstoreClient.put(tableName, ownerId, col.name, col.value);
-            System.out.println(this.toString() + "/" + tableName + " ownId= " + new String(ownerId)
-                    + " name= " + new String(col.name) + "/0x" + Bytes.toHex(col.name)
-                    + " value = " + new String(col.value) + "/0x" + Bytes.toHex(col.value));
         }
     }
 

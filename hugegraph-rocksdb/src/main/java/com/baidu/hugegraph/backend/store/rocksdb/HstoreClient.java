@@ -1,22 +1,19 @@
 package com.baidu.hugegraph.backend.store.rocksdb;
 
+import com.baidu.hugegraph.backend.store.BackendSession;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.store.*;
 import com.baidu.hugegraph.store.client.HgStoreNodeManager;
-import com.baidu.hugegraph.type.HugeType;
-import javafx.util.Pair;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.LinkedList;
+
 import java.util.List;
 import java.util.Map;
 
 public class HstoreClient implements Closeable {
-    public static String storeAddrs[] = {
-        "localhost:9080"
-    };
+
     static boolean initialized = false;
 
     private static void initNodeManager(HugeConfig config) {
@@ -39,7 +36,8 @@ public class HstoreClient implements Closeable {
         return client;
     }
 
-    private Map<String, Map<HgOwnerKey, byte[]>> buffers = new HashMap<>();
+    ThreadLocal<Map<String, Map<HgOwnerKey, byte[]>>> threadLocalBuffers = new ThreadLocal<>();
+
     private HgStoreSession session;
     public void open(String graphName){
         session = HgSessionManager.getInstance().openSession(graphName);
@@ -57,6 +55,11 @@ public class HstoreClient implements Closeable {
      * 7、HgStore调用rocksdb存储修改后的KV
      */
     public boolean put(String table, byte[] owner, byte[] key, byte[] value){
+        Map<String, Map<HgOwnerKey, byte[]>> buffers = threadLocalBuffers.get();
+        if ( buffers == null ){
+            buffers = new HashMap();
+            threadLocalBuffers.set(buffers);
+        }
         Map<HgOwnerKey, byte[]> entries = buffers.get(table);
         if ( entries == null ) {
             entries = new HashMap<>();
@@ -72,10 +75,15 @@ public class HstoreClient implements Closeable {
         return session.get(table, key);
     }
 
-    public boolean commit() {
-        boolean result = session.batchPutOwner(buffers);
-        for (String key : buffers.keySet())
-            buffers.get(key).clear();
+    public  boolean commit() {
+        boolean result = false;
+        Map<String, Map<HgOwnerKey, byte[]>> buffers = threadLocalBuffers.get();
+        if ( buffers != null && buffers.size() > 0)
+            result = session.batchPutOwner(buffers);
+        else{
+            result = false;
+        }
+        buffers.clear();
         return result;
     }
 
