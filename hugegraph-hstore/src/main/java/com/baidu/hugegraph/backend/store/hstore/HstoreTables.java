@@ -57,7 +57,8 @@ public class HstoreTables {
 
         public void increaseCounter(Session session, HugeType type, long increment) {
             byte[] key = new byte[]{type.code()};
-            session.increase(this.table(), key, b(increment));
+            session.increase(this.table(), getPartitionDelegate().apply(null),
+                             key, b(increment));
         }
 
         private static byte[] b(long value) {
@@ -163,9 +164,10 @@ public class HstoreTables {
              * Only delete index by label will come here
              * Regular index delete will call eliminate()
              */
+            byte[] partitionKey = super.partitionDelegate.apply(entry);
             for (BackendEntry.BackendColumn column : entry.columns()) {
                 // Don't assert entry.belongToMe(column), length-prefix is 1*
-                session.delete(this.table(), column.name);
+                session.delete(this.table(), partitionKey, column.name);
             }
         }
     }
