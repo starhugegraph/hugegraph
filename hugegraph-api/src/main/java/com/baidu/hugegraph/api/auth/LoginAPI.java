@@ -28,6 +28,7 @@ import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -71,8 +72,9 @@ public class LoginAPI extends API {
         checkCreatingBody(jsonLogin);
 
         try {
-            String token = manager.authManager()
-                                  .loginUser(jsonLogin.name, jsonLogin.password);
+            String token = manager.authManager().loginUser(jsonLogin.name,
+                                                           jsonLogin.password,
+                                                           jsonLogin.expire);
             HugeGraph g = graph(manager, SYSTEM_GRAPH);
             return manager.serializer(g)
                           .writeMap(ImmutableMap.of("token", token));
@@ -102,6 +104,21 @@ public class LoginAPI extends API {
                                                           .length());
 
         manager.authManager().logoutUser(token);
+    }
+
+    @GET
+    @Timed
+    @Path("tokens")
+    @Status(StatusFilter.Status.OK)
+    @Consumes(APPLICATION_JSON)
+    @Produces(APPLICATION_JSON_WITH_CHARSET)
+    public String list(@Context GraphManager manager) {
+
+        LOG.debug("Graph [{}] get user tokens", SYSTEM_GRAPH);
+
+        HugeGraph g = graph(manager, SYSTEM_GRAPH);
+        return manager.serializer(g)
+                .writeMap(ImmutableMap.of());
     }
 
     @GET
@@ -140,6 +157,8 @@ public class LoginAPI extends API {
         private String name;
         @JsonProperty("user_password")
         private String password;
+        @JsonProperty("token_expire")
+        private long expire;
 
         @Override
         public void checkCreate(boolean isBatch) {
@@ -153,6 +172,10 @@ public class LoginAPI extends API {
                             "The password is 5-16 characters, " +
                             "which can be letters, numbers or " +
                             "special symbols");
+            E.checkArgument(this.expire >= 0 &&
+                            this.expire <= Long.MAX_VALUE,
+                            "The token_expire should be in " +
+                            "[0, Long.MAX_VALUE]");
         }
 
         @Override
