@@ -110,7 +110,7 @@ public class AuthOptions extends OptionHolder {
                     "The expiration time in seconds of auth cache in " +
                     "auth client and auth server.",
                     rangeInt(0L, Long.MAX_VALUE),
-                    (180 * 3600 * 24L)
+                    (10 * 60L)
             );
 
     public static final ConfigOption<Long> AUTH_PROXY_CACHE_EXPIRE =

@@ -28,9 +28,7 @@ import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
@@ -104,21 +102,6 @@ public class LoginAPI extends API {
                                                           .length());
 
         manager.authManager().logoutUser(token);
-    }
-
-    @GET
-    @Timed
-    @Path("tokens")
-    @Status(StatusFilter.Status.OK)
-    @Consumes(APPLICATION_JSON)
-    @Produces(APPLICATION_JSON_WITH_CHARSET)
-    public String list(@Context GraphManager manager) {
-
-        LOG.debug("Graph [{}] get user tokens", SYSTEM_GRAPH);
-
-        HugeGraph g = graph(manager, SYSTEM_GRAPH);
-        return manager.serializer(g)
-                .writeMap(ImmutableMap.of());
     }
 
     @GET
