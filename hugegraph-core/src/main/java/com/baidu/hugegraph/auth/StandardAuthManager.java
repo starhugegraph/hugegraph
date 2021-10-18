@@ -668,7 +668,7 @@ public class StandardAuthManager implements AuthManager {
                                                  username,
                                                  AuthConstant.TOKEN_USER_ID,
                                                  user.id.asString());
-        expire = expire == 0L? this.tokenExpire : expire;
+        expire = expire == 0L ? this.tokenExpire : expire;
         String token = this.tokenGenerator.create(payload, expire * 1000);
         this.tokenCache.update(IdGenerator.of(token), username);
         return token;
