@@ -116,6 +116,7 @@ public final class ApiVersion {
      * [0.64] Issue-1504: Add auth-project RESTful API
      * [0.65] Issue-1506: Support olap property key
      * [0.66] Issue-1567: Support get schema RESTful API
+     * [0.67] Issue-Xxxx: Support adamic-adar & resource-allocation API
      */
 
     // The second parameter of Version.of() is for IDE running without JAR
