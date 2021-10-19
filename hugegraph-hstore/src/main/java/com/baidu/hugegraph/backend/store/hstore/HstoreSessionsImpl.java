@@ -49,7 +49,6 @@ public class HstoreSessionsImpl extends HstoreSessions {
     private static int tableCode = 0;
     private String graphName;
     private String database;
-    private static volatile Boolean INITIALIZED = Boolean.FALSE;
     private static volatile Set<String> INITIALIZED_GRAPH = new HashSet();
 
     public HstoreSessionsImpl(HugeConfig config, String database, String store) {
@@ -234,22 +233,22 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
             if (this.putBatch.size() > 0) {
                 this.graph.batchPut(this.putBatch);
-                this.putBatch.clear();
+                this.putBatch = new HashMap();
             }
 
             if (this.deleteBatch.size() > 0) {
                 this.graph.batchDelete(this.deleteBatch);
-                this.deleteBatch.clear();
+                this.deleteBatch = new HashMap();
             }
 
             if (this.deletePrefixBatch.size() > 0) {
                 this.graph.deletePrefix(this.deletePrefixBatch);
-                this.deletePrefixBatch.clear();
+                this.deletePrefixBatch = new HashMap();
             }
 
             if (this.deleteRangeBatch.size() > 0) {
                 this.graph.deleteRange(this.deleteRangeBatch);
-                this.deleteRangeBatch.clear();
+                this.deleteRangeBatch = new HashMap();
             }
 
             return count;
