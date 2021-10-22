@@ -19,10 +19,9 @@ public class HstoreClientImpl implements HstoreClient {
     }
     HstoreGraph graph;
     @Override
-    public HstoreGraph open(String graphName) {
+    public HgStoreSession open(String graphName) {
         HgSessionManager manager = HgSessionManager.getInstance();
         HgStoreSession session = manager.openSession(graphName);
-        graph = new HstoreGraphImpl(session);
-        return graph;
+        return session;
     }
 }

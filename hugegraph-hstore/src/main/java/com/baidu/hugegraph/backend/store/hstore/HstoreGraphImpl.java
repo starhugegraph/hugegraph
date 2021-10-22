@@ -17,7 +17,6 @@ public class HstoreGraphImpl implements HstoreGraph {
 
     @Override
     public boolean batchPut(Map<String, Map<HgOwnerKey, byte[]>> putBatch) {
-//        this.session.batchPut(putBatch);
         return  this.session.batchPutOwner(putBatch);
     }
 
@@ -66,7 +65,7 @@ public class HstoreGraphImpl implements HstoreGraph {
     }
 
     @Override
-    public void merge(String table, byte[] partitionKey, byte[] key, byte[] value) {
+    public void merge(String table, byte[] ownerKey, byte[] key, byte[] value) {
         this.session.merge(table, key, value);
     }
 

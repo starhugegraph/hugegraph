@@ -1,8 +1,10 @@
 package com.baidu.hugegraph.backend.store.hstore;
 
 
+import com.baidu.hugegraph.store.HgStoreSession;
+
 public interface HstoreClient {
 
     void close();
-    HstoreGraph open(String graphName);
+    HgStoreSession open(String graphName);
 }

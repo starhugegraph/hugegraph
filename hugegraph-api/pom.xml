@@ -36,11 +36,45 @@
                     <groupId>com.alipay.sofa</groupId>
                     <artifactId>hessian</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.alipay.sofa</groupId>
+                    <artifactId>hessian</artifactId>
+                </exclusion>
                 <!-- conflict with cassandra-netty/tinkerpop-server  -->
                 <exclusion>
                     <groupId>io.netty</groupId>
                     <artifactId>netty-all</artifactId>
                 </exclusion>
+                <!-- conflict with grpc -->
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-context</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-netty-shaded</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-protobuf-lite</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-protobuf</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-stub</artifactId>
+                </exclusion>
+
             </exclusions>
         </dependency>
 

@@ -164,10 +164,10 @@ public class HstoreTables {
              * Only delete index by label will come here
              * Regular index delete will call eliminate()
              */
-            byte[] partitionKey = super.ownerDelegate.apply(entry);
+            byte[] ownerKey = super.ownerDelegate.apply(entry);
             for (BackendEntry.BackendColumn column : entry.columns()) {
                 // Don't assert entry.belongToMe(column), length-prefix is 1*
-                session.delete(this.table(), partitionKey, column.name);
+                session.deletePrefix(this.table(), ownerKey, column.name);
             }
         }
     }
@@ -264,15 +264,17 @@ public class HstoreTables {
             if (!minEq) {
                 begin = BinarySerializer.increaseOne(begin);
             }
-
+            byte[] ownerStart = this.ownerScanDelegate.get();
+            byte[] ownerEnd = this.ownerScanDelegate.get();
             if (max == null) {
                 E.checkArgumentNotNull(prefix, "Range index prefix is missing");
-                return session.scan(this.table(), begin, prefix.asBytes(),
-                                    Session.SCAN_PREFIX_END);
+                return session.scan(this.table(),ownerStart,ownerEnd,begin,
+                                    prefix.asBytes(),Session.SCAN_PREFIX_END);
             } else {
                 byte[] end = max.asBytes();
                 int type = maxEq ? Session.SCAN_LTE_END : Session.SCAN_LT_END;
-                return session.scan(this.table(), begin, end, type);
+                return session.scan(this.table(),ownerStart,ownerEnd, begin,
+                                    end, type);
             }
         }
     }

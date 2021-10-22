@@ -24,8 +24,10 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import com.baidu.hugegraph.backend.id.EdgeId;
+import com.baidu.hugegraph.store.client.util.C;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 import org.slf4j.Logger;
@@ -95,16 +97,32 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
 
     Function<BackendEntry,byte[]> ownerDelegate = (entry)->{
         if (entry == null) {
-            return new byte[]{0};
+            return C.ALL_NODE_OWNER;
         }
         Id id = null;
         HugeType type = entry.type();
         if (type.isIndex()) {
-            id = entry.subId();
+            id = entry.id();
         } else {
             id = entry.originId();
         }
         return getOwnerId(id);
+    };
+
+    public Function<Id, byte[]> getOwnerByIdDelegate() {
+        return ownerByIdDelegate;
+    }
+
+    Function<Id,byte[]> ownerByIdDelegate = (id) -> {
+        return getOwnerId(id);
+    };
+
+    public Supplier<byte[]> getOwnerScanDelegate() {
+        return ownerScanDelegate;
+    }
+
+    Supplier<byte[]> ownerScanDelegate = () -> {
+        return C.ALL_NODE_OWNER;
     };
 
     /**
@@ -134,13 +152,13 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
 
     @Override
     public void delete(Session session, BackendEntry entry) {
-        byte[] partitionKey = ownerDelegate.apply(entry);
+        byte[] ownerKey = ownerDelegate.apply(entry);
         if (entry.columns().isEmpty()) {
-            session.delete(this.table(),partitionKey, entry.id().asBytes());
+            session.delete(this.table(),ownerKey, entry.id().asBytes());
         } else {
             for (BackendColumn col : entry.columns()) {
                 assert entry.belongToMe(col) : entry;
-                session.delete(this.table(),partitionKey, col.name);
+                session.delete(this.table(),ownerKey, col.name);
             }
         }
     }
@@ -218,7 +236,10 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         if (query.paging()) {
             PageState page = PageState.fromString(query.page());
             byte[] begin = page.position();
-            return session.scan(this.table(), begin, null, Session.SCAN_ANY);
+            return session.scan(this.table(),
+                                this.ownerScanDelegate.get(),
+                                this.ownerScanDelegate.get(),
+                                begin, null, Session.SCAN_ANY);
         } else {
             return session.scan(this.table());
         }
@@ -226,11 +247,14 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
 
     protected BackendColumnIterator queryById(Session session, Id id) {
         // TODO: change to get() after vertex and schema don't use id prefix
-        return session.scan(this.table(), id.asBytes());
+        return session.scan(this.table(),this.ownerByIdDelegate.apply(id),
+                            id.asBytes());
     }
 
     protected BackendColumnIterator getById(Session session, Id id) {
-        byte[] value = session.get(this.table(), id.asBytes());
+        byte[] value = session.get(this.table(),
+                                   this.ownerByIdDelegate.apply(id),
+                                   id.asBytes());
         if (value.length == 0) {
             return BackendColumnIterator.empty();
         }
@@ -243,7 +267,10 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         int type = query.inclusiveStart() ?
                    Session.SCAN_GTE_BEGIN : Session.SCAN_GT_BEGIN;
         type |= Session.SCAN_PREFIX_END;
-        return session.scan(this.table(), query.start().asBytes(),
+        return session.scan(this.table(),
+                            this.ownerByIdDelegate.apply(query.start()),
+                            this.ownerByIdDelegate.apply(query.prefix()),
+                            query.start().asBytes(),
                             query.prefix().asBytes(), type);
     }
 
@@ -257,7 +284,10 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
             type |= query.inclusiveEnd() ?
                     Session.SCAN_LTE_END : Session.SCAN_LT_END;
         }
-        return session.scan(this.table(), start, end, type);
+        return session.scan(this.table(),
+                            this.ownerByIdDelegate.apply(query.start()),
+                            this.ownerByIdDelegate.apply(query.end()),
+                            start, end, type);
     }
 
     protected BackendColumnIterator queryByCond(Session session,
@@ -290,7 +320,8 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         if (end != null) {
             type |= Session.SCAN_LT_END;
         }
-        return session.scan(this.table(), start, end, type);
+        return session.scan(this.table(),this.ownerScanDelegate.get(),
+                            this.ownerScanDelegate.get(),start, end, type);
     }
 
     protected static final BackendEntryIterator newEntryIterator(

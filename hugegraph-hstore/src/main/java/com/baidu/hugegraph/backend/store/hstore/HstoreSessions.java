@@ -60,32 +60,34 @@ public abstract class HstoreSessions extends BackendSessionPool {
 
         public abstract Pair<byte[], byte[]> keyRange(String table);
 
-        public abstract void put(String table, byte[] partitionKey, byte[] key, byte[] value);
+        public abstract void put(String table, byte[] ownerKey, byte[] key, byte[] value);
 
-        public abstract void increase(String table, byte[] partitionKey, byte[] key, byte[] value);
+        public abstract void increase(String table, byte[] ownerKey, byte[] key, byte[] value);
 
-        public abstract void delete(String table, byte[] partitionKey, byte[] key);
+        public abstract void delete(String table, byte[] ownerKey, byte[] key);
 
-        public abstract void deletePrefix(String table, byte[] key);
+        public abstract void deletePrefix(String table, byte[] ownerKey, byte[] key);
 
-        public abstract void deleteRange(String table,
-                                         byte[] keyFrom, byte[] keyTo);
+        public abstract void deleteRange(String table,byte[] ownerKeyFrom,
+                                         byte[] ownerKeyTo,byte[] keyFrom,
+                                         byte[] keyTo);
         public abstract byte[] get(String table, byte[] key);
 
-        public abstract byte[] get(String table, byte[] partitionKey, byte[] key);
+        public abstract byte[] get(String table, byte[] ownerKey, byte[] key);
 
         public abstract BackendColumnIterator scan(String table);
 
-        public abstract BackendColumnIterator scan(String table,
+        public abstract BackendColumnIterator scan(String table,byte[] ownerKey,
                                                    byte[] prefix);
 
-        public BackendColumnIterator scan(String table,
-                                          byte[] keyFrom,
+        public BackendColumnIterator scan(String table,byte[] ownerKeyFrom,
+                                          byte[] ownerKeyTo,byte[] keyFrom,
                                           byte[] keyTo) {
-            return this.scan(table, keyFrom, keyTo, SCAN_LT_END);
+            return this.scan(table,ownerKeyFrom,ownerKeyTo, keyFrom, keyTo, SCAN_LT_END);
         }
 
-        public abstract BackendColumnIterator scan(String table,
+        public abstract BackendColumnIterator scan(String table,byte[] ownerKeyFrom,
+                                                   byte[] ownerKeyTo,
                                                    byte[] keyFrom,
                                                    byte[] keyTo,
                                                    int scanType);

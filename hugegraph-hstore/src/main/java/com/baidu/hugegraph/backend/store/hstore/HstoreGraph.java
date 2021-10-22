@@ -24,7 +24,7 @@ public interface HstoreGraph {
 
     HstoreBackendIterator scanPrefix(String table, byte[] key);
 
-    void merge(String table, byte[] partitionKey, byte[] key, byte[] value);
+    void merge(String table, byte[] ownerKey, byte[] key, byte[] value);
 
     void deleteRange(Map<String, Pair<byte[], byte[]>> deleteRangeBatch);
 
