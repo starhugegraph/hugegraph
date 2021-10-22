@@ -27,6 +27,7 @@ import com.baidu.hugegraph.store.HgKvEntry;
 import com.baidu.hugegraph.store.HgOwnerKey;
 import com.baidu.hugegraph.store.HgStoreSession;
 import com.baidu.hugegraph.store.client.HgStoreNodeManager;
+import com.baidu.hugegraph.store.client.util.HgStoreClientConst;
 import com.baidu.hugegraph.util.Bytes;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.StringEncoding;
@@ -345,7 +346,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public byte[] get(String table, byte[] key) {
-            return this.graph.get(table, key);
+            return this.graph.get(table, new HgOwnerKey(
+                                         HgStoreClientConst.ALL_NODE_OWNER,
+                                         key));
         }
 
         @Override

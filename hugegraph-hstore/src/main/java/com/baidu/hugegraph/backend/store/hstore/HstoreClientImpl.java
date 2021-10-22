@@ -14,14 +14,14 @@ public class HstoreClientImpl implements HstoreClient {
 
     @Override
     public void close() {
-        assert graph != null;
+        assert session != null;
 
     }
-    HstoreGraph graph;
+    HgStoreSession session;
     @Override
     public HgStoreSession open(String graphName) {
         HgSessionManager manager = HgSessionManager.getInstance();
-        HgStoreSession session = manager.openSession(graphName);
+        session = manager.openSession(graphName);
         return session;
     }
 }
