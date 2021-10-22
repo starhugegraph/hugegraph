@@ -23,6 +23,7 @@ import com.baidu.hugegraph.backend.store.BackendEntry;
 import com.baidu.hugegraph.backend.store.BackendEntry.BackendColumnIterator;
 import com.baidu.hugegraph.backend.store.BackendEntryIterator;
 import com.baidu.hugegraph.config.HugeConfig;
+import com.baidu.hugegraph.store.HgKvEntry;
 import com.baidu.hugegraph.store.HgOwnerKey;
 import com.baidu.hugegraph.store.HgStoreSession;
 import com.baidu.hugegraph.store.client.HgStoreNodeManager;
@@ -311,9 +312,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
             if (valueMap != null && valueMap.remove(key) != null) {
                 return;
             }
-            Set valueSet = this.deleteBatch.get(table);
+            Set<HgOwnerKey> valueSet = this.deleteBatch.get(table);
             if (valueSet == null) {
-                valueSet = new HashSet();
+                valueSet = new HashSet<HgOwnerKey>();
                 this.deleteBatch.put(table, valueSet);
             }
             valueSet.add(new HgOwnerKey(ownerKey, key));
@@ -321,9 +322,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public void deletePrefix(String table,byte[] ownerKey, byte[] key) {
-            List values = this.deletePrefixBatch.get(table);
+            List<HgOwnerKey> values = this.deletePrefixBatch.get(table);
             if (values == null) {
-                values = new ArrayList();
+                values = new ArrayList<HgOwnerKey>();
                 this.deletePrefixBatch.put(table, values);
             }
             values.add(new HgOwnerKey(ownerKey, key));
@@ -359,16 +360,16 @@ public class HstoreSessionsImpl extends HstoreSessions {
             assert !this.hasChanges();
             HstoreBackendIterator results = new HstoreIterator(
                                                 this.graph.scanAll(table));
-            return new ColumnIterator(table, results);
+            return new ColumnIterator<HstoreBackendIterator>(table, results);
         }
 
         @Override
         public BackendColumnIterator scan(String table,byte[] ownerKey,
                                           byte[] prefix) {
             assert !this.hasChanges();
-            List result=this.graph.scanPrefix(table,new HgOwnerKey(prefix,prefix));
+            List<HgKvEntry> result=this.graph.scanPrefix(table, new HgOwnerKey(prefix, prefix));
             HstoreBackendIterator results = new HstoreIterator(result);
-            return new ColumnIterator(table, results);
+            return new ColumnIterator<HstoreBackendIterator>(table, results);
         }
 
         @Override
@@ -376,12 +377,12 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                           byte[] ownerKeyTo, byte[] keyFrom,
                                           byte[] keyTo, int scanType) {
             assert !this.hasChanges();
-            List result=this.graph.scan(table,
+            List<HgKvEntry> result=this.graph.scan(table,
                                         new HgOwnerKey(ownerKeyFrom,keyFrom),
                                         new HgOwnerKey(ownerKeyTo,keyTo),
                                         scanType);
             HstoreBackendIterator results = new HstoreIterator(result);
-            return new ColumnIterator(table, results, keyFrom, keyTo, scanType);
+            return new ColumnIterator<HstoreBackendIterator>(table, results, keyFrom, keyTo, scanType);
         }
 
         private int size() {

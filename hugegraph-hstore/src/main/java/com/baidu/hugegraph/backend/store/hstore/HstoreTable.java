@@ -27,7 +27,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import com.baidu.hugegraph.backend.id.EdgeId;
-import com.baidu.hugegraph.store.client.util.C;
+import com.baidu.hugegraph.store.client.util.HgStoreClientConst;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 import org.slf4j.Logger;
@@ -97,7 +97,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
 
     Function<BackendEntry,byte[]> ownerDelegate = (entry)->{
         if (entry == null) {
-            return C.ALL_NODE_OWNER;
+            return HgStoreClientConst.ALL_NODE_OWNER;
         }
         Id id = null;
         HugeType type = entry.type();
@@ -122,7 +122,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
     }
 
     Supplier<byte[]> ownerScanDelegate = () -> {
-        return C.ALL_NODE_OWNER;
+        return HgStoreClientConst.ALL_NODE_OWNER;
     };
 
     /**
