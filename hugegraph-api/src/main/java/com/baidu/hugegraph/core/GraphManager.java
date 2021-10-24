@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.baidu.hugegraph.auth.StandardAuthManager;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tinkerpop.gremlin.server.auth.AuthenticationException;
@@ -63,10 +64,6 @@ import com.baidu.hugegraph.license.LicenseVerifier;
 import com.baidu.hugegraph.meta.MetaManager;
 import com.baidu.hugegraph.metrics.MetricsUtil;
 import com.baidu.hugegraph.metrics.ServerReporter;
-import com.baidu.hugegraph.rpc.RpcClientProvider;
-import com.baidu.hugegraph.rpc.RpcConsumerConfig;
-import com.baidu.hugegraph.rpc.RpcProviderConfig;
-import com.baidu.hugegraph.rpc.RpcServer;
 import com.baidu.hugegraph.serializer.JsonSerializer;
 import com.baidu.hugegraph.serializer.Serializer;
 import com.baidu.hugegraph.server.RestServer;
@@ -88,8 +85,7 @@ public final class GraphManager {
     private final Set<String> removingGraphs;
     private final Set<String> creatingGraphs;
     private final HugeAuthenticator authenticator;
-    private final RpcServer rpcServer;
-    private final RpcClientProvider rpcClient;
+    private final AuthManager authManager;
     private final MetaManager metaManager = MetaManager.instance();
 
     private final EventHub eventHub;
@@ -112,9 +108,6 @@ public final class GraphManager {
         this.removingGraphs = ConcurrentHashMap.newKeySet();
         this.creatingGraphs = ConcurrentHashMap.newKeySet();
         this.authenticator = HugeAuthenticator.loadAuthenticator(conf);
-        this.rpcServer = new RpcServer(conf);
-        this.rpcClient = new RpcClientProvider(conf);
-
         this.eventHub = hub;
         this.listenChanges();
 
@@ -123,6 +116,7 @@ public final class GraphManager {
         this.metaManager.connect(this.cluster, MetaManager.MetaDriverType.ETCD,
                                  endpoints);
 
+        this.authManager = new StandardAuthManager(this.metaManager, conf);
         if (conf.get(ServerOptions.GRAPH_LOAD_FROM_LOCAL_CONFIG)) {
             // Load graphs configured in local conf/graphs directory
             this.loadGraphs(ConfigUtil.scanGraphsDir(this.graphsDir));
@@ -134,7 +128,6 @@ public final class GraphManager {
         // Raft will load snapshot firstly then launch election and replay log
         this.waitGraphsStarted();
         this.checkBackendVersionOrExit(conf);
-        this.startRpcServer();
         this.serverStarted();
         this.addMetrics(conf);
         // listen meta changes, e.g. watch dynamically graph add/remove
@@ -360,49 +353,7 @@ public final class GraphManager {
         return this.authenticator().authManager();
     }
 
-    public void close() {
-        this.destroyRpcServer();
-    }
-
-    private void startRpcServer() {
-        if (!this.rpcServer.enabled()) {
-            LOG.info("RpcServer is not enabled, skip starting rpc service");
-            return;
-        }
-
-        RpcProviderConfig serverConfig = this.rpcServer.config();
-
-        // Start auth rpc service if authenticator enabled
-        if (this.authenticator != null) {
-            serverConfig.addService(AuthManager.class,
-                                    this.authenticator.authManager());
-        }
-
-        // Start graph rpc service if RPC_REMOTE_URL enabled
-        if (this.rpcClient.enabled()) {
-            RpcConsumerConfig clientConfig = this.rpcClient.config();
-
-            for (Graph graph : this.graphs.values()) {
-                HugeGraph hugegraph = (HugeGraph) graph;
-                hugegraph.registerRpcServices(serverConfig, clientConfig);
-            }
-        }
-
-        try {
-            this.rpcServer.exportAll();
-        } catch (Throwable e) {
-            this.rpcServer.destroy();
-            throw e;
-        }
-    }
-
-    private void destroyRpcServer() {
-        try {
-            this.rpcClient.destroy();
-        } finally {
-            this.rpcServer.destroy();
-        }
-    }
+    public void close() {}
 
     private HugeAuthenticator authenticator() {
         E.checkState(this.authenticator != null,
@@ -458,7 +409,7 @@ public final class GraphManager {
                 if (this.requireAuthentication()) {
                     String token = config.get(ServerOptions.AUTH_ADMIN_TOKEN);
                     try {
-                        this.authenticator.initAdminUser(token);
+                        // this.authenticator.initAdminUser(token);
                     } catch (Exception e) {
                         throw new BackendException(
                                   "The backend store of '%s' can't " +
