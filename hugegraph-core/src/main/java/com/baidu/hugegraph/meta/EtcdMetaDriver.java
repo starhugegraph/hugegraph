@@ -88,9 +88,12 @@ public class EtcdMetaDriver implements MetaDriver {
         } catch (InterruptedException | ExecutionException e) {
             throw new HugeException("Failed to get key '%s' from etcd", key, e);
         }
-        E.checkState(keyValues.size() == 1,
-                     "There must be only one value for key '%s'", key);
-        return keyValues.get(0).getValue().toString(Charset.defaultCharset());
+
+        if (keyValues.size() > 0) {
+            return keyValues.get(0).getValue().toString(Charset.defaultCharset());
+        }
+
+        return null;
     }
 
     @Override
