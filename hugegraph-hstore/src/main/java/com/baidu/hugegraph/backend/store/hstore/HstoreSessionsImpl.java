@@ -23,7 +23,7 @@ import com.baidu.hugegraph.backend.store.BackendEntry;
 import com.baidu.hugegraph.backend.store.BackendEntry.BackendColumnIterator;
 import com.baidu.hugegraph.backend.store.BackendEntryIterator;
 import com.baidu.hugegraph.config.HugeConfig;
-import com.baidu.hugegraph.store.HgKvEntry;
+import com.baidu.hugegraph.store.HgKvIterator;
 import com.baidu.hugegraph.store.HgOwnerKey;
 import com.baidu.hugegraph.store.HgStoreSession;
 import com.baidu.hugegraph.store.client.HgStoreNodeManager;
@@ -292,9 +292,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
          */
         @Override
         public void put(String table, byte[] ownerKey, byte[] key, byte[] value) {
-            Map valueMap = this.putBatch.get(table);
+            Map<HgOwnerKey, byte[]> valueMap = this.putBatch.get(table);
             if (valueMap == null) {
-                valueMap = new HashMap();
+                valueMap = new HashMap<HgOwnerKey, byte[]>();
                 this.putBatch.put(table, valueMap);
             }
             valueMap.put(new HgOwnerKey(ownerKey, key), value);
@@ -361,18 +361,16 @@ public class HstoreSessionsImpl extends HstoreSessions {
         @Override
         public BackendColumnIterator scan(String table) {
             assert !this.hasChanges();
-            HstoreBackendIterator results = new HstoreIterator(
-                                                this.graph.scanAll(table));
-            return new ColumnIterator<HstoreBackendIterator>(table, results);
+            HgKvIterator results =  this.graph.scanIterator(table);
+            return new ColumnIterator<HgKvIterator>(table, results);
         }
 
         @Override
         public BackendColumnIterator scan(String table,byte[] ownerKey,
                                           byte[] prefix) {
             assert !this.hasChanges();
-            List<HgKvEntry> result=this.graph.scanPrefix(table, new HgOwnerKey(prefix, prefix));
-            HstoreBackendIterator results = new HstoreIterator(result);
-            return new ColumnIterator<HstoreBackendIterator>(table, results);
+            HgKvIterator result=this.graph.scanIterator(table, new HgOwnerKey(ownerKey, prefix));
+            return new ColumnIterator<HgKvIterator>(table, result);
         }
 
         @Override
@@ -380,12 +378,21 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                           byte[] ownerKeyTo, byte[] keyFrom,
                                           byte[] keyTo, int scanType) {
             assert !this.hasChanges();
-            List<HgKvEntry> result=this.graph.scan(table,
+            HgKvIterator result=this.graph.scanIterator(table,
                                         new HgOwnerKey(ownerKeyFrom,keyFrom),
                                         new HgOwnerKey(ownerKeyTo,keyTo),
                                         scanType);
-            HstoreBackendIterator results = new HstoreIterator(result);
-            return new ColumnIterator<HstoreBackendIterator>(table, results, keyFrom, keyTo, scanType);
+            return new ColumnIterator<HgKvIterator>(table, result, keyFrom, keyTo, scanType);
+        }
+
+        @Override
+        public void merge(String table, byte[] ownerKey, byte[] key, byte[] value) {
+            this.graph.merge(table,new HgOwnerKey(ownerKey,key),value);
+        }
+
+        @Override
+        public void truncate() {
+            this.graph.truncate();
         }
 
         private int size() {
@@ -394,7 +401,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         }
     }
 
-    private static class ColumnIterator<T extends HstoreBackendIterator> implements BackendColumnIterator, Countable {
+    private static class ColumnIterator<T extends HgKvIterator> implements BackendColumnIterator, Countable {
 
         private final String table;
         private final T iter;

@@ -236,6 +236,7 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
 
     @Override
     public void truncate() {
+        this.sessions.session().truncate();
         LOG.debug("Store truncated: {}", this.store);
     }
 

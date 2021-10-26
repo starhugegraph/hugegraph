@@ -95,6 +95,8 @@ public abstract class HstoreSessions extends BackendSessionPool {
         public static boolean matchScanType(int expected, int actual) {
             return (expected & actual) == expected;
         }
+        public abstract void merge(String table, byte[] ownerKey, byte[] key, byte[] value);
+        public abstract void truncate();
     }
 
     public interface Countable {
