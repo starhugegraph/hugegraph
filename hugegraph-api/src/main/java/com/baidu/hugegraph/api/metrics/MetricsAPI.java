@@ -33,6 +33,7 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.QueryParam;
 
+import com.baidu.hugegraph.version.ApiVersion;
 import com.codahale.metrics.Meter;
 import org.slf4j.Logger;
 
@@ -63,16 +64,13 @@ public class MetricsAPI extends API {
         JsonUtil.registerModule(new MetricsModule(SECONDS, MILLISECONDS, false));
     }
 
-    //prometheus export syntax header
     private static final String strHelp = "# HELP ";
     private static final String strType = "# TYPE ";
-    //prometheus metrics types for hugegraph
     private static final String histogramType = "histogram";
     private static final String unTyped = "untyped";
-    //prometheus metrics static strings
+    private static final String gaugeType = "gauge";
     private static final String endlStr = "\n";
     private static final String spaceStr = " ";
-    //prometheus metrics prefix
     private static final String countAttr = "{name=\"count\",} ";
     private static final String minAttr = "{name=\"min\",} ";
     private static final String maxAttr = "{name=\"max\",} ";
@@ -106,20 +104,20 @@ public class MetricsAPI extends API {
     @Timed
     @Path("backend")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner= $action=metrics_read", "dynamic"})
+    @RolesAllowed({"admin", "$owner= $action=metrics_read"})
     public String backend(@Context GraphManager manager) {
         Map<String, Map<String, Object>> results = InsertionOrderUtil.newMap();
         for (String graph : manager.graphs()) {
+            HugeGraph g = manager.graph(graph);
+            Map<String, Object> metrics = InsertionOrderUtil.newMap();
+            metrics.put(BackendMetrics.BACKEND, g.backend());
             try {
-                HugeGraph g = manager.graph(graph);
-                Map<String, Object> metrics = InsertionOrderUtil.newMap();
-                metrics.put(BackendMetrics.BACKEND, g.backend());
                 metrics.putAll(g.metadata(null, "metrics"));
-                results.put(graph, metrics);
             } catch (Throwable e) {
-                // metrics.put(BackendMetrics.EXCEPTION, e.toString());
+                metrics.put(BackendMetrics.EXCEPTION, e.toString());
                 LOG.debug("Failed to get backend metrics", e);
             }
+            results.put(graph, metrics);
         }
         return JsonUtil.toJson(results);
     }
@@ -138,9 +136,9 @@ public class MetricsAPI extends API {
         result.put("timers", reporter.timers());
         return JsonUtil.toJson(result);
     }
-    /**
-     * exportSnapshort export snapshort to prometheus syntax
-     */
+    private String replaceDotDashInKey(String orgKey){
+       return orgKey.replace(".", "_").replace("-", "_");
+    }
     private String exportSnapshort(final String helpName, final Snapshot snapshot){
         if ( snapshot != null ) {
             StringBuilder snapMetrics = new StringBuilder();
@@ -158,20 +156,23 @@ public class MetricsAPI extends API {
         }
         return "";
     }
-    /**
-     * prometheuseAll export gauges, histograms, meters, timer to prometheus syntax
-     */
+
     private String prometheuseAll() {
         StringBuilder promeMetrics = new StringBuilder();
         ServerReporter reporter = ServerReporter.instance();
-        String helpName = "";
+        String helpName = "hugegraph_info";
+        //version
+        promeMetrics.append(strHelp).append(helpName).append(endlStr);
+        promeMetrics.append(strType).append(helpName).append(spaceStr+ unTyped + endlStr);
+        promeMetrics.append(helpName).append(spaceStr + ApiVersion.VERSION.toString() + endlStr);
+
         //gauges
         for (String key : reporter.gauges().keySet()) {
             final com.codahale.metrics.Gauge<?> gauge = reporter.gauges().get(key);
             if (gauge != null) {
-                helpName = key.replace(".", "_");
+                helpName = replaceDotDashInKey(key);
                 promeMetrics.append(strHelp).append(helpName).append(endlStr);
-                promeMetrics.append(strType).append(helpName).append(spaceStr+ unTyped + endlStr);
+                promeMetrics.append(strType).append(helpName).append(spaceStr+ gaugeType + endlStr);
                 promeMetrics.append(helpName).append(spaceStr + gauge.getValue() + endlStr);
             }
         }
@@ -180,7 +181,7 @@ public class MetricsAPI extends API {
         for (String hkey : reporter.histograms().keySet()) {
             final Histogram histogram = reporter.histograms().get(hkey);
             if (histogram != null) {
-                helpName = hkey.replace(".", "_");
+                helpName = replaceDotDashInKey(hkey);
                 promeMetrics.append(strHelp).append(helpName).append(endlStr);
                 promeMetrics.append(strType).append(helpName).append(spaceStr+ histogramType + endlStr);
 
@@ -193,7 +194,7 @@ public class MetricsAPI extends API {
         for (String mkey : reporter.meters().keySet()) {
             final Meter metric = reporter.meters().get(mkey);
             if (metric != null) {
-                helpName = mkey.replace(".", "_");
+                helpName = replaceDotDashInKey(mkey);
                 promeMetrics.append(strHelp).append(helpName).append(endlStr);
                 promeMetrics.append(strType).append(helpName).append(spaceStr+ histogramType + endlStr);
 
@@ -209,7 +210,7 @@ public class MetricsAPI extends API {
         for (String tkey : reporter.timers().keySet()) {
             final com.codahale.metrics.Timer timer = reporter.timers().get(tkey);
             if (timer != null) {
-                helpName = tkey.replace(".", "_");
+                helpName = replaceDotDashInKey(tkey);
                 promeMetrics.append(strHelp).append(helpName).append(endlStr);
                 promeMetrics.append(strType).append(helpName).append(spaceStr+ histogramType + endlStr);
 
