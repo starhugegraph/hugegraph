@@ -491,17 +491,6 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public boolean hasNext() {
             this.matched = false;
             return this.iter.hasNext();
-            //            if (iter.hasNext()) {
-            //                this.position = ((HstoreIterator)iter.next()).key();
-            //                if (!this.match(Session.SCAN_ANY)) {
-            //                    this.matched = this.filter(this.position);
-            //                }
-            //            }
-            //            if (!this.matched) {
-            //                this.position = null;
-            //                this.close();
-            //            }
-            //            return this.matched;
         }
 
         private boolean filter(byte[] key) {

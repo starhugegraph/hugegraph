@@ -237,8 +237,8 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
             PageState page = PageState.fromString(query.page());
             byte[] begin = page.position();
             return session.scan(this.table(),
-                                this.ownerScanDelegate.get(),
-                                this.ownerScanDelegate.get(),
+                                this.getOwnerScanDelegate().get(),
+                                this.getOwnerScanDelegate().get(),
                                 begin, null, Session.SCAN_ANY);
         } else {
             return session.scan(this.table());
