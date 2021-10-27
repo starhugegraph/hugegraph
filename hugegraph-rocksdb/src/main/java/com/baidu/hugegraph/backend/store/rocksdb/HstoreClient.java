@@ -4,6 +4,7 @@ import com.baidu.hugegraph.backend.store.BackendSession;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.store.*;
 import com.baidu.hugegraph.store.client.HgStoreNodeManager;
+import com.baidu.hugegraph.store.client.util.HgStoreClientConst;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -72,7 +73,8 @@ public class HstoreClient implements Closeable {
 
     public byte[] get(String table, byte[] key) {
 
-        return session.get(table, key);
+        return session.get(table,new HgOwnerKey(HgStoreClientConst.ALL_NODE_OWNER,
+                                                key));
     }
 
     public  boolean commit() {

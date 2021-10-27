@@ -47,17 +47,19 @@ public class HstoreTables {
 
         public long getCounter(Session session, HugeType type) {
             byte[] key = new byte[]{type.code()};
-            byte[] value = session.get(this.table(), key);
+            byte[] value = session.get(this.table(),COUNTER_OWNER, key);
             if (value.length != 0) {
                 return l(value);
             } else {
                 return 0L;
             }
         }
+        //for Counter to use the specific key
+        public  static  final byte[] COUNTER_OWNER = new byte[] { 'c' };
 
         public void increaseCounter(Session session, HugeType type, long increment) {
             byte[] key = new byte[]{type.code()};
-            session.increase(this.table(), getOwnerDelegate().apply(null),
+            session.increase(this.table(), COUNTER_OWNER,
                              key, b(increment));
         }
 

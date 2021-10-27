@@ -79,6 +79,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
                         nodeManager.addNode(database + "/g",
                                             nodeManager.getNodeBuilder().setAddress(
                                                     pdPeers[i]).build());
+                        nodeManager.addNode(this.graphName,
+                                            nodeManager.getNodeBuilder().setAddress(
+                                                    pdPeers[i]).build());
                     }
                     nodeManager.addNode(database + "/s",
                                         nodeManager.getNodeBuilder().setAddress(
@@ -193,7 +196,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public void close() {
-            assert this.closeable();
+//            assert this.closeable();
             try {
                 this.client.close();
                 this.opened = false;
@@ -437,47 +440,47 @@ public class HstoreSessionsImpl extends HstoreSessions {
         }
 
         private void checkArguments() {
-            //            E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
-            //                            this.match(Session.SCAN_PREFIX_END)),
-            //                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
-            //                            "SCAN_PREFIX_WITH_END at the same time");
-            //
-            //            E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
-            //                            this.match(Session.SCAN_GT_BEGIN)),
-            //                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
-            //                            "SCAN_GT_BEGIN/SCAN_GTE_BEGIN at the same time");
-            //
-            //            E.checkArgument(!(this.match(Session.SCAN_PREFIX_END) &&
-            //                            this.match(Session.SCAN_LT_END)),
-            //                    "Can't set SCAN_PREFIX_WITH_END and " +
-            //                            "SCAN_LT_END/SCAN_LTE_END at the same time");
-            //
-            //            if (this.match(Session.SCAN_PREFIX_BEGIN)) {
-            //                E.checkArgument(this.keyBegin != null,
-            //                        "Parameter `keyBegin` can't be null " +
-            //                                "if set SCAN_PREFIX_WITH_BEGIN");
-            //                E.checkArgument(this.keyEnd == null,
-            //                        "Parameter `keyEnd` must be null " +
-            //                                "if set SCAN_PREFIX_WITH_BEGIN");
-            //            }
-            //
-            //            if (this.match(Session.SCAN_PREFIX_END)) {
-            //                E.checkArgument(this.keyEnd != null,
-            //                        "Parameter `keyEnd` can't be null " +
-            //                                "if set SCAN_PREFIX_WITH_END");
-            //            }
-            //
-            //            if (this.match(Session.SCAN_GT_BEGIN)) {
-            //                E.checkArgument(this.keyBegin != null,
-            //                        "Parameter `keyBegin` can't be null " +
-            //                                "if set SCAN_GT_BEGIN or SCAN_GTE_BEGIN");
-            //            }
-            //
-            //            if (this.match(Session.SCAN_LT_END)) {
-            //                E.checkArgument(this.keyEnd != null,
-            //                        "Parameter `keyEnd` can't be null " +
-            //                                "if set SCAN_LT_END or SCAN_LTE_END");
-            //            }
+            E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
+                            this.match(Session.SCAN_PREFIX_END)),
+                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
+                            "SCAN_PREFIX_WITH_END at the same time");
+
+            E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
+                            this.match(Session.SCAN_GT_BEGIN)),
+                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
+                            "SCAN_GT_BEGIN/SCAN_GTE_BEGIN at the same time");
+
+            E.checkArgument(!(this.match(Session.SCAN_PREFIX_END) &&
+                            this.match(Session.SCAN_LT_END)),
+                    "Can't set SCAN_PREFIX_WITH_END and " +
+                            "SCAN_LT_END/SCAN_LTE_END at the same time");
+
+            if (this.match(Session.SCAN_PREFIX_BEGIN)) {
+                E.checkArgument(this.keyBegin != null,
+                        "Parameter `keyBegin` can't be null " +
+                                "if set SCAN_PREFIX_WITH_BEGIN");
+                E.checkArgument(this.keyEnd == null,
+                        "Parameter `keyEnd` must be null " +
+                                "if set SCAN_PREFIX_WITH_BEGIN");
+            }
+
+            if (this.match(Session.SCAN_PREFIX_END)) {
+                E.checkArgument(this.keyEnd != null,
+                        "Parameter `keyEnd` can't be null " +
+                                "if set SCAN_PREFIX_WITH_END");
+            }
+
+            if (this.match(Session.SCAN_GT_BEGIN)) {
+                E.checkArgument(this.keyBegin != null,
+                        "Parameter `keyBegin` can't be null " +
+                                "if set SCAN_GT_BEGIN or SCAN_GTE_BEGIN");
+            }
+
+            if (this.match(Session.SCAN_LT_END)) {
+                E.checkArgument(this.keyEnd != null,
+                        "Parameter `keyEnd` can't be null " +
+                                "if set SCAN_LT_END or SCAN_LTE_END");
+            }
         }
 
         private boolean match(int expected) {
