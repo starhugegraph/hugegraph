@@ -103,9 +103,6 @@ public abstract class AbstractBackendStoreProvider
     public void close() throws BackendException {
         LOG.debug("Graph '{}' close StoreProvider", this.graph);
         this.checkOpened();
-        for (BackendStore store : this.stores.values()) {
-            store.close(true);
-        }
         this.storeEventHub.notify(Events.STORE_CLOSE, this);
     }
 
