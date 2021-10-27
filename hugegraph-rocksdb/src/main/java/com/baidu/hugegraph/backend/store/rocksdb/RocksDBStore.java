@@ -411,9 +411,9 @@ public abstract class RocksDBStore extends AbstractBackendStore<Session> {
     @Override
     public void close(boolean force) {
         LOG.debug("Store close: {}", this.store);
-
-        this.checkOpened();
-        this.closeSessions(force);
+        if (!this.sessions.closed() && this.opened()) {
+            this.closeSessions(force);
+        }
     }
 
     @Override
