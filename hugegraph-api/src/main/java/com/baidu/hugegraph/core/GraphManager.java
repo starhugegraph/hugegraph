@@ -132,7 +132,9 @@ public final class GraphManager {
         this.serverStarted();
         this.addMetrics(conf);
         // listen meta changes, e.g. watch dynamically graph add/remove
-        this.listenMetaChanges();
+        if (!conf.get(ServerOptions.AUTH_SERVER)) {
+            this.listenMetaChanges();
+        }
     }
 
     public void destroy() {
@@ -151,7 +153,12 @@ public final class GraphManager {
             LOG.debug("RestServer accepts event 'graph.drop'");
             event.checkArgs(String.class);
             String name = (String) event.args()[0];
-            this.graphs.remove(name);
+            HugeGraph graph = (HugeGraph) this.graphs.remove(name);
+            try {
+                graph.close();
+            } catch (Exception e) {
+                LOG.warn("Failed to close graph", e);
+            }
             return null;
         });
     }
