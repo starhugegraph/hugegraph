@@ -132,7 +132,7 @@ public class EtcdMetaDriver implements MetaDriver {
             response = this.client.getKVClient().get(toByteSequence(prefix),
                                                      getOption).get();
         } catch (InterruptedException | ExecutionException e) {
-            throw new HugeException("Failed to scan etcd with prefix '%s'",
+            throw new HugeException("Failed to scan etcd with prefix " +
                                     prefix, e);
         }
         int size = (int) response.getCount();

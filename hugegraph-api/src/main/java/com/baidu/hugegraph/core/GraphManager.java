@@ -117,6 +117,7 @@ public final class GraphManager {
                                  endpoints);
 
         this.authManager = new StandardAuthManager(this.metaManager, conf);
+        this.authenticator.setup(this.authManager);
         if (conf.get(ServerOptions.GRAPH_LOAD_FROM_LOCAL_CONFIG)) {
             // Load graphs configured in local conf/graphs directory
             this.loadGraphs(ConfigUtil.scanGraphsDir(this.graphsDir));
@@ -304,6 +305,10 @@ public final class GraphManager {
     }
 
     public Serializer serializer(Graph g) {
+        return JsonSerializer.instance();
+    }
+
+    public Serializer serializer() {
         return JsonSerializer.instance();
     }
 

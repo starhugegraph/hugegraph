@@ -19,16 +19,6 @@
 
 package com.baidu.hugegraph.auth;
 
-import java.io.IOException;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import javax.security.sasl.AuthenticationException;
-import com.baidu.hugegraph.meta.MetaManager;
-import org.slf4j.Logger;
-
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.auth.SchemaDefine.AuthElement;
 import com.baidu.hugegraph.backend.cache.Cache;
@@ -36,15 +26,22 @@ import com.baidu.hugegraph.backend.cache.CacheManager;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.config.HugeConfig;
-import com.baidu.hugegraph.event.EventListener;
+import com.baidu.hugegraph.meta.MetaManager;
 import com.baidu.hugegraph.util.E;
-import com.baidu.hugegraph.util.Events;
 import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.util.StringEncoding;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-
 import io.jsonwebtoken.Claims;
+import org.slf4j.Logger;
+
+import javax.security.sasl.AuthenticationException;
+import javax.ws.rs.ForbiddenException;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 
 public class StandardAuthManager implements AuthManager {
 
@@ -100,14 +97,122 @@ public class StandardAuthManager implements AuthManager {
         this.tokenCache.clear();
     }
 
+    private AuthElement updateCreator(AuthElement elem) {
+        String username = currentUsername();
+        if (username != null && elem.creator() == null) {
+            elem.creator(username);
+        }
+        return elem;
+    }
+
+    private String currentUsername() {
+        HugeGraphAuthProxy.Context context = HugeGraphAuthProxy.getContext();
+        if (context != null) {
+            return context.user().username();
+        }
+        return null;
+    }
+
+    private <V> V verifyResPermission(HugePermission actionPerm,
+                                      boolean throwIfNoPerm,
+                                      Supplier<ResourceObject<V>> fetcher,
+                                      Supplier<Boolean> checker) {
+        // TODO: call verifyPermission() before actual action
+        HugeGraphAuthProxy.Context context = HugeGraphAuthProxy.getContext();
+        E.checkState(context != null,
+                     "Missing authentication context " +
+                     "when verifying resource permission");
+        String username = context.user().username();
+        Object role = context.user().role();
+        ResourceObject<V> ro = fetcher.get();
+        String action = actionPerm.string();
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Verify permission {} {} for user '{}' with role {}",
+                      action, ro, username, role);
+        }
+
+        V result = ro.operated();
+        // Verify role permission
+        if (!HugeAuthenticator.RolePerm.match(role, actionPerm, ro)) {
+            result = null;
+        }
+        // Verify permission for one access another, like: granted <= user role
+        else if (ro.type().isGrantOrUser()) {
+            AuthElement element = (AuthElement) ro.operated();
+            RolePermission grant = rolePermission(element);
+            if (!HugeAuthenticator.RolePerm.match(role, grant, ro)) {
+                result = null;
+            }
+        }
+
+        // Check resource detail if needed
+        if (result != null && checker != null && !checker.get()) {
+            result = null;
+        }
+
+        if (!(actionPerm == HugePermission.READ && ro.type().isSchema())) {
+            String status = result == null ? "denied" : "allowed";
+            LOG.info("User '{}' is {} to {} {}", username, status, action, ro);
+        }
+
+        // result = null means no permission, throw if needed
+        if (result == null && throwIfNoPerm) {
+            String error = String.format("Permission denied: %s %s",
+                    action, ro);
+            throw new ForbiddenException(error);
+        }
+        return result;
+    }
+
+    private <V> V verifyResPermission(HugePermission actionPerm,
+                                      boolean throwIfNoPerm,
+                                      Supplier<ResourceObject<V>> fetcher) {
+        return verifyResPermission(actionPerm, throwIfNoPerm, fetcher, null);
+    }
+
+    private <V extends AuthElement> V verifyUserPermission(
+            HugePermission actionPerm,
+            boolean throwIfNoPerm,
+            Supplier<V> elementFetcher) {
+        return verifyResPermission(actionPerm, throwIfNoPerm, () -> {
+            V elem = elementFetcher.get();
+            @SuppressWarnings("unchecked")
+            ResourceObject<V> r = (ResourceObject<V>) ResourceObject.of("SYSTEM",
+                    elem);
+            return r;
+        });
+    }
+
+    private <V extends AuthElement> V verifyUserPermission(
+            HugePermission actionPerm,
+            V elementFetcher) {
+        return verifyUserPermission(actionPerm, true, () -> elementFetcher);
+    }
+
+    private <V extends AuthElement> List<V> verifyUserPermission(
+                                            HugePermission actionPerm,
+                                            List<V> elems) {
+        List<V> results = new ArrayList<>();
+        for (V elem : elems) {
+            V r = verifyUserPermission(actionPerm, false, () -> elem);
+            if (r != null) {
+                results.add(r);
+            }
+        }
+        return results;
+    }
+
     @Override
     public Id createUser(HugeUser user) {
+        verifyUserPermission(HugePermission.WRITE, user);
         Id username = IdGenerator.of(user.name());
         HugeUser existed = this.usersCache.get(username);
         E.checkArgument(existed == null,
                         "The user name '%s' has existed", user.name());
 
         try {
+            this.updateCreator(user);
             this.metaManager.createUser(user);
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
@@ -127,6 +232,13 @@ public class StandardAuthManager implements AuthManager {
         }
 
         try {
+            String current = currentUsername();
+            existed = this.findUser(user.name());
+            if (!existed.name().equals(current)) {
+                verifyUserPermission(HugePermission.WRITE, user);
+            }
+
+            this.updateCreator(user);
             this.metaManager.updateUser(user);
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
@@ -138,13 +250,17 @@ public class StandardAuthManager implements AuthManager {
 
     @Override
     public HugeUser deleteUser(Id id) {
-        HugeUser existed = this.usersCache.get(id);
-        if (existed != null) {
+        HugeUser user = this.usersCache.get(id);
+        if (user != null) {
             this.invalidateUserCache();
             this.invalidatePasswordCache(id);
         }
 
         try {
+            user = this.findUser(id.asString());
+            E.checkArgument(!HugeAuthenticator.USER_ADMIN.equals(user.name()),
+                            "Can't delete user '%s'", user.name());
+            verifyUserPermission(HugePermission.DELETE, user);
             return this.metaManager.deleteUser(id);
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
@@ -155,39 +271,43 @@ public class StandardAuthManager implements AuthManager {
         }
     }
 
+    /**
+     * findUser: not verifyUserPermission
+     */
     @Override
     public HugeUser findUser(String name) {
+        String current = currentUsername();
         Id username = IdGenerator.of(name);
         HugeUser user = this.usersCache.get(username);
-        if (user != null) {
-            return user;
-        }
-
-        try {
-            user = this.metaManager.findUser(name);
-            if (user != null) {
-                this.usersCache.update(username, user);
+        if (user == null) {
+            try {
+                user = this.metaManager.findUser(name);
+                if (user != null) {
+                    this.usersCache.update(username, user);
+                }
+            } catch (IOException e) {
+                throw new HugeException("IOException occurs when " +
+                                        "deserialize user", e);
+            } catch (ClassNotFoundException e) {
+                throw new HugeException("ClassNotFoundException occurs when " +
+                                        "deserialize user", e);
             }
-
-            return user;
-        } catch (IOException e) {
-            throw new HugeException("IOException occurs when " +
-                                    "deserialize user", e);
-        } catch (ClassNotFoundException e) {
-            throw new HugeException("ClassNotFoundException occurs when " +
-                                    "deserialize user", e);
         }
+
+        return user;
     }
 
     @Override
     public HugeUser getUser(Id id) {
-        return this.findUser(id.asString());
+        return verifyUserPermission(HugePermission.READ,
+                                    this.findUser(id.asString()));
     }
 
     @Override
     public List<HugeUser> listUsers(List<Id> ids) {
         try {
-            return this.metaManager.listUsers(ids);
+            return verifyUserPermission(HugePermission.READ,
+                                        this.metaManager.listUsers(ids));
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
                                     "deserialize user", e);
@@ -200,7 +320,8 @@ public class StandardAuthManager implements AuthManager {
     @Override
     public List<HugeUser> listAllUsers(long limit) {
         try {
-            return this.metaManager.listAllUsers(limit);
+            return verifyUserPermission(HugePermission.READ,
+                                        this.metaManager.listAllUsers(limit));
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
                                     "deserialize user", e);
@@ -212,9 +333,12 @@ public class StandardAuthManager implements AuthManager {
 
     @Override
     public Id createGroup(String graphSpace, HugeGroup group) {
-        this.invalidateUserCache();
         try {
-            return this.metaManager.createGroup(graphSpace, group);
+            verifyUserPermission(HugePermission.WRITE, group);
+            this.updateCreator(group);
+            Id result = this.metaManager.createGroup(graphSpace, group);
+            this.invalidateUserCache();
+            return result;
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
                                     "serialize group", e);
@@ -225,6 +349,8 @@ public class StandardAuthManager implements AuthManager {
     public Id updateGroup(String graphSpace, HugeGroup group) {
         this.invalidateUserCache();
         try {
+            verifyUserPermission(HugePermission.WRITE, group);
+            this.updateCreator(group);
             return this.metaManager.updateGroup(graphSpace, group);
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
@@ -236,6 +362,8 @@ public class StandardAuthManager implements AuthManager {
     public HugeGroup deleteGroup(String graphSpace, Id id) {
         this.invalidateUserCache();
         try {
+            verifyUserPermission(HugePermission.DELETE,
+                                 this.metaManager.getGroup(graphSpace, id));
             return this.metaManager.deleteGroup(graphSpace, id);
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
@@ -249,7 +377,8 @@ public class StandardAuthManager implements AuthManager {
     @Override
     public HugeGroup getGroup(String graphSpace, Id id) {
         try {
-            return this.metaManager.getGroup(graphSpace, id);
+            return verifyUserPermission(HugePermission.READ,
+                   this.metaManager.getGroup(graphSpace, id));
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
                                     "deserialize group", e);
@@ -262,7 +391,8 @@ public class StandardAuthManager implements AuthManager {
     @Override
     public List<HugeGroup> listGroups(String graphSpace, List<Id> ids) {
         try {
-            return this.metaManager.listGroups(graphSpace, ids);
+            return verifyUserPermission(HugePermission.READ,
+                   this.metaManager.listGroups(graphSpace, ids));
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
                                     "deserialize group", e);
@@ -275,7 +405,8 @@ public class StandardAuthManager implements AuthManager {
     @Override
     public List<HugeGroup> listAllGroups(String graphSpace, long limit) {
         try {
-            return this.metaManager.listAllGroups(graphSpace, limit);
+            return verifyUserPermission(HugePermission.READ,
+                   this.metaManager.listAllGroups(graphSpace, limit));
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
                                     "deserialize group", e);
@@ -287,9 +418,13 @@ public class StandardAuthManager implements AuthManager {
 
     @Override
     public Id createTarget(String graphSpace, HugeTarget target) {
-        this.invalidateUserCache();
+
         try {
-            return this.metaManager.createTarget(graphSpace, target);
+            this.updateCreator(target);
+            verifyUserPermission(HugePermission.WRITE, target);
+            Id result = this.metaManager.createTarget(graphSpace, target);
+            this.invalidateUserCache();
+            return result;
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
                                     "serialize target", e);
@@ -298,9 +433,12 @@ public class StandardAuthManager implements AuthManager {
 
     @Override
     public Id updateTarget(String graphSpace, HugeTarget target) {
-        this.invalidateUserCache();
         try {
-            return this.metaManager.updateTarget(graphSpace, target);
+            this.updateCreator(target);
+            verifyUserPermission(HugePermission.WRITE, target);
+            Id result = this.metaManager.updateTarget(graphSpace, target);
+            this.invalidateUserCache();
+            return result;
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
                                     "serialize target", e);
@@ -309,9 +447,10 @@ public class StandardAuthManager implements AuthManager {
 
     @Override
     public HugeTarget deleteTarget(String graphSpace, Id id) {
-        this.invalidateUserCache();
         try {
-            return this.metaManager.deleteTarget(graphSpace, id);
+            HugeTarget target = this.metaManager.deleteTarget(graphSpace, id);
+            this.invalidateUserCache();
+            return target;
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
                                     "deserialize target", e);
@@ -364,6 +503,7 @@ public class StandardAuthManager implements AuthManager {
     public Id createBelong(String graphSpace, HugeBelong belong) {
         this.invalidateUserCache();
         try {
+            this.updateCreator(belong);
             return this.metaManager.createBelong(graphSpace, belong);
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
@@ -378,6 +518,7 @@ public class StandardAuthManager implements AuthManager {
     public Id updateBelong(String graphSpace, HugeBelong belong) {
         this.invalidateUserCache();
         try {
+            this.updateCreator(belong);
             return this.metaManager.updateBelong(graphSpace, belong);
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
@@ -473,6 +614,7 @@ public class StandardAuthManager implements AuthManager {
     public Id createAccess(String graphSpace, HugeAccess access) {
         this.invalidateUserCache();
         try {
+            this.updateCreator(access);
             return this.metaManager.createAccess(graphSpace, access);
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
@@ -487,6 +629,7 @@ public class StandardAuthManager implements AuthManager {
     public Id updateAccess(String graphSpace, HugeAccess access) {
         this.invalidateUserCache();
         try {
+            this.updateCreator(access);
             return this.metaManager.updateAccess(graphSpace, access);
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
@@ -580,6 +723,11 @@ public class StandardAuthManager implements AuthManager {
     }
 
     @Override
+    public List<String> listGraphSpace() {
+        return metaManager.listGraphSpace();
+    }
+
+    @Override
     public HugeUser matchUser(String name, String password) {
         E.checkArgumentNotNull(name, "User name can't be null");
         E.checkArgumentNotNull(password, "User password can't be null");
@@ -601,9 +749,19 @@ public class StandardAuthManager implements AuthManager {
     }
 
     @Override
-    public RolePermission rolePermission(String graphSpace, AuthElement element) {
+    public RolePermission rolePermission(AuthElement element) {
+        String username = currentUsername();
+        /*
+        if (!(element instanceof HugeUser) ||
+                !((HugeUser) element).name().equals(username)) {
+            verifyUserPermission(HugePermission.READ, element);
+        } */
+        return this.rolePermissionInner(element);
+    }
+
+    public RolePermission rolePermissionInner(AuthElement element) {
         if (element instanceof HugeUser) {
-            return this.rolePermission(graphSpace, (HugeUser) element);
+            return this.rolePermission((HugeUser) element);
         } else if (element instanceof HugeTarget) {
             return this.rolePermission((HugeTarget) element);
         }
@@ -611,11 +769,11 @@ public class StandardAuthManager implements AuthManager {
         List<HugeAccess> accesses = new ArrayList<>();
         if (element instanceof HugeBelong) {
             HugeBelong belong = (HugeBelong) element;
-            accesses.addAll(this.listAccessByGroup(graphSpace,
+            accesses.addAll(this.listAccessByGroup(belong.graphSpace(),
                                                    belong.target(), -1));
         } else if (element instanceof HugeGroup) {
             HugeGroup group = (HugeGroup) element;
-            accesses.addAll(this.listAccessByGroup(graphSpace, group.id(), -1));
+            accesses.addAll(this.listAccessByGroup(group.graphSpace(), group.id(), -1));
         } else if (element instanceof HugeAccess) {
             HugeAccess access = (HugeAccess) element;
             accesses.add(access);
@@ -624,38 +782,46 @@ public class StandardAuthManager implements AuthManager {
                             element);
         }
 
-        return this.rolePermission(graphSpace, element);
+        return this.rolePermission(accesses);
     }
 
-    private RolePermission rolePermission(String graphSpace, HugeUser user) {
+    private RolePermission rolePermission(HugeUser user) {
         if (user.role() != null) {
             // Return cached role (40ms => 10ms)
             return user.role();
         }
 
         // Collect accesses by user
-        List<HugeAccess> accesses = new ArrayList<>();
-        List<HugeBelong> belongs = this.listBelongByUser(graphSpace,
-                                                         user.id(), -1);
-        for (HugeBelong belong : belongs) {
-            accesses.addAll(this.listAccessByGroup(graphSpace,
-                                                   belong.target(), -1));
+        RolePermission role = new RolePermission();
+        List<String> graphSpaces = this.listGraphSpace();
+        for (String graphSpace : graphSpaces) {
+            List<HugeBelong> belongs = this.listBelongByUser(graphSpace,
+                                                             user.id(), -1);
+            for (HugeBelong belong : belongs) {
+                List<HugeAccess> accesses = this.listAccessByGroup(graphSpace,
+                                            belong.target(), -1);
+                for (HugeAccess access : accesses) {
+                    HugePermission accessPerm = access.permission();
+                    HugeTarget target = this.getTarget(graphSpace, access.target());
+                    role.add(graphSpace, target.graph(),
+                             accessPerm, target.resources());
+                }
+            }
         }
-
-        // Collect permissions by accesses
-        RolePermission role = this.rolePermission(graphSpace, accesses);
 
         user.role(role);
         return role;
     }
 
-    private RolePermission rolePermission(String graphSpace, List<HugeAccess> accesses) {
+    private RolePermission rolePermission(List<HugeAccess> accesses) {
         // Mapping of: graph -> action -> resource
         RolePermission role = new RolePermission();
         for (HugeAccess access : accesses) {
             HugePermission accessPerm = access.permission();
-            HugeTarget target = this.getTarget(graphSpace, access.target());
-            role.add(target.graph(), accessPerm, target.resources());
+            HugeTarget target = this.getTarget(access.graphSpace(),
+                                               access.target());
+            role.add(target.graphSpace(), target.graph(),
+                     accessPerm, target.resources());
         }
         return role;
     }
@@ -663,7 +829,7 @@ public class StandardAuthManager implements AuthManager {
     private RolePermission rolePermission(HugeTarget target) {
         RolePermission role = new RolePermission();
         // TODO: improve for the actual meaning
-        role.add(target.graph(), HugePermission.READ, target.resources());
+        role.add(target.graphSpace(), target.graph(), HugePermission.READ, target.resources());
         return role;
     }
 

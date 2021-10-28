@@ -61,8 +61,8 @@ public class RolePermission {
 
     // Mapping of: graphSpace -> graph -> action -> resource
     @JsonProperty("roles")
-    // private final Map<String, Map<HugePermission, List<HugeResource>>> roles;
-    private final Map<String, Map<String, Map<HugePermission, List<HugeResource>>>> roles;
+    private final Map<String, Map<String, Map<HugePermission,
+                                              List<HugeResource>>>> roles;
 
     public RolePermission() {
         this(new TreeMap<>());
@@ -80,9 +80,6 @@ public class RolePermission {
 
     protected void add(String graphSpace, String graph, HugePermission action,
                        List<HugeResource> resources) {
-        //Map<HugePermission, List<HugeResource>> permissions =
-        //                    this.roles.get(graphSpace).get(graph);
-
         Map<String, Map<HugePermission, List<HugeResource>>> graphPermissions =
                                         this.roles.get(graphSpace);
         if (graphPermissions == null) {
@@ -184,8 +181,8 @@ public class RolePermission {
         return role;
     }
 
-    public static RolePermission all() {
-        return role(null, null, HugePermission.ANY);
+    public static RolePermission all(String admin) {
+        return role(admin, null, HugePermission.ANY);
     }
 
     public static RolePermission role(String graphSpace, String graph,

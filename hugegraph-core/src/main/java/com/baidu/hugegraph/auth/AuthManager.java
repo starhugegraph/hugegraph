@@ -20,8 +20,6 @@
 package com.baidu.hugegraph.auth;
 
 import java.util.List;
-import java.util.Set;
-
 import javax.security.sasl.AuthenticationException;
 
 import com.baidu.hugegraph.auth.SchemaDefine.AuthElement;
@@ -75,8 +73,9 @@ public interface AuthManager {
     public List<HugeAccess> listAccessByTarget(String graphSpace,
                                                Id target, long limit);
 
+    public List<String> listGraphSpace();
     public HugeUser matchUser(String name, String password);
-    public RolePermission rolePermission(String graphSpace, AuthElement element);
+    public RolePermission rolePermission(AuthElement element);
 
     public String loginUser(String username, String password,
                             long expire)
