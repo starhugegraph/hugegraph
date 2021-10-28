@@ -89,16 +89,19 @@ public class HstoreClient implements Closeable {
         return result;
     }
 
-    public List<HgKvEntry> scanAll(String table){
-        return session.scanAll(table);
+    public HgKvIterator<HgKvEntry> scanAll(String table){
+//        return session.scanIterator(table);
+        return null;
     }
 
     public List<HgKvEntry> scan(String table, byte[] startKey, byte[] endKey, int limit){
-        return session.scan(table, startKey, endKey, limit);
+//        return session.scanIterator(table, startKey, endKey, limit);
+        return null;
     }
 
     public List<HgKvEntry> scanPrefix(String table, byte[] owner, byte[] keyPrefix){
-        return session.scanPrefix(table, keyPrefix);
+//        return session.scanPrefix(table, keyPrefix);
+        return null;
     }
 
 

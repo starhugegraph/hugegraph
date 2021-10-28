@@ -16,6 +16,7 @@ import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.iterator.FlatMapperIterator;
 import com.baidu.hugegraph.store.HgKvEntry;
 
+import com.baidu.hugegraph.store.HgKvIterator;
 import com.baidu.hugegraph.store.HgOwnerKey;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.util.Bytes;
@@ -261,10 +262,10 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
 
     protected Iterator<BackendEntry> queryAll(Query query) {
         String tableName = getQueryTableName(query);
-        List<HgKvEntry> entries = hstoreClient.scanAll(tableName);
-        if (!query.noLimit() && query.limit() < entries.size())
-            entries = entries.subList(0, (int) query.limit());
-        return newEntryIterator(new ColumnIterator(tableName, entries.iterator()), query);
+        HgKvIterator<HgKvEntry> entries = hstoreClient.scanAll(tableName);
+//        if (!query.noLimit() && query.limit() < entries.size())
+//            entries = entries.subList(0, (int) query.limit());
+        return newEntryIterator(new ColumnIterator(tableName, entries), query);
     }
 
     protected Iterator<BackendEntry> queryById(Query query) {
