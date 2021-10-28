@@ -55,7 +55,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
     private static int tableCode = 0;
     private String graphName;
     private String database;
-    private static volatile Boolean INITIALIZED = Boolean.FALSE;
+    private static volatile Boolean nodeManagerInitilized = Boolean.FALSE;
     private static volatile Set<String> INITIALIZED_GRAPH = new HashSet<String>();
 
     public HstoreSessionsImpl(HugeConfig config, String database, String store) {
@@ -70,32 +70,21 @@ public class HstoreSessionsImpl extends HstoreSessions {
     }
 
     private void initStoreNode(HugeConfig config) {
-        if (!INITIALIZED_GRAPH.contains(database)) {
-            synchronized (INITIALIZED_GRAPH) {
-                if (!INITIALIZED_GRAPH.contains(database)) {
-                    String pds = config.get(HstoreOptions.PD_PEERS);
-                    String[] pdPeers = pds.split(",");
+        if (!nodeManagerInitilized) {
+            synchronized (nodeManagerInitilized) {
+                if (!nodeManagerInitilized) {
                     HgStoreNodeManager nodeManager = HgStoreNodeManager.getInstance();
-                    for (int i = 0; i < pdPeers.length; i++) {
-                        nodeManager.addNode(database + "/g",
-                                            nodeManager.getNodeBuilder().setAddress(
-                                                    pdPeers[i]).build());
-                        nodeManager.addNode(this.graphName,
-                                            nodeManager.getNodeBuilder().setAddress(
-                                                    pdPeers[i]).build());
-                    }
-                    nodeManager.addNode(database + "/s",
-                                        nodeManager.getNodeBuilder().setAddress(
-                                                pdPeers[0]).build());
-                    nodeManager.addNode(database + "/m",
-                                        nodeManager.getNodeBuilder().setAddress(
-                                                pdPeers[0]).build());
-                    INITIALIZED_GRAPH.add(this.database);
+                    HstoreNodePartitionerImpl nodePartitioner = new HstoreNodePartitionerImpl(
+                            nodeManager, config.get(HstoreOptions.PD_PEERS)
+                    );
+                    nodeManager.setNodeProvider(nodePartitioner);
+                    nodeManager.setNodePartitioner(nodePartitioner);
+                    nodeManager.setNodeNotifier(nodePartitioner);
+                    nodeManagerInitilized = Boolean.TRUE;
                 }
             }
         }
     }
-
 
     @Override
     public void open() throws Exception {
