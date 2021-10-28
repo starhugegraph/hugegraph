@@ -25,6 +25,7 @@ import com.baidu.hugegraph.backend.store.BackendEntryIterator;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.store.HgKvIterator;
 import com.baidu.hugegraph.store.HgOwnerKey;
+import com.baidu.hugegraph.store.HgSessionManager;
 import com.baidu.hugegraph.store.HgStoreSession;
 import com.baidu.hugegraph.store.client.HgStoreNodeManager;
 import com.baidu.hugegraph.store.client.util.HgStoreClientConst;
@@ -173,7 +174,6 @@ public class HstoreSessionsImpl extends HstoreSessions {
         private Map<String, Set<HgOwnerKey>> deleteBatch;
         private Map<String, List<HgOwnerKey>> deletePrefixBatch;
         private Map<String, MutablePair<HgOwnerKey, HgOwnerKey>> deleteRangeBatch;
-        private volatile HstoreClient client;
         private HgStoreSession graph;
         private String graphName;
 
@@ -181,12 +181,8 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public HstoreSession(HugeConfig conf, String graphName) {
             resetBuffer();
             this.graphName = graphName;
-            this.client = new HstoreClientImpl();
-            this.graph = this.client.open(this.graphName);
-        }
-
-        public HstoreClient getClient() {
-            return client;
+            HgSessionManager manager = HgSessionManager.getInstance();
+            this.graph = manager.openSession(graphName);
         }
 
         @Override
@@ -198,7 +194,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public void close() {
 //            assert this.closeable();
             try {
-                this.client.close();
+
                 this.opened = false;
             } catch (Exception e) {
 
