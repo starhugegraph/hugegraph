@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -91,9 +92,6 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         // pass
     }
 
-    public Function<BackendEntry, byte[]> getOwnerDelegate() {
-        return ownerDelegate;
-    }
 
     Function<BackendEntry,byte[]> ownerDelegate = (entry)->{
         if (entry == null) {
@@ -109,21 +107,16 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         return getOwnerId(id);
     };
 
-    public Function<Id, byte[]> getOwnerByIdDelegate() {
-        return ownerByIdDelegate;
-    }
-
-    Function<Id,byte[]> ownerByIdDelegate = (id) -> {
-        return getOwnerId(id);
-    };
+    Function<Id,byte[]> ownerByIdDelegate = (id) -> getOwnerId(id);
+    BiFunction<HugeType,Id,byte[]> ownerByQueryDelegate = (type,id) ->
+                                                        getOwnerId(type, id);
+    Supplier<byte[]> ownerScanDelegate = () -> HgStoreClientConst.ALL_NODE_OWNER;
 
     public Supplier<byte[]> getOwnerScanDelegate() {
         return ownerScanDelegate;
     }
 
-    Supplier<byte[]> ownerScanDelegate = () -> {
-        return HgStoreClientConst.ALL_NODE_OWNER;
-    };
+
 
     /**
      * 返回Id所属的点ID
@@ -137,7 +130,20 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         if (id.edge()) {
             id = ((EdgeId) id).ownerVertexId();
         }
-        return id != null ? id.asBytes() : new byte[]{0};
+        return id != null ? id.asBytes() : HgStoreClientConst.ALL_NODE_OWNER;
+    }
+    /**
+     * 返回Id所属的点ID
+     * @param id
+     * @return
+     */
+    protected byte[] getOwnerId(HugeType type,Id id) {
+        if (HugeType.COUNTER.code()<type.code()&&
+            type.code()<HugeType.SECONDARY_INDEX.code()) {
+            return getOwnerId(id);
+        } else{
+        return  HgStoreClientConst.ALL_NODE_OWNER;
+        }
     }
 
     @Override
@@ -268,8 +274,10 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
                    Session.SCAN_GTE_BEGIN : Session.SCAN_GT_BEGIN;
         type |= Session.SCAN_PREFIX_END;
         return session.scan(this.table(),
-                            this.ownerByIdDelegate.apply(query.start()),
-                            this.ownerByIdDelegate.apply(query.prefix()),
+                            this.ownerByQueryDelegate.apply(query.resultType(),
+                                                       query.start()),
+                            this.ownerByQueryDelegate.apply(query.resultType(),
+                                                       query.prefix()),
                             query.start().asBytes(),
                             query.prefix().asBytes(), type);
     }
@@ -285,8 +293,10 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
                     Session.SCAN_LTE_END : Session.SCAN_LT_END;
         }
         return session.scan(this.table(),
-                            this.ownerByIdDelegate.apply(query.start()),
-                            this.ownerByIdDelegate.apply(query.end()),
+                            this.ownerByQueryDelegate.apply(query.resultType(),
+                                                            query.start()),
+                            this.ownerByQueryDelegate.apply(query.resultType(),
+                                                            query.end()),
                             start, end, type);
     }
 

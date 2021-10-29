@@ -23,13 +23,13 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
     @Override
     public int partition(HgNodePartitionerBuilder builder, String graphName, byte[] startKey, byte[] endKey) {
         try {
-            if (HgStoreClientConst.ALL_NODE_OWNER == startKey) {
+             if (HgStoreClientConst.ALL_NODE_OWNER == startKey) {
                 List<Metapb.Store> stores = pdClient.getActiveStores(graphName);
                 stores.forEach(e -> {
                     builder.add(e.getId(), 0);
                 });
-            }
-            if (startKey == endKey) {
+
+            } else if (startKey == endKey) {
                 com.baidu.hugegraph.pd.common.HgPair<Metapb.Partition, Metapb.Shard> partShard =
                         pdClient.getPartition(graphName, startKey);
                 Metapb.Shard leader = partShard.getValue();
