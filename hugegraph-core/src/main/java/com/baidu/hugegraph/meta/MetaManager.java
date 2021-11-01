@@ -245,7 +245,7 @@ public class MetaManager {
         // HUGEGRAPH/{cluster}/GRAPHSPACE/{graphSpace}/AUTH/BELONG/{userName}
         return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
                            this.cluster, META_PATH_GRAPHSPACE, graphSpace,
-                           META_PATH_AUTH, META_PATH_BELONG, userName);
+                           META_PATH_AUTH, META_PATH_BELONG, userName + "->");
     }
 
     private String accessKey(String graphSpace, String access) {
@@ -266,7 +266,7 @@ public class MetaManager {
         // HUGEGRAPH/{cluster}/GRAPHSPACE/{graphSpace}/AUTH/ACCESS/{groupName}
         return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
                            this.cluster, META_PATH_GRAPHSPACE, graphSpace,
-                           META_PATH_AUTH, META_PATH_ACCESS, groupName);
+                           META_PATH_AUTH, META_PATH_ACCESS, groupName + "->");
     }
 
     public String belongId(String userName, String groupName) {
@@ -379,7 +379,7 @@ public class MetaManager {
                                                         Map.class);
             HugeUser user = HugeUser.fromMap(map);
             result.add(user);
-            if (result.size() >= limit) {
+            if (limit > 0 && result.size() >= limit) {
                 break;
             }
         }
@@ -460,7 +460,7 @@ public class MetaManager {
                                                         Map.class);
             HugeGroup group = HugeGroup.fromMap(map);
             result.add(group);
-            if (result.size() >= limit) {
+            if (limit > 0 && result.size() >= limit) {
                 break;
             }
         }
@@ -543,7 +543,7 @@ public class MetaManager {
                                                         Map.class);
             HugeTarget target = HugeTarget.fromMap(map);
             result.add(target);
-            if (result.size() >= limit) {
+            if (limit > 0 && result.size() >= limit) {
                 break;
             }
         }
@@ -643,7 +643,7 @@ public class MetaManager {
                                                         Map.class);
             HugeBelong belong = HugeBelong.fromMap(map);
             result.add(belong);
-            if (result.size() >= limit) {
+            if (limit > 0 && result.size() >= limit) {
                 break;
             }
         }
@@ -663,7 +663,7 @@ public class MetaManager {
                                                         Map.class);
             HugeBelong belong = HugeBelong.fromMap(map);
             result.add(belong);
-            if (result.size() >= limit) {
+            if (limit > 0 && result.size() >= limit) {
                 break;
             }
         }
@@ -698,7 +698,7 @@ public class MetaManager {
                 result.add(belong);
             }
 
-            if (result.size() >= limit) {
+            if (limit > 0 && result.size() >= limit) {
                 break;
             }
         }
@@ -804,7 +804,7 @@ public class MetaManager {
                                                         Map.class);
             HugeAccess access = HugeAccess.fromMap(map);
             result.add(access);
-            if (result.size() >= limit) {
+            if (limit > 0 && result.size() >= limit) {
                 break;
             }
         }
@@ -824,7 +824,7 @@ public class MetaManager {
                                                         Map.class);
             HugeAccess access = HugeAccess.fromMap(map);
             result.add(access);
-            if (result.size() >= limit) {
+            if (limit > 0 && result.size() >= limit) {
                 break;
             }
         }
@@ -859,7 +859,7 @@ public class MetaManager {
                 result.add(access);
             }
 
-            if (result.size() >= limit) {
+            if (limit > 0 && result.size() >= limit) {
                 break;
             }
         }
@@ -872,7 +872,7 @@ public class MetaManager {
         Map<String, String> graphSpaceMap = this.metaDriver.scanWithPrefix(
                                             graphSpaceListKey());
         for (Map.Entry<String, String> item : graphSpaceMap.entrySet()) {
-            result.add(item.getKey());
+            result.add(item.getValue());
         }
 
         return result;

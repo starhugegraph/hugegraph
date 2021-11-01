@@ -91,7 +91,7 @@ public class RolePermission {
         if (permissions == null) {
             permissions = new TreeMap<>();
             permissions.put(action, resources);
-            graphPermissions.put(graphSpace, permissions);
+            graphPermissions.put(graph, permissions);
         } else {
             List<HugeResource> mergedResources = permissions.get(action);
             if (mergedResources == null) {

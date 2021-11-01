@@ -750,7 +750,6 @@ public class StandardAuthManager implements AuthManager {
 
     @Override
     public RolePermission rolePermission(AuthElement element) {
-        String username = currentUsername();
         /*
         if (!(element instanceof HugeUser) ||
                 !((HugeUser) element).name().equals(username)) {
