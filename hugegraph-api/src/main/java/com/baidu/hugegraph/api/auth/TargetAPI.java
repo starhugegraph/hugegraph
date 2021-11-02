@@ -35,6 +35,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
+import com.baidu.hugegraph.auth.AuthManager;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
@@ -70,7 +71,8 @@ public class TargetAPI extends API {
         checkCreatingBody(jsonTarget);
 
         HugeTarget target = jsonTarget.build(graphSpace);
-        target.id(manager.authManager().createTarget(graphSpace, target));
+        AuthManager authManager = manager.authManager();
+        target.id(authManager.createTarget(graphSpace, target, true));
         return manager.serializer().writeAuthElement(target);
     }
 
@@ -87,14 +89,15 @@ public class TargetAPI extends API {
         checkUpdatingBody(jsonTarget);
 
         HugeTarget target;
+        AuthManager authManager = manager.authManager();
         try {
-            target = manager.authManager().getTarget(graphSpace,
-                                                     UserAPI.parseId(id));
+            target = authManager.getTarget(graphSpace, UserAPI.parseId(id),
+                                           true);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid target id: " + id);
         }
         target = jsonTarget.build(target);
-        manager.authManager().updateTarget(graphSpace, target);
+        authManager.updateTarget(graphSpace, target, true);
         return manager.serializer().writeAuthElement(target);
     }
 
@@ -106,8 +109,9 @@ public class TargetAPI extends API {
                        @QueryParam("limit") @DefaultValue("100") long limit) {
         LOG.debug("Graph space [{}] list targets", graphSpace);
 
-        List<HugeTarget> targets = manager.authManager()
-                                          .listAllTargets(graphSpace, limit);
+        AuthManager authManager = manager.authManager();
+        List<HugeTarget> targets = authManager.listAllTargets(graphSpace,
+                                                              limit, true);
         return manager.serializer().writeAuthElements("targets", targets);
     }
 
@@ -120,8 +124,9 @@ public class TargetAPI extends API {
                       @PathParam("id") String id) {
         LOG.debug("Graph space [{}] get target: {}", graphSpace, id);
 
-        HugeTarget target = manager.authManager().getTarget(graphSpace,
-                                                            UserAPI.parseId(id));
+        AuthManager authManager = manager.authManager();
+        HugeTarget target = authManager.getTarget(graphSpace,
+                            UserAPI.parseId(id), true);
         return manager.serializer().writeAuthElement(target);
     }
 
@@ -135,8 +140,8 @@ public class TargetAPI extends API {
         LOG.debug("Graph space [{}] delete target: {}", graphSpace, id);
 
         try {
-            manager.authManager().deleteTarget(graphSpace,
-                                               UserAPI.parseId(id));
+            AuthManager authManager = manager.authManager();
+            authManager.deleteTarget(graphSpace, UserAPI.parseId(id), true);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid target id: " + id);
         }

@@ -375,13 +375,13 @@ public class MetaManager {
         Map<String, String> userMap =
                             this.metaDriver.scanWithPrefix(userListKey());
         for (Map.Entry<String, String> item : userMap.entrySet()) {
+            if (limit >=0 && result.size() >= limit) {
+                break;
+            }
             Map<String, Object> map = JsonUtil.fromJson(item.getValue(),
                                                         Map.class);
             HugeUser user = HugeUser.fromMap(map);
             result.add(user);
-            if (limit > 0 && result.size() >= limit) {
-                break;
-            }
         }
 
         return result;
@@ -456,13 +456,13 @@ public class MetaManager {
         Map<String, String> groupMap =
                             this.metaDriver.scanWithPrefix(groupListKey(graphSpace));
         for (Map.Entry<String, String> item : groupMap.entrySet()) {
+            if (limit >=0 && result.size() >= limit) {
+                break;
+            }
             Map<String, Object> map = JsonUtil.fromJson(item.getValue(),
                                                         Map.class);
             HugeGroup group = HugeGroup.fromMap(map);
             result.add(group);
-            if (limit > 0 && result.size() >= limit) {
-                break;
-            }
         }
 
         return result;
@@ -539,13 +539,13 @@ public class MetaManager {
         Map<String, String> targetMap =
                     this.metaDriver.scanWithPrefix(targetListKey(graphSpace));
         for (Map.Entry<String, String> item : targetMap.entrySet()) {
+            if (limit >=0 && result.size() >= limit) {
+                break;
+            }
             Map<String, Object> map = JsonUtil.fromJson(item.getValue(),
                                                         Map.class);
             HugeTarget target = HugeTarget.fromMap(map);
             result.add(target);
-            if (limit > 0 && result.size() >= limit) {
-                break;
-            }
         }
 
         return result;
@@ -639,13 +639,13 @@ public class MetaManager {
         Map<String, String> belongMap =
                     this.metaDriver.scanWithPrefix(belongListKey(graphSpace));
         for (Map.Entry<String, String> item : belongMap.entrySet()) {
+            if (limit >=0 && result.size() >= limit) {
+                break;
+            }
             Map<String, Object> map = JsonUtil.fromJson(item.getValue(),
                                                         Map.class);
             HugeBelong belong = HugeBelong.fromMap(map);
             result.add(belong);
-            if (limit > 0 && result.size() >= limit) {
-                break;
-            }
         }
 
         return result;
@@ -659,13 +659,13 @@ public class MetaManager {
         Map<String, String> belongMap = this.metaDriver.scanWithPrefix(
                             belongListKeyByUser(graphSpace, user.asString()));
         for (Map.Entry<String, String> item : belongMap.entrySet()) {
+            if (limit >=0 && result.size() >= limit) {
+                break;
+            }
             Map<String, Object> map = JsonUtil.fromJson(item.getValue(),
                                                         Map.class);
             HugeBelong belong = HugeBelong.fromMap(map);
             result.add(belong);
-            if (limit > 0 && result.size() >= limit) {
-                break;
-            }
         }
 
         return result;
@@ -690,16 +690,15 @@ public class MetaManager {
         Map<String, String> belongMap = this.metaDriver.scanWithPrefix(
                                         belongListKey(graphSpace));
         for (Map.Entry<String, String> item : belongMap.entrySet()) {
+            if (limit >=0 && result.size() >= limit) {
+                break;
+            }
             String groupName = groupFromBelong(item.getKey());
             if (groupName.equals(group.asString())) {
                 Map<String, Object> map = JsonUtil.fromJson(item.getValue(),
                                                             Map.class);
                 HugeBelong belong = HugeBelong.fromMap(map);
                 result.add(belong);
-            }
-
-            if (limit > 0 && result.size() >= limit) {
-                break;
             }
         }
 
@@ -800,13 +799,13 @@ public class MetaManager {
         Map<String, String> accessMap =
                     this.metaDriver.scanWithPrefix(accessListKey(graphSpace));
         for (Map.Entry<String, String> item : accessMap.entrySet()) {
+            if (limit >=0 && result.size() >= limit) {
+                break;
+            }
             Map<String, Object> map = JsonUtil.fromJson(item.getValue(),
                                                         Map.class);
             HugeAccess access = HugeAccess.fromMap(map);
             result.add(access);
-            if (limit > 0 && result.size() >= limit) {
-                break;
-            }
         }
 
         return result;
@@ -820,13 +819,13 @@ public class MetaManager {
         Map<String, String> accessMap = this.metaDriver.scanWithPrefix(
                     accessListKeyByGroup(graphSpace, group.asString()));
         for (Map.Entry<String, String> item : accessMap.entrySet()) {
+            if (limit >=0 && result.size() >= limit) {
+                break;
+            }
             Map<String, Object> map = JsonUtil.fromJson(item.getValue(),
                                                         Map.class);
             HugeAccess access = HugeAccess.fromMap(map);
             result.add(access);
-            if (limit > 0 && result.size() >= limit) {
-                break;
-            }
         }
 
         return result;
@@ -851,16 +850,15 @@ public class MetaManager {
         Map<String, String> accessMap = this.metaDriver.scanWithPrefix(
                                         accessListKey(graphSpace));
         for (Map.Entry<String, String> item : accessMap.entrySet()) {
+            if (limit >=0 && result.size() >= limit) {
+                break;
+            }
             String targetName = targetFromAccess(item.getKey());
             if (targetName.equals(target.asString())) {
                 Map<String, Object> map = JsonUtil.fromJson(item.getValue(),
                                                             Map.class);
                 HugeAccess access = HugeAccess.fromMap(map);
                 result.add(access);
-            }
-
-            if (limit > 0 && result.size() >= limit) {
-                break;
             }
         }
 
@@ -876,6 +874,15 @@ public class MetaManager {
         }
 
         return result;
+    }
+
+    public void initDefaultGraphSpace() {
+        String defaultGS = String.join(META_PATH_DELIMETER,
+                                       META_PATH_HUGEGRAPH,
+                                       this.cluster,
+                                       META_PATH_GRAPHSPACE_LIST,
+                                       "DEFAULT");
+        this.metaDriver.put(defaultGS, "DEFAULT");
     }
 
     public enum MetaDriverType {

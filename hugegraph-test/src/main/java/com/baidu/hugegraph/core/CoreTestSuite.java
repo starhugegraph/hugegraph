@@ -19,6 +19,11 @@
 
 package com.baidu.hugegraph.core;
 
+import com.baidu.hugegraph.auth.AuthManager;
+import com.baidu.hugegraph.auth.StandardAuthManager;
+import com.baidu.hugegraph.config.HugeConfig;
+import com.baidu.hugegraph.meta.MetaManager;
+import org.apache.commons.configuration.PropertiesConfiguration;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -57,6 +62,9 @@ public class CoreTestSuite {
 
     private static HugeGraph graph = null;
 
+    private static MetaManager metaManager = MetaManager.instance();
+    private static StandardAuthManager authManager = null;
+
     @BeforeClass
     public static void initEnv() {
         RegisterUtil.registerBackends();
@@ -68,6 +76,12 @@ public class CoreTestSuite {
         graph.clearBackend();
         graph.initBackend();
         graph.serverStarted(IdGenerator.of("server1"), NodeRole.MASTER);
+
+        metaManager.connect("hg", MetaManager.MetaDriverType.ETCD,
+                "http://127.0.0.1:2379");
+        HugeConfig conf = new HugeConfig(new PropertiesConfiguration());
+        authManager = new StandardAuthManager(metaManager, conf);
+        authManager.initAdmin();
     }
 
     @AfterClass
@@ -92,5 +106,10 @@ public class CoreTestSuite {
         Assert.assertNotNull(graph);
         //Assert.assertFalse(graph.closed());
         return graph;
+    }
+
+    protected static AuthManager authManager() {
+        Assert.assertNotNull(authManager);
+        return authManager;
     }
 }

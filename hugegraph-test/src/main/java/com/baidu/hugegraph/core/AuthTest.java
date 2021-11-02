@@ -56,21 +56,24 @@ public class AuthTest extends BaseCoreTest {
 
     @After
     public void clearAll() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
-        for (HugeUser user : authManager.listAllUsers(-1)) {
-            authManager.deleteUser(user.id());
+        for (HugeUser user : authManager.listAllUsers(-1, false)) {
+            authManager.deleteUser(user.id(), false);
         }
-        for (HugeGroup group : authManager.listAllGroups(DEFAULT_GRAPH_SPACE, -1)) {
-            authManager.deleteGroup(DEFAULT_GRAPH_SPACE, group.id());
+        for (HugeGroup group : authManager.listAllGroups(DEFAULT_GRAPH_SPACE,
+                                                         -1, false)) {
+            authManager.deleteGroup(DEFAULT_GRAPH_SPACE, group.id(), false);
         }
-        for (HugeTarget target : authManager.listAllTargets(DEFAULT_GRAPH_SPACE, -1)) {
-            authManager.deleteTarget(DEFAULT_GRAPH_SPACE, target.id());
+        for (HugeTarget target : authManager.listAllTargets(
+                                 DEFAULT_GRAPH_SPACE, -1, false)) {
+            authManager.deleteTarget(DEFAULT_GRAPH_SPACE, target.id(), false);
         }
 
-        Assert.assertEquals(0, authManager.listAllAccess(DEFAULT_GRAPH_SPACE, -1).size());
-        Assert.assertEquals(0, authManager.listAllBelong(DEFAULT_GRAPH_SPACE, -1).size());
+        Assert.assertEquals(0, authManager.listAllAccess(DEFAULT_GRAPH_SPACE,
+                            -1, false).size());
+        Assert.assertEquals(0, authManager.listAllBelong(DEFAULT_GRAPH_SPACE,
+                            -1, false).size());
     }
 
     @Test
@@ -78,10 +81,10 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id id = authManager.createUser(makeUser("tom", "pass1"));
+        Id id = authManager.createUser(makeUser("tom001", "pass1"), false);
 
-        HugeUser user = authManager.getUser(id);
-        Assert.assertEquals("tom", user.name());
+        HugeUser user = authManager.getUser(id, false);
+        Assert.assertEquals("tom001", user.name());
         Assert.assertEquals("pass1", user.password());
         Assert.assertEquals(user.create(), user.update());
         Assert.assertNull(user.phone());
@@ -89,7 +92,7 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertNull(user.avatar());
 
         Map<String, Object> expected = new HashMap<>();
-        expected.putAll(ImmutableMap.of("user_name", "tom",
+        expected.putAll(ImmutableMap.of("user_name", "tom001",
                                         "user_password", "pass1",
                                         "user_creator", "admin"));
         expected.putAll(ImmutableMap.of("user_create", user.create(),
@@ -99,7 +102,7 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals(expected, user.asMap());
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            authManager.createUser(makeUser("tom", "pass1"));
+            authManager.createUser(makeUser("tom001", "pass1"), false);
         }, e -> {
             Assert.assertContains("Can't save user", e.getMessage());
             Assert.assertContains("that already exists", e.getMessage());
@@ -118,9 +121,9 @@ public class AuthTest extends BaseCoreTest {
         user.avatar("http://image.hugegraph.com/image1");
         user.creator("admin");
 
-        Id id = authManager.createUser(user);
+        Id id = authManager.createUser(user, false);
 
-        user = authManager.getUser(id);
+        user = authManager.getUser(id, false);
         Assert.assertEquals("james", user.name());
         Assert.assertEquals("pass2", user.password());
         Assert.assertEquals(user.create(), user.update());
@@ -146,23 +149,23 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id id1 = authManager.createUser(makeUser("tom", "pass1"));
-        Id id2 = authManager.createUser(makeUser("james", "pass2"));
+        Id id1 = authManager.createUser(makeUser("tom001", "pass1"), false);
+        Id id2 = authManager.createUser(makeUser("james", "pass2"), false);
 
-        List<HugeUser> users = authManager.listUsers(ImmutableList.of(id1,
-                                                                      id2));
+        List<HugeUser> users = authManager.listUsers(
+                               ImmutableList.of(id1, id2), false);
         Assert.assertEquals(2, users.size());
-        Assert.assertEquals("tom", users.get(0).name());
+        Assert.assertEquals("tom001", users.get(0).name());
         Assert.assertEquals("james", users.get(1).name());
 
-        users = authManager.listUsers(ImmutableList.of(id1, id2, id2));
+        users = authManager.listUsers(ImmutableList.of(id1, id2, id2), false);
         Assert.assertEquals(3, users.size());
         Assert.assertEquals("tom", users.get(0).name());
         Assert.assertEquals("james", users.get(1).name());
         Assert.assertEquals("james", users.get(2).name());
 
-        users = authManager.listUsers(ImmutableList.of(id1, id2,
-                                                       IdGenerator.of("fake")));
+        users = authManager.listUsers(
+                ImmutableList.of(id1, id2, IdGenerator.of("fake")), false);
         Assert.assertEquals(2, users.size());
     }
 
@@ -171,19 +174,19 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        authManager.createUser(makeUser("tom", "pass1"));
-        authManager.createUser(makeUser("james", "pass2"));
+        authManager.createUser(makeUser("tom001", "pass1"), false);
+        authManager.createUser(makeUser("james", "pass2"), false);
 
-        List<HugeUser> users = authManager.listAllUsers(-1);
+        List<HugeUser> users = authManager.listAllUsers(-1, false);
         Assert.assertEquals(2, users.size());
-        Assert.assertEquals(ImmutableSet.of("tom", "james"),
+        Assert.assertEquals(ImmutableSet.of("tom001", "james"),
                             ImmutableSet.of(users.get(0).name(),
                                             users.get(1).name()));
 
-        Assert.assertEquals(0, authManager.listAllUsers(0).size());
-        Assert.assertEquals(1, authManager.listAllUsers(1).size());
-        Assert.assertEquals(2, authManager.listAllUsers(2).size());
-        Assert.assertEquals(2, authManager.listAllUsers(3).size());
+        Assert.assertEquals(2, authManager.listAllUsers(0, false).size());
+        Assert.assertEquals(1, authManager.listAllUsers(1, false).size());
+        Assert.assertEquals(2, authManager.listAllUsers(2, false).size());
+        Assert.assertEquals(2, authManager.listAllUsers(3, false).size());
     }
 
     @Test
@@ -191,18 +194,18 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id id = authManager.createUser(makeUser("tom", "pass1"));
+        Id id = authManager.createUser(makeUser("tom001", "pass1"), false);
 
-        HugeUser user = authManager.getUser(id);
+        HugeUser user = authManager.getUser(id, false);
         Assert.assertEquals("tom", user.name());
         Assert.assertEquals("pass1", user.password());
 
         Assert.assertThrows(NotFoundException.class, () -> {
-            authManager.getUser(IdGenerator.of("fake"));
+            authManager.getUser(IdGenerator.of("fake"), false);
         });
 
         Assert.assertThrows(NotFoundException.class, () -> {
-            authManager.getUser(null);
+            authManager.getUser(null, false);
         });
     }
 
@@ -212,14 +215,14 @@ public class AuthTest extends BaseCoreTest {
         AuthManager authManager = graph.authManager();
 
         String password = StringEncoding.hashPassword("pass1");
-        authManager.createUser(makeUser("tom", password));
+        authManager.createUser(makeUser("tom001", password), false);
 
-        Assert.assertNotNull(authManager.matchUser("tom", "pass1"));
-        Assert.assertNull(authManager.matchUser("tom", "pass2"));
-        Assert.assertNull(authManager.matchUser("Tom", "pass1"));
+        Assert.assertNotNull(authManager.matchUser("tom001", "pass1"));
+        Assert.assertNull(authManager.matchUser("tom001", "pass2"));
+        Assert.assertNull(authManager.matchUser("Tom001", "pass1"));
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            authManager.matchUser("Tom", null);
+            authManager.matchUser("Tom001", null);
         });
         Assert.assertThrows(IllegalArgumentException.class, () -> {
             authManager.matchUser(null, "pass1");
@@ -234,9 +237,9 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id id = authManager.createUser(makeUser("tom", "pass1"));
-        HugeUser user = authManager.getUser(id);
-        Assert.assertEquals("tom", user.name());
+        Id id = authManager.createUser(makeUser("tom001", "pass1"), false);
+        HugeUser user = authManager.getUser(id, false);
+        Assert.assertEquals("tom001", user.name());
         Assert.assertEquals("pass1", user.password());
         Assert.assertEquals(user.create(), user.update());
 
@@ -244,16 +247,16 @@ public class AuthTest extends BaseCoreTest {
         Thread.sleep(1L);
 
         user.password("pass2");
-        authManager.updateUser(user);
+        authManager.updateUser(user, false);
 
-        HugeUser user2 = authManager.getUser(id);
-        Assert.assertEquals("tom", user2.name());
+        HugeUser user2 = authManager.getUser(id, false);
+        Assert.assertEquals("tom001", user2.name());
         Assert.assertEquals("pass2", user2.password());
         Assert.assertEquals(oldUpdateTime, user2.create());
         Assert.assertNotEquals(oldUpdateTime, user2.update());
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            authManager.updateUser(makeUser("tom2", "pass1"));
+            authManager.updateUser(makeUser("tom002", "pass1"), false);
         }, e -> {
             Assert.assertContains("Can't save user", e.getMessage());
             Assert.assertContains("that not exists", e.getMessage());
@@ -265,17 +268,17 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id id1 = authManager.createUser(makeUser("tom", "pass1"));
-        Id id2 = authManager.createUser(makeUser("james", "pass2"));
-        Assert.assertEquals(2, authManager.listAllUsers(-1).size());
+        Id id1 = authManager.createUser(makeUser("tom001", "pass1"), false);
+        Id id2 = authManager.createUser(makeUser("james", "pass2"), false);
+        Assert.assertEquals(2, authManager.listAllUsers(-1, false).size());
 
-        HugeUser user = authManager.deleteUser(id1);
-        Assert.assertEquals("tom", user.name());
-        Assert.assertEquals(1, authManager.listAllUsers(-1).size());
+        HugeUser user = authManager.deleteUser(id1, false);
+        Assert.assertEquals("tom001", user.name());
+        Assert.assertEquals(1, authManager.listAllUsers(-1, false).size());
 
-        user = authManager.deleteUser(id2);
+        user = authManager.deleteUser(id2, false);
         Assert.assertEquals("james", user.name());
-        Assert.assertEquals(0, authManager.listAllUsers(-1).size());
+        Assert.assertEquals(0, authManager.listAllUsers(-1, false).size());
     }
 
     @Test
@@ -284,9 +287,9 @@ public class AuthTest extends BaseCoreTest {
         AuthManager authManager = graph.authManager();
 
         HugeGroup group = makeGroup("group1");
-        Id id = authManager.createGroup(DEFAULT_GRAPH_SPACE, group);
+        Id id = authManager.createGroup(DEFAULT_GRAPH_SPACE, group, false);
 
-        group = authManager.getGroup(DEFAULT_GRAPH_SPACE, id);
+        group = authManager.getGroup(DEFAULT_GRAPH_SPACE, id, false);
         Assert.assertEquals("group1", group.name());
         Assert.assertEquals(null, group.description());
         Assert.assertEquals(group.create(), group.update());
@@ -300,9 +303,9 @@ public class AuthTest extends BaseCoreTest {
 
         group = makeGroup("group2");
         group.description("something");
-        id = authManager.createGroup(DEFAULT_GRAPH_SPACE, group);
+        id = authManager.createGroup(DEFAULT_GRAPH_SPACE, group ,false);
 
-        group = authManager.getGroup(DEFAULT_GRAPH_SPACE, id);
+        group = authManager.getGroup(DEFAULT_GRAPH_SPACE, id, false);
         Assert.assertEquals("group2", group.name());
         Assert.assertEquals("something", group.description());
         Assert.assertEquals(group.create(), group.update());
@@ -323,25 +326,30 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id id1 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id id2 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group2"));
+        Id id1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                         makeGroup("group1"), false);
+        Id id2 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                         makeGroup("group2"), false);
 
         List<HugeGroup> groups = authManager.listGroups(DEFAULT_GRAPH_SPACE,
                                                         ImmutableList.of(id1,
-                                                                         id2));
+                                                                         id2),
+                                                        false);
         Assert.assertEquals(2, groups.size());
         Assert.assertEquals("group1", groups.get(0).name());
         Assert.assertEquals("group2", groups.get(1).name());
 
         groups = authManager.listGroups(DEFAULT_GRAPH_SPACE,
-                                        ImmutableList.of(id1, id2, id2));
+                                        ImmutableList.of(id1, id2, id2),
+                                        false);
         Assert.assertEquals(3, groups.size());
         Assert.assertEquals("group1", groups.get(0).name());
         Assert.assertEquals("group2", groups.get(1).name());
         Assert.assertEquals("group2", groups.get(2).name());
 
         groups = authManager.listGroups(DEFAULT_GRAPH_SPACE, ImmutableList.of(
-                                        id1, id2, IdGenerator.of("fake")));
+                                        id1, id2, IdGenerator.of("fake")),
+                                        false);
         Assert.assertEquals(2, groups.size());
     }
 
@@ -350,19 +358,22 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group2"));
+        authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                makeGroup("group1"), false);
+        authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                makeGroup("group2"), false);
 
-        List<HugeGroup> groups = authManager.listAllGroups(DEFAULT_GRAPH_SPACE, -1);
+        List<HugeGroup> groups = authManager.listAllGroups(DEFAULT_GRAPH_SPACE,
+                                                     -1, false);
         Assert.assertEquals(2, groups.size());
         Assert.assertEquals(ImmutableSet.of("group1", "group2"),
                             ImmutableSet.of(groups.get(0).name(),
                                             groups.get(1).name()));
 
-        Assert.assertEquals(0, authManager.listAllGroups(DEFAULT_GRAPH_SPACE, 0).size());
-        Assert.assertEquals(1, authManager.listAllGroups(DEFAULT_GRAPH_SPACE, 1).size());
-        Assert.assertEquals(2, authManager.listAllGroups(DEFAULT_GRAPH_SPACE, 2).size());
-        Assert.assertEquals(2, authManager.listAllGroups(DEFAULT_GRAPH_SPACE, 3).size());
+        Assert.assertEquals(0, authManager.listAllGroups(DEFAULT_GRAPH_SPACE, 0, false).size());
+        Assert.assertEquals(1, authManager.listAllGroups(DEFAULT_GRAPH_SPACE, 1, false).size());
+        Assert.assertEquals(2, authManager.listAllGroups(DEFAULT_GRAPH_SPACE, 2, false).size());
+        Assert.assertEquals(2, authManager.listAllGroups(DEFAULT_GRAPH_SPACE, 3, false).size());
     }
 
     @Test
@@ -370,21 +381,24 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id id = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group-test"));
-        HugeGroup group = authManager.getGroup(DEFAULT_GRAPH_SPACE, id);
+        Id id = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                        makeGroup("group-test"), false);
+        HugeGroup group = authManager.getGroup(DEFAULT_GRAPH_SPACE, id, false);
         Assert.assertEquals("group-test", group.name());
 
         Assert.assertThrows(NotFoundException.class, () -> {
-            authManager.getGroup(DEFAULT_GRAPH_SPACE, IdGenerator.of("fake"));
+            authManager.getGroup(DEFAULT_GRAPH_SPACE, IdGenerator.of("fake"),
+                                 false);
         });
 
         Assert.assertThrows(NotFoundException.class, () -> {
-            authManager.getGroup(DEFAULT_GRAPH_SPACE, null);
+            authManager.getGroup(DEFAULT_GRAPH_SPACE, null, false);
         });
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            Id user = authManager.createUser(makeUser("tom", "pass1"));
-            authManager.getGroup(DEFAULT_GRAPH_SPACE, user);
+            Id user = authManager.createUser(makeUser("tom001", "pass1"),
+                                             false);
+            authManager.getGroup(DEFAULT_GRAPH_SPACE, user, false);
         });
     }
 
@@ -395,9 +409,9 @@ public class AuthTest extends BaseCoreTest {
 
         HugeGroup group = makeGroup("group1");
         group.description("description1");
-        Id id = authManager.createGroup(DEFAULT_GRAPH_SPACE, group);
+        Id id = authManager.createGroup(DEFAULT_GRAPH_SPACE, group, false);
 
-        group = authManager.getGroup(DEFAULT_GRAPH_SPACE, id);
+        group = authManager.getGroup(DEFAULT_GRAPH_SPACE, id, false);
         Assert.assertEquals("group1", group.name());
         Assert.assertEquals("description1", group.description());
         Assert.assertEquals(group.create(), group.update());
@@ -406,9 +420,10 @@ public class AuthTest extends BaseCoreTest {
         Thread.sleep(1L);
 
         group.description("description2");
-        authManager.updateGroup(DEFAULT_GRAPH_SPACE, group);
+        authManager.updateGroup(DEFAULT_GRAPH_SPACE, group, false);
 
-        HugeGroup group2 = authManager.getGroup(DEFAULT_GRAPH_SPACE, id);
+        HugeGroup group2 = authManager.getGroup(DEFAULT_GRAPH_SPACE, id,
+                                                false);
         Assert.assertEquals("group1", group2.name());
         Assert.assertEquals("description2", group2.description());
         Assert.assertEquals(oldUpdateTime, group2.create());
@@ -420,21 +435,28 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id id1 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id id2 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group2"));
-        Assert.assertEquals(2, authManager.listAllGroups(DEFAULT_GRAPH_SPACE, -1).size());
+        Id id1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                         makeGroup("group1"), false);
+        Id id2 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                         makeGroup("group2"), false);
+        Assert.assertEquals(2, authManager.listAllGroups(DEFAULT_GRAPH_SPACE,
+                                        -1, false).size());
 
-        HugeGroup group = authManager.deleteGroup(DEFAULT_GRAPH_SPACE, id1);
+        HugeGroup group = authManager.deleteGroup(DEFAULT_GRAPH_SPACE, id1,
+                                                  false);
         Assert.assertEquals("group1", group.name());
-        Assert.assertEquals(1, authManager.listAllGroups(DEFAULT_GRAPH_SPACE, -1).size());
+        Assert.assertEquals(1, authManager.listAllGroups(DEFAULT_GRAPH_SPACE,
+                                        -1, false).size());
 
-        group = authManager.deleteGroup(DEFAULT_GRAPH_SPACE, id2);
+        group = authManager.deleteGroup(DEFAULT_GRAPH_SPACE, id2, false);
         Assert.assertEquals("group2", group.name());
-        Assert.assertEquals(0, authManager.listAllGroups(DEFAULT_GRAPH_SPACE, -1).size());
+        Assert.assertEquals(0, authManager.listAllGroups(DEFAULT_GRAPH_SPACE,
+                                        -1, false).size());
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            Id user = authManager.createUser(makeUser("tom", "pass1"));
-            authManager.deleteGroup(DEFAULT_GRAPH_SPACE, user);
+            Id user = authManager.createUser(makeUser("tom001", "pass1"),
+                                             false);
+            authManager.deleteGroup(DEFAULT_GRAPH_SPACE, user, false);
         });
     }
 
@@ -445,9 +467,9 @@ public class AuthTest extends BaseCoreTest {
 
         HugeTarget target = makeTarget("graph1", "127.0.0.1:8080");
         target.creator("admin");
-        Id id = authManager.createTarget(DEFAULT_GRAPH_SPACE, target);
+        Id id = authManager.createTarget(DEFAULT_GRAPH_SPACE, target, false);
 
-        target = authManager.getTarget(DEFAULT_GRAPH_SPACE, id);
+        target = authManager.getTarget(DEFAULT_GRAPH_SPACE, id, false);
         Assert.assertEquals("graph1", target.name());
         Assert.assertEquals("127.0.0.1:8080", target.url());
         Assert.assertEquals(target.create(), target.update());
@@ -474,9 +496,9 @@ public class AuthTest extends BaseCoreTest {
                       "{\"type\": \"EDGE\", \"label\": \"transfer\"}]";
         HugeTarget target = makeTarget("graph1", "127.0.0.1:8080");
         target.resources(ress);
-        Id id = authManager.createTarget(DEFAULT_GRAPH_SPACE, target);
+        Id id = authManager.createTarget(DEFAULT_GRAPH_SPACE, target, false);
 
-        target = authManager.getTarget(DEFAULT_GRAPH_SPACE, id);
+        target = authManager.getTarget(DEFAULT_GRAPH_SPACE, id, false);
         Assert.assertEquals("graph1", target.name());
         Assert.assertEquals("127.0.0.1:8080", target.url());
         Assert.assertEquals(target.create(), target.update());
@@ -494,23 +516,26 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id id1 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("target1", "url1"));
-        Id id2 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("target2", "url2"));
+        Id id1 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                 makeTarget("target1", "url1"), false);
+        Id id2 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                 makeTarget("target2", "url2"), false);
 
-        List<HugeTarget> targets = authManager.listTargets(DEFAULT_GRAPH_SPACE, ImmutableList.of(
-                                                           id1, id2));
+        List<HugeTarget> targets = authManager.listTargets(DEFAULT_GRAPH_SPACE,
+                                   ImmutableList.of(id1, id2), false);
         Assert.assertEquals(2, targets.size());
         Assert.assertEquals("target1", targets.get(0).name());
         Assert.assertEquals("target2", targets.get(1).name());
 
-        targets = authManager.listTargets(DEFAULT_GRAPH_SPACE, ImmutableList.of(id1, id2, id2));
+        targets = authManager.listTargets(DEFAULT_GRAPH_SPACE,
+                  ImmutableList.of(id1, id2, id2), false);
         Assert.assertEquals(3, targets.size());
         Assert.assertEquals("target1", targets.get(0).name());
         Assert.assertEquals("target2", targets.get(1).name());
         Assert.assertEquals("target2", targets.get(2).name());
 
-        targets = authManager.listTargets(DEFAULT_GRAPH_SPACE, ImmutableList.of(
-                                          id1, id2, IdGenerator.of("fake")));
+        targets = authManager.listTargets(DEFAULT_GRAPH_SPACE,
+                  ImmutableList.of(id1, id2, IdGenerator.of("fake")), false);
         Assert.assertEquals(2, targets.size());
     }
 
@@ -519,19 +544,26 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("target1", "url1"));
-        authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("target2", "url1"));
+        authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("target1",
+                                 "url1"), false);
+        authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("target2",
+                                 "url1"), false);
 
-        List<HugeTarget> targets = authManager.listAllTargets(DEFAULT_GRAPH_SPACE, -1);
+        List<HugeTarget> targets = authManager.listAllTargets(
+                                   DEFAULT_GRAPH_SPACE, -1, false);
         Assert.assertEquals(2, targets.size());
         Assert.assertEquals(ImmutableSet.of("target1", "target2"),
                             ImmutableSet.of(targets.get(0).name(),
                                             targets.get(1).name()));
 
-        Assert.assertEquals(0, authManager.listAllTargets(DEFAULT_GRAPH_SPACE, 0).size());
-        Assert.assertEquals(1, authManager.listAllTargets(DEFAULT_GRAPH_SPACE, 1).size());
-        Assert.assertEquals(2, authManager.listAllTargets(DEFAULT_GRAPH_SPACE, 2).size());
-        Assert.assertEquals(2, authManager.listAllTargets(DEFAULT_GRAPH_SPACE, 3).size());
+        Assert.assertEquals(0, authManager.listAllTargets(DEFAULT_GRAPH_SPACE,
+                                        0, false).size());
+        Assert.assertEquals(1, authManager.listAllTargets(DEFAULT_GRAPH_SPACE,
+                                        1, false).size());
+        Assert.assertEquals(2, authManager.listAllTargets(DEFAULT_GRAPH_SPACE,
+                                        2, false).size());
+        Assert.assertEquals(2, authManager.listAllTargets(DEFAULT_GRAPH_SPACE,
+                                        3, false).size());
     }
 
     @Test
@@ -539,21 +571,28 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id id = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("target-test", "url1"));
-        HugeTarget target = authManager.getTarget(DEFAULT_GRAPH_SPACE, id);
+        Id id = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                         makeTarget("target-test", "url1"),
+                                         false);
+        HugeTarget target = authManager.getTarget(DEFAULT_GRAPH_SPACE,
+                                                  id,
+                                                  false);
         Assert.assertEquals("target-test", target.name());
 
         Assert.assertThrows(NotFoundException.class, () -> {
-            authManager.getTarget(DEFAULT_GRAPH_SPACE, IdGenerator.of("fake"));
+            authManager.getTarget(DEFAULT_GRAPH_SPACE,
+                                  IdGenerator.of("fake"),
+                                  false);
         });
 
         Assert.assertThrows(NotFoundException.class, () -> {
-            authManager.getTarget(DEFAULT_GRAPH_SPACE, null);
+            authManager.getTarget(DEFAULT_GRAPH_SPACE, null, false);
         });
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            Id user = authManager.createUser(makeUser("tom", "pass1"));
-            authManager.getTarget(DEFAULT_GRAPH_SPACE, user);
+            Id user = authManager.createUser(makeUser("tom001", "pass1"),
+                                             false);
+            authManager.getTarget(DEFAULT_GRAPH_SPACE, user, false);
         });
     }
 
@@ -563,9 +602,9 @@ public class AuthTest extends BaseCoreTest {
         AuthManager authManager = graph.authManager();
 
         HugeTarget target = makeTarget("target1", "url1");
-        Id id = authManager.createTarget(DEFAULT_GRAPH_SPACE, target);
+        Id id = authManager.createTarget(DEFAULT_GRAPH_SPACE, target, false);
 
-        target = authManager.getTarget(DEFAULT_GRAPH_SPACE, id);
+        target = authManager.getTarget(DEFAULT_GRAPH_SPACE, id, false);
         Assert.assertEquals("target1", target.name());
         Assert.assertEquals("url1", target.url());
         Assert.assertEquals(target.create(), target.update());
@@ -574,9 +613,11 @@ public class AuthTest extends BaseCoreTest {
         Thread.sleep(1L);
 
         target.url("url2");
-        authManager.updateTarget(DEFAULT_GRAPH_SPACE, target);
+        authManager.updateTarget(DEFAULT_GRAPH_SPACE, target, false);
 
-        HugeTarget target2 = authManager.getTarget(DEFAULT_GRAPH_SPACE, id);
+        HugeTarget target2 = authManager.getTarget(DEFAULT_GRAPH_SPACE,
+                                                   id,
+                                                   false);
         Assert.assertEquals("target1", target2.name());
         Assert.assertEquals("url2", target2.url());
         Assert.assertEquals(oldUpdateTime, target2.create());
@@ -588,21 +629,31 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id id1 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("target1", "url1"));
-        Id id2 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("target2", "url2"));
-        Assert.assertEquals(2, authManager.listAllTargets(DEFAULT_GRAPH_SPACE, -1).size());
+        Id id1 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                          makeTarget("target1", "url1"),
+                                          false);
+        Id id2 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                          makeTarget("target2", "url2"),
+                                          false);
+        Assert.assertEquals(2, authManager.listAllTargets(DEFAULT_GRAPH_SPACE,
+                                        -1, false).size());
 
-        HugeTarget target = authManager.deleteTarget(DEFAULT_GRAPH_SPACE, id1);
+        HugeTarget target = authManager.deleteTarget(DEFAULT_GRAPH_SPACE,
+                                                     id1,
+                                                     false);
         Assert.assertEquals("target1", target.name());
-        Assert.assertEquals(1, authManager.listAllTargets(DEFAULT_GRAPH_SPACE, -1).size());
+        Assert.assertEquals(1, authManager.listAllTargets(DEFAULT_GRAPH_SPACE,
+                                        -1, false).size());
 
-        target = authManager.deleteTarget(DEFAULT_GRAPH_SPACE, id2);
+        target = authManager.deleteTarget(DEFAULT_GRAPH_SPACE, id2, false);
         Assert.assertEquals("target2", target.name());
-        Assert.assertEquals(0, authManager.listAllTargets(DEFAULT_GRAPH_SPACE, -1).size());
+        Assert.assertEquals(0, authManager.listAllTargets(DEFAULT_GRAPH_SPACE,
+                                        -1, false).size());
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            Id user = authManager.createUser(makeUser("tom", "pass1"));
-            authManager.deleteTarget(DEFAULT_GRAPH_SPACE, user);
+            Id user = authManager.createUser(makeUser("tom001", "pass1"),
+                                             false);
+            authManager.deleteTarget(DEFAULT_GRAPH_SPACE, user, false);
         });
     }
 
@@ -611,14 +662,24 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id user = authManager.createUser(makeUser("tom", "pass1"));
-        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group2"));
+        Id user = authManager.createUser(makeUser("tom", "pass1"), false);
+        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group1"),
+                                            false);
+        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group2"),
+                                            false);
 
-        Id id1 = authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user, group1));
-        Id id2 = authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user, group2));
+        Id id1 = authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                          makeBelong(user, group1),
+                                          false);
+        Id id2 = authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                          makeBelong(user, group2),
+                                          false);
 
-        HugeBelong belong = authManager.getBelong(DEFAULT_GRAPH_SPACE, id1);
+        HugeBelong belong = authManager.getBelong(DEFAULT_GRAPH_SPACE,
+                                                  id1,
+                                                  false);
         Assert.assertEquals(user, belong.source());
         Assert.assertEquals(group1, belong.target());
         Assert.assertEquals(null, belong.description());
@@ -633,7 +694,7 @@ public class AuthTest extends BaseCoreTest {
                                         "belong_update", belong.update()));
         Assert.assertEquals(expected, belong.asMap());
 
-        belong = authManager.getBelong(DEFAULT_GRAPH_SPACE, id2);
+        belong = authManager.getBelong(DEFAULT_GRAPH_SPACE, id2, false);
         Assert.assertEquals(user, belong.source());
         Assert.assertEquals(group2, belong.target());
         Assert.assertEquals(null, belong.description());
@@ -648,21 +709,24 @@ public class AuthTest extends BaseCoreTest {
                                         "belong_update", belong.update()));
         Assert.assertEquals(expected, belong.asMap());
 
-        List<HugeBelong> belongs = authManager.listBelongByUser(DEFAULT_GRAPH_SPACE, user, -1);
+        List<HugeBelong> belongs = authManager.listBelongByUser(
+                         DEFAULT_GRAPH_SPACE, user, -1, false);
         Assert.assertEquals(2, belongs.size());
 
-        belongs = authManager.listBelongByGroup(DEFAULT_GRAPH_SPACE, group1, -1);
+        belongs = authManager.listBelongByGroup(DEFAULT_GRAPH_SPACE, group1,
+                                                -1, false);
         Assert.assertEquals(1, belongs.size());
 
-        belongs = authManager.listBelongByGroup(DEFAULT_GRAPH_SPACE, group2, -1);
+        belongs = authManager.listBelongByGroup(DEFAULT_GRAPH_SPACE, group2,
+                                                -1, false);
         Assert.assertEquals(1, belongs.size());
 
         // Create belong with description
-        Id user1 = authManager.createUser(makeUser("user1", "pass1"));
+        Id user1 = authManager.createUser(makeUser("user1", "pass1"), false);
         belong = makeBelong(user1, group1);
         belong.description("something2");
-        Id id3 = authManager.createBelong(DEFAULT_GRAPH_SPACE, belong);
-        belong = authManager.getBelong(DEFAULT_GRAPH_SPACE, id3);
+        Id id3 = authManager.createBelong(DEFAULT_GRAPH_SPACE, belong, false);
+        belong = authManager.getBelong(DEFAULT_GRAPH_SPACE, id3, false);
         Assert.assertEquals(user1, belong.source());
         Assert.assertEquals(group1, belong.target());
         Assert.assertEquals("something2", belong.description());
@@ -679,7 +743,9 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals(expected, belong.asMap());
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user, group1));
+            authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                     makeBelong(user, group1),
+                                     false);
         }, e -> {
             Assert.assertContains("Can't save belong", e.getMessage());
             Assert.assertContains("that already exists", e.getMessage());
@@ -691,39 +757,53 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id user = authManager.createUser(makeUser("tom", "pass1"));
-        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group2"));
+        Id user = authManager.createUser(makeUser("tom001", "pass1"),
+                                         false);
+        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group1"),
+                                            false);
+        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group2"),
+                                            false);
 
-        Id id1 = authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user, group1));
-        Id id2 = authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user, group2));
+        Id id1 = authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                          makeBelong(user, group1),
+                                          false);
+        Id id2 = authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                          makeBelong(user, group2),
+                                          false);
 
-        List<HugeBelong> belongs = authManager.listBelong(DEFAULT_GRAPH_SPACE, ImmutableList.of(
-                                                          id1, id2));
+        List<HugeBelong> belongs = authManager.listBelong(DEFAULT_GRAPH_SPACE,
+                         ImmutableList.of(id1, id2), false);
         Assert.assertEquals(2, belongs.size());
         Assert.assertEquals(user, belongs.get(0).source());
         Assert.assertEquals(user, belongs.get(1).source());
         Assert.assertEquals(group1, belongs.get(0).target());
         Assert.assertEquals(group2, belongs.get(1).target());
 
-        belongs = authManager.listBelong(DEFAULT_GRAPH_SPACE, ImmutableList.of(id1, id2, id2));
+        belongs = authManager.listBelong(DEFAULT_GRAPH_SPACE,
+                                         ImmutableList.of(id1, id2, id2),
+                                         false);
         Assert.assertEquals(3, belongs.size());
 
-        belongs = authManager.listBelong(DEFAULT_GRAPH_SPACE, ImmutableList.of(
-                                         id1, id2, IdGenerator.of("fake")));
+        belongs = authManager.listBelong(DEFAULT_GRAPH_SPACE,
+                  ImmutableList.of(id1, id2, IdGenerator.of("fake")), false);
         Assert.assertEquals(2, belongs.size());
 
-        belongs = authManager.listBelongByUser(DEFAULT_GRAPH_SPACE, user, -1);
+        belongs = authManager.listBelongByUser(DEFAULT_GRAPH_SPACE, user,
+                                               -1, false);
         Assert.assertEquals(2, belongs.size());
         Assert.assertEquals(user, belongs.get(0).source());
         Assert.assertEquals(user, belongs.get(1).source());
 
-        belongs = authManager.listBelongByGroup(DEFAULT_GRAPH_SPACE, group1, -1);
+        belongs = authManager.listBelongByGroup(DEFAULT_GRAPH_SPACE, group1,
+                                                -1, false);
         Assert.assertEquals(1, belongs.size());
         Assert.assertEquals(user, belongs.get(0).source());
         Assert.assertEquals(group1, belongs.get(0).target());
 
-        belongs = authManager.listBelongByGroup(DEFAULT_GRAPH_SPACE, group2, -1);
+        belongs = authManager.listBelongByGroup(DEFAULT_GRAPH_SPACE, group2,
+                                                -1, false);
         Assert.assertEquals(1, belongs.size());
         Assert.assertEquals(user, belongs.get(0).source());
         Assert.assertEquals(group2, belongs.get(0).target());
@@ -734,23 +814,36 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id user = authManager.createUser(makeUser("tom", "pass1"));
-        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group2"));
+        Id user = authManager.createUser(makeUser("tom001", "pass1"), false);
+        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group1"),
+                                            false);
+        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group2"),
+                                            false);
 
-        authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user, group1));
-        authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user, group2));
+        authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                 makeBelong(user, group1),
+                                 false);
+        authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                 makeBelong(user, group2),
+                                 false);
 
-        List<HugeBelong> belongs = authManager.listAllBelong(DEFAULT_GRAPH_SPACE, -1);
+        List<HugeBelong> belongs = authManager.listAllBelong(
+                         DEFAULT_GRAPH_SPACE, -1, false);
         Assert.assertEquals(2, belongs.size());
         Assert.assertEquals(ImmutableSet.of(group1, group2),
                             ImmutableSet.of(belongs.get(0).target(),
                                             belongs.get(1).target()));
 
-        Assert.assertEquals(0, authManager.listAllBelong(DEFAULT_GRAPH_SPACE, 0).size());
-        Assert.assertEquals(1, authManager.listAllBelong(DEFAULT_GRAPH_SPACE, 1).size());
-        Assert.assertEquals(2, authManager.listAllBelong(DEFAULT_GRAPH_SPACE, 2).size());
-        Assert.assertEquals(2, authManager.listAllBelong(DEFAULT_GRAPH_SPACE, 3).size());
+        Assert.assertEquals(0, authManager.listAllBelong(DEFAULT_GRAPH_SPACE,
+                                        0, false).size());
+        Assert.assertEquals(1, authManager.listAllBelong(DEFAULT_GRAPH_SPACE,
+                                        1, false).size());
+        Assert.assertEquals(2, authManager.listAllBelong(DEFAULT_GRAPH_SPACE,
+                                        2, false).size());
+        Assert.assertEquals(2, authManager.listAllBelong(DEFAULT_GRAPH_SPACE,
+                                        3, false).size());
     }
 
     @Test
@@ -758,32 +851,48 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id user = authManager.createUser(makeUser("tom", "pass1"));
-        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group2"));
+        Id user = authManager.createUser(makeUser("tom001", "pass1"), false);
+        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group1"),
+                                            false);
+        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group2"),
+                                            false);
 
-        Id id1 = authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user, group1));
-        Id id2 = authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user, group2));
+        Id id1 = authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                          makeBelong(user, group1),
+                                          false);
+        Id id2 = authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                          makeBelong(user, group2),
+                                          false);
 
-        HugeBelong belong1 = authManager.getBelong(DEFAULT_GRAPH_SPACE, id1);
+        HugeBelong belong1 = authManager.getBelong(DEFAULT_GRAPH_SPACE,
+                                                   id1,
+                                                   false);
         Assert.assertEquals(group1, belong1.target());
 
-        HugeBelong belong2 = authManager.getBelong(DEFAULT_GRAPH_SPACE, id2);
+        HugeBelong belong2 = authManager.getBelong(DEFAULT_GRAPH_SPACE,
+                                                   id2,
+                                                   false);
         Assert.assertEquals(group2, belong2.target());
 
         Assert.assertThrows(NotFoundException.class, () -> {
-            authManager.getBelong(DEFAULT_GRAPH_SPACE, IdGenerator.of("fake"));
+            authManager.getBelong(DEFAULT_GRAPH_SPACE,
+                                  IdGenerator.of("fake"),
+                                  false);
         });
 
         Assert.assertThrows(NotFoundException.class, () -> {
-            authManager.getBelong(DEFAULT_GRAPH_SPACE, null);
+            authManager.getBelong(DEFAULT_GRAPH_SPACE, null, false);
         });
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            Id target = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("graph1", ""));
-            Id access = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group1, target,
-                                                 HugePermission.READ));
-            authManager.getBelong(DEFAULT_GRAPH_SPACE, access);
+            Id target = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                                 makeTarget("graph1", ""),
+                                                 false);
+            Id access = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+               makeAccess(group1, target, HugePermission.READ), false);
+            authManager.getBelong(DEFAULT_GRAPH_SPACE, access, false);
         });
     }
 
@@ -792,14 +901,16 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id user = authManager.createUser(makeUser("tom", "pass1"));
-        Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
+        Id user = authManager.createUser(makeUser("tom001", "pass1"), false);
+        Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                           makeGroup("group1"),
+                                           false);
 
         HugeBelong belong = makeBelong(user, group);
         belong.description("description1");
-        Id id = authManager.createBelong(DEFAULT_GRAPH_SPACE, belong);
+        Id id = authManager.createBelong(DEFAULT_GRAPH_SPACE, belong, false);
 
-        belong = authManager.getBelong(DEFAULT_GRAPH_SPACE, id);
+        belong = authManager.getBelong(DEFAULT_GRAPH_SPACE, id, false);
         Assert.assertEquals(user, belong.source());
         Assert.assertEquals(group, belong.target());
         Assert.assertEquals("description1", belong.description());
@@ -809,9 +920,10 @@ public class AuthTest extends BaseCoreTest {
         Thread.sleep(1L);
 
         belong.description("description2");
-        authManager.updateBelong(DEFAULT_GRAPH_SPACE, belong);
+        authManager.updateBelong(DEFAULT_GRAPH_SPACE, belong, false);
 
-        HugeBelong belong2 = authManager.getBelong(DEFAULT_GRAPH_SPACE, id);
+        HugeBelong belong2 = authManager.getBelong(DEFAULT_GRAPH_SPACE,
+                                                   id, false);
         Assert.assertEquals(user, belong.source());
         Assert.assertEquals(group, belong.target());
         Assert.assertEquals("description2", belong.description());
@@ -819,9 +931,11 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertNotEquals(oldUpdateTime, belong2.update());
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group2"));
+            Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                                makeGroup("group2"),
+                                                false);
             HugeBelong belong3 = makeBelong(user, group2);
-            authManager.updateBelong(DEFAULT_GRAPH_SPACE, belong3);
+            authManager.updateBelong(DEFAULT_GRAPH_SPACE, belong3, false);
         }, e -> {
             Assert.assertContains("Can't save belong", e.getMessage());
             Assert.assertContains("that not exists", e.getMessage());
@@ -833,29 +947,45 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id user = authManager.createUser(makeUser("tom", "pass1"));
-        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group2"));
+        Id user = authManager.createUser(makeUser("tom001", "pass1"), false);
+        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group1"),
+                                            false);
+        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group2"),
+                                            false);
 
-        Id id1 = authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user, group1));
-        Id id2 = authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user, group2));
+        Id id1 = authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                          makeBelong(user, group1),
+                                          false);
+        Id id2 = authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                          makeBelong(user, group2),
+                                          false);
 
-        Assert.assertEquals(2, authManager.listAllBelong(DEFAULT_GRAPH_SPACE, -1).size());
+        Assert.assertEquals(2, authManager.listAllBelong(DEFAULT_GRAPH_SPACE,
+                                        -1, false).size());
 
-        HugeBelong belong = authManager.deleteBelong(DEFAULT_GRAPH_SPACE, id1);
+        HugeBelong belong = authManager.deleteBelong(DEFAULT_GRAPH_SPACE,
+                                                     id1,
+                                                     false);
         Assert.assertEquals(group1, belong.target());
-        Assert.assertEquals(1, authManager.listAllBelong(DEFAULT_GRAPH_SPACE, -1).size());
-        Assert.assertEquals(1, authManager.listAllBelong(DEFAULT_GRAPH_SPACE, 2).size());
+        Assert.assertEquals(1, authManager.listAllBelong(DEFAULT_GRAPH_SPACE,
+                                        -1, false).size());
+        Assert.assertEquals(1, authManager.listAllBelong(DEFAULT_GRAPH_SPACE,
+                                        2, false).size());
 
-        belong = authManager.deleteBelong(DEFAULT_GRAPH_SPACE, id2);
+        belong = authManager.deleteBelong(DEFAULT_GRAPH_SPACE, id2, false);
         Assert.assertEquals(group2, belong.target());
-        Assert.assertEquals(0, authManager.listAllBelong(DEFAULT_GRAPH_SPACE, -1).size());
+        Assert.assertEquals(0, authManager.listAllBelong(DEFAULT_GRAPH_SPACE,
+                                        -1, false).size());
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            Id target = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("graph1", ""));
-            Id access = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group1, target,
-                                                 HugePermission.READ));
-            authManager.deleteBelong(DEFAULT_GRAPH_SPACE, access);
+            Id target = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                                 makeTarget("graph1", ""),
+                                                 false);
+            Id access = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+               makeAccess(group1, target, HugePermission.READ), false);
+            authManager.deleteBelong(DEFAULT_GRAPH_SPACE, access, false);
         });
     }
 
@@ -864,21 +994,31 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group2"));
-        Id target1 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("graph1", "url1"));
-        Id target2 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("graph2", "url2"));
+        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group1"),
+                                            false);
+        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group2"),
+                                            false);
+        Id target1 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                              makeTarget("graph1", "url1"),
+                                              false);
+        Id target2 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                              makeTarget("graph2", "url2"),
+                                              false);
 
-        Id id1 = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group1, target1,
-                                                     HugePermission.READ));
-        Id id2 = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group1, target1,
-                                                     HugePermission.WRITE));
-        Id id3 = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group1, target2,
-                                                     HugePermission.READ));
-        Id id4 = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group2, target2,
-                                                     HugePermission.READ));
+        Id id1 = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                 makeAccess(group1, target1, HugePermission.READ), false);
+        Id id2 = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                 makeAccess(group1, target1, HugePermission.WRITE), false);
+        Id id3 = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                 makeAccess(group1, target2, HugePermission.READ), false);
+        Id id4 = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                 makeAccess(group2, target2, HugePermission.READ), false);
 
-        HugeAccess access = authManager.getAccess(DEFAULT_GRAPH_SPACE, id1);
+        HugeAccess access = authManager.getAccess(DEFAULT_GRAPH_SPACE,
+                                                  id1,
+                                                  false);
         Assert.assertEquals(group1, access.source());
         Assert.assertEquals(target1, access.target());
         Assert.assertEquals(HugePermission.READ, access.permission());
@@ -895,7 +1035,7 @@ public class AuthTest extends BaseCoreTest {
                                         "access_update", access.update()));
         Assert.assertEquals(expected, access.asMap());
 
-        access = authManager.getAccess(DEFAULT_GRAPH_SPACE, id2);
+        access = authManager.getAccess(DEFAULT_GRAPH_SPACE, id2, false);
         Assert.assertEquals(group1, access.source());
         Assert.assertEquals(target1, access.target());
         Assert.assertEquals(HugePermission.WRITE, access.permission());
@@ -912,7 +1052,7 @@ public class AuthTest extends BaseCoreTest {
                                         "access_update", access.update()));
         Assert.assertEquals(expected, access.asMap());
 
-        access = authManager.getAccess(DEFAULT_GRAPH_SPACE, id3);
+        access = authManager.getAccess(DEFAULT_GRAPH_SPACE, id3, false);
         Assert.assertEquals(group1, access.source());
         Assert.assertEquals(target2, access.target());
         Assert.assertEquals(HugePermission.READ, access.permission());
@@ -929,7 +1069,7 @@ public class AuthTest extends BaseCoreTest {
                                         "access_update", access.update()));
         Assert.assertEquals(expected, access.asMap());
 
-        access = authManager.getAccess(DEFAULT_GRAPH_SPACE, id4);
+        access = authManager.getAccess(DEFAULT_GRAPH_SPACE, id4, false);
         Assert.assertEquals(group2, access.source());
         Assert.assertEquals(target2, access.target());
         Assert.assertEquals(HugePermission.READ, access.permission());
@@ -946,23 +1086,27 @@ public class AuthTest extends BaseCoreTest {
                                         "access_update", access.update()));
         Assert.assertEquals(expected, access.asMap());
 
-        List<HugeAccess> accesses = authManager.listAccessByGroup(DEFAULT_GRAPH_SPACE, group1, -1);
+        List<HugeAccess> accesses = authManager.listAccessByGroup(
+                         DEFAULT_GRAPH_SPACE, group1, -1, false);
         Assert.assertEquals(3, accesses.size());
 
-        accesses = authManager.listAccessByGroup(DEFAULT_GRAPH_SPACE, group2, -1);
+        accesses = authManager.listAccessByGroup(DEFAULT_GRAPH_SPACE, group2,
+                                                 -1, false);
         Assert.assertEquals(1, accesses.size());
 
-        accesses = authManager.listAccessByTarget(DEFAULT_GRAPH_SPACE, target1, -1);
+        accesses = authManager.listAccessByTarget(DEFAULT_GRAPH_SPACE, target1,
+                                                  -1, false);
         Assert.assertEquals(2, accesses.size());
 
-        accesses = authManager.listAccessByTarget(DEFAULT_GRAPH_SPACE, target2, -1);
+        accesses = authManager.listAccessByTarget(DEFAULT_GRAPH_SPACE, target2,
+                                                  -1, false);
         Assert.assertEquals(2, accesses.size());
 
         // Create access with description
         access = makeAccess(group2, target2, HugePermission.WRITE);
         access.description("something3");
-        Id id5 = authManager.createAccess(DEFAULT_GRAPH_SPACE, access);
-        access = authManager.getAccess(DEFAULT_GRAPH_SPACE, id5);
+        Id id5 = authManager.createAccess(DEFAULT_GRAPH_SPACE, access, false);
+        access = authManager.getAccess(DEFAULT_GRAPH_SPACE, id5, false);
         Assert.assertEquals(group2, access.source());
         Assert.assertEquals(target2, access.target());
         Assert.assertEquals(HugePermission.WRITE, access.permission());
@@ -982,8 +1126,10 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals(expected, access.asMap());
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group1, target1,
-                                                HugePermission.READ));
+            authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                     makeAccess(group1, target1,
+                                                HugePermission.READ),
+                                     false);
         }, e -> {
             Assert.assertContains("Can't save access", e.getMessage());
             Assert.assertContains("that already exists", e.getMessage());
@@ -995,41 +1141,56 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id target1 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("graph1", "url1"));
-        Id target2 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("graph2", "url2"));
+        Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                           makeGroup("group1"),
+                                           false);
+        Id target1 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                              makeTarget("graph1", "url1"),
+                                              false);
+        Id target2 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                              makeTarget("graph2", "url2"),
+                                              false);
 
-        Id id1 = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group, target1,
-                                                     HugePermission.READ));
-        Id id2 = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group, target2,
-                                                     HugePermission.READ));
+        Id id1 = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                          makeAccess(group, target1,
+                                                     HugePermission.READ),
+                                          false);
+        Id id2 = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                          makeAccess(group, target2,
+                                                     HugePermission.READ),
+                                          false);
 
-        List<HugeAccess> access = authManager.listAccess(DEFAULT_GRAPH_SPACE, ImmutableList.of(
-                                                         id1, id2));
+        List<HugeAccess> access = authManager.listAccess(DEFAULT_GRAPH_SPACE,
+                                  ImmutableList.of(id1, id2), false);
         Assert.assertEquals(2, access.size());
         Assert.assertEquals(group, access.get(0).source());
         Assert.assertEquals(group, access.get(1).source());
         Assert.assertEquals(target1, access.get(0).target());
         Assert.assertEquals(target2, access.get(1).target());
 
-        access = authManager.listAccess(DEFAULT_GRAPH_SPACE, ImmutableList.of(id1, id2, id2));
+        access = authManager.listAccess(DEFAULT_GRAPH_SPACE,
+                                        ImmutableList.of(id1, id2, id2),
+                                        false);
         Assert.assertEquals(3, access.size());
 
-        access = authManager.listAccess(DEFAULT_GRAPH_SPACE, ImmutableList.of(
-                                        id1, id2, IdGenerator.of("fake")));
+        access = authManager.listAccess(DEFAULT_GRAPH_SPACE,
+                 ImmutableList.of(id1, id2, IdGenerator.of("fake")), false);
         Assert.assertEquals(2, access.size());
 
-        access = authManager.listAccessByGroup(DEFAULT_GRAPH_SPACE, group, -1);
+        access = authManager.listAccessByGroup(DEFAULT_GRAPH_SPACE, group,
+                                               -1, false);
         Assert.assertEquals(2, access.size());
         Assert.assertEquals(group, access.get(0).source());
         Assert.assertEquals(group, access.get(1).source());
 
-        access = authManager.listAccessByTarget(DEFAULT_GRAPH_SPACE, target1, -1);
+        access = authManager.listAccessByTarget(DEFAULT_GRAPH_SPACE, target1,
+                                                -1, false);
         Assert.assertEquals(1, access.size());
         Assert.assertEquals(group, access.get(0).source());
         Assert.assertEquals(target1, access.get(0).target());
 
-        access = authManager.listAccessByTarget(DEFAULT_GRAPH_SPACE, target2, -1);
+        access = authManager.listAccessByTarget(DEFAULT_GRAPH_SPACE, target2,
+                                                -1, false);
         Assert.assertEquals(1, access.size());
         Assert.assertEquals(group, access.get(0).source());
         Assert.assertEquals(target2, access.get(0).target());
@@ -1040,25 +1201,40 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id target1 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("graph1", "url1"));
-        Id target2 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("graph2", "url2"));
+        Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                           makeGroup("group1"),
+                                           false);
+        Id target1 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                              makeTarget("graph1", "url1"),
+                                              false);
+        Id target2 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                              makeTarget("graph2", "url2"),
+                                              false);
 
-        authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group, target1,
-                                            HugePermission.READ));
-        authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group, target2,
-                                            HugePermission.READ));
+        authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                 makeAccess(group, target1,
+                                            HugePermission.READ),
+                                 false);
+        authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                 makeAccess(group, target2,
+                                            HugePermission.READ),
+                                 false);
 
-        List<HugeAccess> access = authManager.listAllAccess(DEFAULT_GRAPH_SPACE, -1);
+        List<HugeAccess> access = authManager.listAllAccess(
+                                  DEFAULT_GRAPH_SPACE, -1, false);
         Assert.assertEquals(2, access.size());
         Assert.assertEquals(ImmutableSet.of(target1, target2),
                             ImmutableSet.of(access.get(0).target(),
                                             access.get(1).target()));
 
-        Assert.assertEquals(0, authManager.listAllAccess(DEFAULT_GRAPH_SPACE, 0).size());
-        Assert.assertEquals(1, authManager.listAllAccess(DEFAULT_GRAPH_SPACE, 1).size());
-        Assert.assertEquals(2, authManager.listAllAccess(DEFAULT_GRAPH_SPACE, 2).size());
-        Assert.assertEquals(2, authManager.listAllAccess(DEFAULT_GRAPH_SPACE, 3).size());
+        Assert.assertEquals(0, authManager.listAllAccess(DEFAULT_GRAPH_SPACE,
+                            0, false).size());
+        Assert.assertEquals(1, authManager.listAllAccess(DEFAULT_GRAPH_SPACE,
+                            1, false).size());
+        Assert.assertEquals(2, authManager.listAllAccess(DEFAULT_GRAPH_SPACE,
+                            2, false).size());
+        Assert.assertEquals(2, authManager.listAllAccess(DEFAULT_GRAPH_SPACE,
+                            3, false).size());
     }
 
     @Test
@@ -1066,33 +1242,50 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id target1 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("graph1", "url1"));
-        Id target2 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("graph2", "url2"));
+        Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                           makeGroup("group1"),
+                                           false);
+        Id target1 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                              makeTarget("graph1", "url1"),
+                                              false);
+        Id target2 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                              makeTarget("graph2", "url2"),
+                                              false);
 
-        Id id1 = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group, target1,
-                                                     HugePermission.READ));
-        Id id2 = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group, target2,
-                                                     HugePermission.READ));
+        Id id1 = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                          makeAccess(group, target1,
+                                                     HugePermission.READ),
+                                          false);
+        Id id2 = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                          makeAccess(group, target2,
+                                                     HugePermission.READ),
+                                          false);
 
-        HugeAccess access1 = authManager.getAccess(DEFAULT_GRAPH_SPACE, id1);
+        HugeAccess access1 = authManager.getAccess(DEFAULT_GRAPH_SPACE,
+                                                   id1, false);
         Assert.assertEquals(target1, access1.target());
 
-        HugeAccess access2 = authManager.getAccess(DEFAULT_GRAPH_SPACE, id2);
+        HugeAccess access2 = authManager.getAccess(DEFAULT_GRAPH_SPACE,
+                                                   id2, false);
         Assert.assertEquals(target2, access2.target());
 
         Assert.assertThrows(NotFoundException.class, () -> {
-            authManager.getAccess(DEFAULT_GRAPH_SPACE, IdGenerator.of("fake"));
+            authManager.getAccess(DEFAULT_GRAPH_SPACE,
+                                  IdGenerator.of("fake"),
+                                  false);
         });
 
         Assert.assertThrows(NotFoundException.class, () -> {
-            authManager.getAccess(DEFAULT_GRAPH_SPACE, null);
+            authManager.getAccess(DEFAULT_GRAPH_SPACE, null, false);
         });
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            Id user = authManager.createUser(makeUser("tom", "pass1"));
-            Id belong = authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user, group));
-            authManager.getAccess(DEFAULT_GRAPH_SPACE, belong);
+            Id user = authManager.createUser(makeUser("tom001", "pass1"),
+                                                      false);
+            Id belong = authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                                 makeBelong(user, group),
+                                                 false);
+            authManager.getAccess(DEFAULT_GRAPH_SPACE, belong, false);
         });
     }
 
@@ -1101,12 +1294,19 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id target = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("graph1", "url1"));
-        Id id = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group, target,
-                                                    HugePermission.READ));
+        Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                           makeGroup("group1"),
+                                           false);
+        Id target = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                             makeTarget("graph1", "url1"),
+                                             false);
+        Id id = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                         makeAccess(group, target,
+                                                    HugePermission.READ),
+                                         false);
 
-        HugeAccess access = authManager.getAccess(DEFAULT_GRAPH_SPACE, id);
+        HugeAccess access = authManager.getAccess(DEFAULT_GRAPH_SPACE,
+                                                  id, false);
         Assert.assertEquals(group, access.source());
         Assert.assertEquals(target, access.target());
         Assert.assertEquals(HugePermission.READ, access.permission());
@@ -1116,9 +1316,10 @@ public class AuthTest extends BaseCoreTest {
         Thread.sleep(1L);
 
         access.permission(HugePermission.READ);
-        authManager.updateAccess(DEFAULT_GRAPH_SPACE, access);
+        authManager.updateAccess(DEFAULT_GRAPH_SPACE, access, false);
 
-        HugeAccess access2 = authManager.getAccess(DEFAULT_GRAPH_SPACE, id);
+        HugeAccess access2 = authManager.getAccess(DEFAULT_GRAPH_SPACE,
+                                                   id, false);
         Assert.assertEquals(group, access.source());
         Assert.assertEquals(target, access.target());
         Assert.assertEquals(HugePermission.READ, access.permission());
@@ -1127,7 +1328,7 @@ public class AuthTest extends BaseCoreTest {
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
             access.permission(HugePermission.WRITE);
-            authManager.updateAccess(DEFAULT_GRAPH_SPACE, access);
+            authManager.updateAccess(DEFAULT_GRAPH_SPACE, access, false);
         }, e -> {
             Assert.assertContains("Can't save access", e.getMessage());
             Assert.assertContains("that not exists", e.getMessage());
@@ -1135,9 +1336,10 @@ public class AuthTest extends BaseCoreTest {
 
         access.permission(HugePermission.READ);
         access.description("description updated");
-        id = authManager.updateAccess(DEFAULT_GRAPH_SPACE, access);
+        id = authManager.updateAccess(DEFAULT_GRAPH_SPACE, access, false);
 
-        HugeAccess access3 = authManager.getAccess(DEFAULT_GRAPH_SPACE, id);
+        HugeAccess access3 = authManager.getAccess(DEFAULT_GRAPH_SPACE,
+                                                   id, false);
         Assert.assertEquals(group, access3.source());
         Assert.assertEquals(target, access3.target());
         Assert.assertEquals("description updated", access3.description());
@@ -1148,7 +1350,7 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertThrows(IllegalArgumentException.class, () -> {
             HugeAccess access4 = makeAccess(group, target,
                                             HugePermission.DELETE);
-            authManager.updateAccess(DEFAULT_GRAPH_SPACE, access4);
+            authManager.updateAccess(DEFAULT_GRAPH_SPACE, access4, false);
         }, e -> {
             Assert.assertContains("Can't save access", e.getMessage());
             Assert.assertContains("that not exists", e.getMessage());
@@ -1160,30 +1362,48 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id target1 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("graph1", "url1"));
-        Id target2 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("graph2", "url2"));
+        Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                           makeGroup("group1"),
+                                           false);
+        Id target1 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                              makeTarget("graph1", "url1"),
+                                              false);
+        Id target2 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                              makeTarget("graph2", "url2"),
+                                              false);
 
-        Id id1 = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group, target1,
-                                                     HugePermission.READ));
-        Id id2 = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group, target2,
-                                                     HugePermission.READ));
+        Id id1 = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                          makeAccess(group, target1,
+                                                     HugePermission.READ),
+                                          false);
+        Id id2 = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                          makeAccess(group, target2,
+                                                     HugePermission.READ),
+                                          false);
 
-        Assert.assertEquals(2, authManager.listAllAccess(DEFAULT_GRAPH_SPACE, -1).size());
+        Assert.assertEquals(2, authManager.listAllAccess(DEFAULT_GRAPH_SPACE,
+                            -1, false).size());
 
-        HugeAccess access = authManager.deleteAccess(DEFAULT_GRAPH_SPACE, id1);
+        HugeAccess access = authManager.deleteAccess(DEFAULT_GRAPH_SPACE,
+                                                     id1, false);
         Assert.assertEquals(target1, access.target());
-        Assert.assertEquals(1, authManager.listAllAccess(DEFAULT_GRAPH_SPACE, -1).size());
-        Assert.assertEquals(1, authManager.listAllAccess(DEFAULT_GRAPH_SPACE, 2).size());
+        Assert.assertEquals(1, authManager.listAllAccess(DEFAULT_GRAPH_SPACE,
+                            -1, false).size());
+        Assert.assertEquals(1, authManager.listAllAccess(DEFAULT_GRAPH_SPACE,
+                            2, false).size());
 
-        access = authManager.deleteAccess(DEFAULT_GRAPH_SPACE, id2);
+        access = authManager.deleteAccess(DEFAULT_GRAPH_SPACE, id2, false);
         Assert.assertEquals(target2, access.target());
-        Assert.assertEquals(0, authManager.listAllAccess(DEFAULT_GRAPH_SPACE, -1).size());
+        Assert.assertEquals(0, authManager.listAllAccess(DEFAULT_GRAPH_SPACE,
+                            -1, false).size());
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            Id user = authManager.createUser(makeUser("tom", "pass1"));
-            Id belong = authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user, group));
-            authManager.deleteAccess(DEFAULT_GRAPH_SPACE, belong);
+            Id user = authManager.createUser(makeUser("tom001", "pass1"),
+                                             false);
+            Id belong = authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                                 makeBelong(user, group),
+                                                 false);
+            authManager.deleteAccess(DEFAULT_GRAPH_SPACE, belong, false);
         });
     }
 
@@ -1192,16 +1412,26 @@ public class AuthTest extends BaseCoreTest {
         HugeGraph graph = graph();
         AuthManager authManager = graph.authManager();
 
-        authManager.createUser(makeUser("admin", "pa"));
+        authManager.createUser(makeUser("admin", "passadmin"), false);
 
-        Id user0 = authManager.createUser(makeUser("hugegraph", "p0"));
-        Id user1 = authManager.createUser(makeUser("hugegraph1", "p1"));
+        Id user0 = authManager.createUser(makeUser("hugegraph", "pass0"),
+                                          false);
+        Id user1 = authManager.createUser(makeUser("hugegraph1", "pass1"),
+                                          false);
 
-        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group1"));
-        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE, makeGroup("group2"));
+        Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group1"),
+                                            false);
+        Id group2 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
+                                            makeGroup("group2"),
+                                            false);
 
-        Id graph1 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("hugegraph", "url1"));
-        Id graph2 = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("hugegraph1", "url2"));
+        Id graph1 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                             makeTarget("hugegraph", "url1"),
+                                             false);
+        Id graph2 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                             makeTarget("hugegraph1", "url2"),
+                                             false);
 
         List<HugeResource> rv = HugeResource.parseResources(
             "[{\"type\": \"VERTEX\", \"label\": \"person\", " +
@@ -1214,65 +1444,97 @@ public class AuthTest extends BaseCoreTest {
             " {\"type\": \"EDGE_LABEL\"}, {\"type\": \"INDEX_LABEL\"}]");
         List<HugeResource> rg = HugeResource.parseResources(
             "[{\"type\": \"GREMLIN\"}]");
-        Id graph1v = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("hugegraph-v",
+        Id graph1v = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                              makeTarget("hugegraph-v",
                                                          "hugegraph",
-                                                         "url1", rv));
-        Id graph1e = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("hugegraph-e",
+                                                         "url1", rv),
+                                              false);
+        Id graph1e = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                              makeTarget("hugegraph-e",
                                                          "hugegraph",
-                                                         "url1", re));
-        Id graph1gremlin = authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("hugegraph-g",
+                                                         "url1", re),
+                                              false);
+        Id graph1gremlin = authManager.createTarget(DEFAULT_GRAPH_SPACE,
+                                                    makeTarget("hugegraph-g",
                                                                "hugegraph",
-                                                               "url1", rg));
+                                                               "url1", rg),
+                                                    false);
 
-        Id belong1 = authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user0, group1));
-        Id belong2 = authManager.createBelong(DEFAULT_GRAPH_SPACE, makeBelong(user1, group2));
+        Id belong1 = authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                              makeBelong(user0, group1),
+                                              false);
+        Id belong2 = authManager.createBelong(DEFAULT_GRAPH_SPACE,
+                                              makeBelong(user1, group2),
+                                              false);
 
-        authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group1, graph1,
-                                            HugePermission.READ));
-        authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group1, graph1,
-                                            HugePermission.WRITE));
-        authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group1, graph2,
-                                            HugePermission.READ));
-        authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group2, graph2,
-                                            HugePermission.READ));
+        authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                 makeAccess(group1, graph1,
+                                            HugePermission.READ),
+                                 false);
+        authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                 makeAccess(group1, graph1,
+                                            HugePermission.WRITE),
+                                 false);
+        authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                 makeAccess(group1, graph2,
+                                            HugePermission.READ),
+                                 false);
+        authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                 makeAccess(group2, graph2,
+                                            HugePermission.READ),
+                                 false);
 
-        Id access1v = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group1, graph1v,
-                                                          HugePermission.READ));
-        authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group1, graph1v,
-                                            HugePermission.WRITE));
-        authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group1, graph1e,
-                                            HugePermission.READ));
-        Id access1g = authManager.createAccess(DEFAULT_GRAPH_SPACE, makeAccess(group1, graph1gremlin,
-                                               HugePermission.EXECUTE));
+        Id access1v = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                               makeAccess(group1, graph1v,
+                                                          HugePermission.READ),
+                                               false);
+        authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                 makeAccess(group1, graph1v,
+                                            HugePermission.WRITE),
+                                 false);
+        authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                 makeAccess(group1, graph1e,
+                                            HugePermission.READ),
+                                 false);
+        Id access1g = authManager.createAccess(DEFAULT_GRAPH_SPACE,
+                                               makeAccess(group1,
+                                                          graph1gremlin,
+                                                          HugePermission.EXECUTE),
+                                               false);
 
         RolePermission role;
-        role = authManager.rolePermission(authManager.getUser(user0));
+        role = authManager.rolePermission(authManager.getUser(user0, false));
         String expected = "{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"EDGE\",\"label\":\"write\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"EDGE_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"INDEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}],\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}],\"EXECUTE\":[{\"type\":\"GREMLIN\",\"label\":\"*\",\"properties\":null}]},\"hugegraph1\":{\"READ\":[]}}}";
         Assert.assertEquals(expected, role.toJson());
 
-        role = authManager.rolePermission(authManager.getBelong(DEFAULT_GRAPH_SPACE, belong1));
+        role = authManager.rolePermission(
+               authManager.getBelong(DEFAULT_GRAPH_SPACE, belong1, false));
         Assert.assertEquals(expected, role.toJson());
 
-        role = authManager.rolePermission(authManager.getGroup(DEFAULT_GRAPH_SPACE, group1));
+        role = authManager.rolePermission(
+               authManager.getGroup(DEFAULT_GRAPH_SPACE, group1, false));
         Assert.assertEquals(expected, role.toJson());
 
-        role = authManager.rolePermission(authManager.getAccess(DEFAULT_GRAPH_SPACE, access1v));
+        role = authManager.rolePermission(
+               authManager.getAccess(DEFAULT_GRAPH_SPACE, access1v, false));
         expected = "{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}]}}}";
         Assert.assertEquals(expected, role.toJson());
 
-        role = authManager.rolePermission(authManager.getAccess(DEFAULT_GRAPH_SPACE, access1g));
+        role = authManager.rolePermission(
+               authManager.getAccess(DEFAULT_GRAPH_SPACE, access1g, false));
         expected = "{\"roles\":{\"hugegraph\":{\"EXECUTE\":[{\"type\":\"GREMLIN\",\"label\":\"*\",\"properties\":null}]}}}";
         Assert.assertEquals(expected, role.toJson());
 
-        role = authManager.rolePermission(authManager.getUser(user1));
+        role = authManager.rolePermission(authManager.getUser(user1, false));
         expected = "{\"roles\":{\"hugegraph1\":{\"READ\":[]}}}";
         Assert.assertEquals(expected, role.toJson());
 
-        role = authManager.rolePermission(authManager.getBelong(DEFAULT_GRAPH_SPACE, belong2));
+        role = authManager.rolePermission(
+               authManager.getBelong(DEFAULT_GRAPH_SPACE, belong2, false));
         expected = "{\"roles\":{\"hugegraph1\":{\"READ\":[]}}}";
         Assert.assertEquals(expected, role.toJson());
 
-        role = authManager.rolePermission(authManager.getTarget(DEFAULT_GRAPH_SPACE, graph1v));
+        role = authManager.rolePermission(authManager.getTarget(DEFAULT_GRAPH_SPACE, graph1v, false));
         expected = "{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}]}}}";
         Assert.assertEquals(expected, role.toJson());
     }
@@ -1281,17 +1543,19 @@ public class AuthTest extends BaseCoreTest {
     public void testLogin() throws AuthenticationException {
         AuthManager authManager = graph().authManager();
 
-        HugeUser user = makeUser("test", StringEncoding.hashPassword("pass"));
-        authManager.createUser(user);
+        HugeUser user = makeUser("test001",
+                                 StringEncoding.hashPassword("pass001"));
+        authManager.createUser(user, false);
 
         // Login
-        authManager.loginUser("test", "pass", 0);
+        authManager.loginUser("test001", "pass001", 0);
 
         // Invalid username or password
         Assert.assertThrows(AuthenticationException.class, () -> {
             authManager.loginUser("huge", "graph", 0);
         }, e -> {
-            Assert.assertContains("Incorrect username or password", e.getMessage());
+            Assert.assertContains("Incorrect username or password",
+                                  e.getMessage());
         });
     }
 
@@ -1299,15 +1563,16 @@ public class AuthTest extends BaseCoreTest {
     public void testValidateUserByToken() throws AuthenticationException {
         AuthManager authManager = graph().authManager();
 
-        HugeUser user = makeUser("test", StringEncoding.hashPassword("pass"));
-        Id userId = authManager.createUser(user);
+        HugeUser user = makeUser("test001",
+                                 StringEncoding.hashPassword("pass001"));
+        Id userId = authManager.createUser(user, false);
 
-        String token = authManager.loginUser("test", "pass", 0);
+        String token = authManager.loginUser("test001", "pass001", 0);
 
         UserWithRole userWithRole;
         userWithRole = authManager.validateUser(token);
         Assert.assertEquals(userId, userWithRole.userId());
-        Assert.assertEquals("test", userWithRole.username());
+        Assert.assertEquals("test001", userWithRole.username());
         Assert.assertEquals("{\"roles\":{}}", userWithRole.role().toJson());
 
         // Token cache missed
@@ -1318,15 +1583,15 @@ public class AuthTest extends BaseCoreTest {
 
         userWithRole = authManager.validateUser(token);
         Assert.assertEquals(userId, userWithRole.userId());
-        Assert.assertEquals("test", userWithRole.username());
+        Assert.assertEquals("test001", userWithRole.username());
         Assert.assertEquals("{\"roles\":{}}", userWithRole.role().toJson());
         Assert.assertTrue(tokenCache.containsKey(IdGenerator.of(token)));
 
         // User deleted after login and token not expire
-        authManager.deleteUser(userId);
+        authManager.deleteUser(userId, false);
         userWithRole = authManager.validateUser(token);
         Assert.assertNull(null, userWithRole.userId());
-        Assert.assertEquals("test", userWithRole.username());
+        Assert.assertEquals("test001", userWithRole.username());
         Assert.assertNull(userWithRole.role());
     }
 
@@ -1334,11 +1599,12 @@ public class AuthTest extends BaseCoreTest {
     public void testLogout() throws AuthenticationException {
         AuthManager authManager = graph().authManager();
 
-        HugeUser user = makeUser("test", StringEncoding.hashPassword("pass"));
-        Id userId = authManager.createUser(user);
+        HugeUser user = makeUser("test001",
+                                 StringEncoding.hashPassword("pass001"));
+        Id userId = authManager.createUser(user, false);
 
         // Login
-        String token = authManager.loginUser("test", "pass", 0);
+        String token = authManager.loginUser("test001", "pass001", 0);
 
         // Logout
         Cache<Id, String> tokenCache = Whitebox.getInternalState(authManager,
@@ -1352,13 +1618,13 @@ public class AuthTest extends BaseCoreTest {
     public void testValidateUserByNameAndPassword() {
         AuthManager authManager = graph().authManager();
 
-        HugeUser user = makeUser("test", StringEncoding.hashPassword("pass"));
-        Id userId = authManager.createUser(user);
+        HugeUser user = makeUser("test001", StringEncoding.hashPassword("pass001"));
+        Id userId = authManager.createUser(user, false);
 
         UserWithRole userWithRole;
-        userWithRole = authManager.validateUser("test", "pass");
+        userWithRole = authManager.validateUser("test001", "pass001");
         Assert.assertEquals(userId, userWithRole.userId());
-        Assert.assertEquals("test", userWithRole.username());
+        Assert.assertEquals("test001", userWithRole.username());
         Assert.assertEquals("{\"roles\":{}}", userWithRole.role().toJson());
 
         // Error case

@@ -33,6 +33,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 
+import com.baidu.hugegraph.auth.AuthManager;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
@@ -70,9 +71,10 @@ public class LoginAPI extends API {
         checkCreatingBody(jsonLogin);
 
         try {
-            String token = manager.authManager().loginUser(jsonLogin.name,
-                                                           jsonLogin.password,
-                                                           jsonLogin.expire);
+            AuthManager authManager = manager.authManager();
+            String token = authManager.loginUser(jsonLogin.name,
+                                                 jsonLogin.password,
+                                                 jsonLogin.expire);
             return manager.serializer()
                           .writeMap(ImmutableMap.of("token", token));
         } catch (AuthenticationException e) {
@@ -99,8 +101,8 @@ public class LoginAPI extends API {
 
         String token = auth.substring(AuthenticationFilter.BEARER_TOKEN_PREFIX
                                                           .length());
-
-        manager.authManager().logoutUser(token);
+        AuthManager authManager = manager.authManager();
+        authManager.logoutUser(token);
     }
 
     @GET
@@ -123,7 +125,8 @@ public class LoginAPI extends API {
 
         token = token.substring(AuthenticationFilter.BEARER_TOKEN_PREFIX
                                                     .length());
-        UserWithRole userWithRole = manager.authManager().validateUser(token);
+        AuthManager authManager = manager.authManager();
+        UserWithRole userWithRole = authManager.validateUser(token);
 
         return manager.serializer()
                       .writeMap(ImmutableMap.of(AuthConstant.TOKEN_USER_NAME,
