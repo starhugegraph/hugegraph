@@ -59,7 +59,9 @@ public class AuthTest extends BaseCoreTest {
         AuthManager authManager = authManager();
 
         for (HugeUser user : authManager.listAllUsers(-1, false)) {
-            authManager.deleteUser(user.id(), false);
+            if (!user.name().equals("admin")) {
+                authManager.deleteUser(user.id(), false);
+            }
         }
         for (HugeGroup group : authManager.listAllGroups(DEFAULT_GRAPH_SPACE,
                                                          -1, false)) {

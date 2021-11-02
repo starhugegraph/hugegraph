@@ -258,8 +258,22 @@ public class StandardAuthManager implements AuthManager {
         return username;
     }
 
+    protected void deleteBelongsByUser(Id id) {
+        List<String> spaces = this.listGraphSpace();
+        for (String space : spaces) {
+            List<HugeBelong> belongs = this.listBelongByUser(space, id,
+                                                             -1, false);
+            for (HugeBelong belong : belongs) {
+                this.deleteBelong(space, belong.id(), false);
+            }
+        }
+    }
+
     @Override
     public HugeUser deleteUser(Id id, boolean required) {
+        if (id.asString().equals("admin")) {
+            throw new HugeException("admin could not be removed");
+        }
         HugeUser user = this.usersCache.get(id);
         if (user != null) {
             this.invalidateUserCache();
@@ -273,6 +287,8 @@ public class StandardAuthManager implements AuthManager {
             if (required) {
                 verifyUserPermission(HugePermission.DELETE, user);
             }
+
+            this.deleteBelongsByUser(id);
             return this.metaManager.deleteUser(id);
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
@@ -386,14 +402,28 @@ public class StandardAuthManager implements AuthManager {
 
     @Override
     public HugeGroup deleteGroup(String graphSpace, Id id, boolean required) {
-        this.invalidateUserCache();
         try {
             if (required) {
                 verifyUserPermission(HugePermission.DELETE,
                                      this.metaManager.getGroup(graphSpace,
                                                                id));
             }
-            return this.metaManager.deleteGroup(graphSpace, id);
+
+            List<HugeBelong> belongs = this.listBelongByGroup(graphSpace, id,
+                                                              -1, false);
+            for (HugeBelong belong : belongs) {
+                this.deleteBelong(graphSpace, belong.id(), false);
+            }
+
+            List<HugeAccess> accesses = this.listAccessByGroup(graphSpace, id,
+                                                               -1, false);
+            for (HugeAccess access : accesses) {
+                this.deleteAccess(graphSpace, access.id(), false);
+            }
+
+            HugeGroup result = this.metaManager.deleteGroup(graphSpace, id);
+            this.invalidateUserCache();
+            return result;
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
                                     "deserialize group", e);
@@ -498,6 +528,11 @@ public class StandardAuthManager implements AuthManager {
                 verifyUserPermission(HugePermission.DELETE,
                                      this.metaManager.getTarget(graphSpace,
                                                                 id));
+            }
+            List<HugeAccess> accesses = this.listAccessByTarget(graphSpace, id,
+                                                                -1, false);
+            for (HugeAccess access : accesses) {
+                this.deleteAccess(graphSpace, access.id(), false);
             }
             HugeTarget target = this.metaManager.deleteTarget(graphSpace, id);
             this.invalidateUserCache();
