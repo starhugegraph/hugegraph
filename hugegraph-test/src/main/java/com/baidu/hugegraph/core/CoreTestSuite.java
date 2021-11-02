@@ -40,6 +40,9 @@ import com.baidu.hugegraph.testutil.Utils;
 import com.baidu.hugegraph.type.define.NodeRole;
 import com.baidu.hugegraph.util.Log;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
     PropertyKeyCoreTest.class,
@@ -77,8 +80,10 @@ public class CoreTestSuite {
         graph.initBackend();
         graph.serverStarted(IdGenerator.of("server1"), NodeRole.MASTER);
 
+        List<String> endpoints = new ArrayList<>();
+        endpoints.add("http://127.0.0.1:2379");
         metaManager.connect("hg", MetaManager.MetaDriverType.ETCD,
-                "http://127.0.0.1:2379");
+                            endpoints);
         HugeConfig conf = new HugeConfig(new PropertiesConfiguration());
         authManager = new StandardAuthManager(metaManager, conf);
         authManager.initAdmin();
