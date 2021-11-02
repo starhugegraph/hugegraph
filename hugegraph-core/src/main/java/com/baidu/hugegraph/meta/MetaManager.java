@@ -357,8 +357,8 @@ public class MetaManager {
         Map<String, String> userMap =
                             this.metaDriver.scanWithPrefix(userListKey());
         for (Id id : ids) {
-            if (userMap.containsKey(id.asString())) {
-                String value = userMap.get(id.asString());
+            if (userMap.containsKey(userKey(id.asString()))) {
+                String value = userMap.get(userKey(id.asString()));
                 Map<String, Object> map = JsonUtil.fromJson(value, Map.class);
                 HugeUser user = HugeUser.fromMap(map);
                 result.add(user);
@@ -435,10 +435,11 @@ public class MetaManager {
                                       ClassNotFoundException {
         List<HugeGroup> result = new ArrayList<>();
         Map<String, String> groupMap =
-                            this.metaDriver.scanWithPrefix(groupListKey(graphSpace));
+                    this.metaDriver.scanWithPrefix(groupListKey(graphSpace));
         for (Id id : ids) {
-            if (groupMap.containsKey(id.asString())) {
-                String groupString = groupMap.get(id.asString());
+            if (groupMap.containsKey(groupKey(graphSpace, id.asString()))) {
+                String groupString = groupMap.get(groupKey(graphSpace,
+                                                           id.asString()));
                 Map<String, Object> map = JsonUtil.fromJson(groupString,
                                                             Map.class);
                 HugeGroup group = HugeGroup.fromMap(map);
@@ -520,8 +521,9 @@ public class MetaManager {
         Map<String, String> targetMap =
                     this.metaDriver.scanWithPrefix(targetListKey(graphSpace));
         for (Id id : ids) {
-            if (targetMap.containsKey(id.asString())) {
-                String targetString = targetMap.get(id.asString());
+            if (targetMap.containsKey(targetKey(graphSpace, id.asString()))) {
+                String targetString = targetMap.get(targetKey(graphSpace,
+                                                              id.asString()));
                 Map<String, Object> map = JsonUtil.fromJson(targetString,
                                                             Map.class);
                 HugeTarget target = HugeTarget.fromMap(map);
@@ -620,8 +622,9 @@ public class MetaManager {
         Map<String, String> belongMap =
                     this.metaDriver.scanWithPrefix(belongListKey(graphSpace));
         for (Id id : ids) {
-            if (belongMap.containsKey(id.asString())) {
-                String belongString = belongMap.get(id.asString());
+            if (belongMap.containsKey(belongKey(graphSpace, id.asString()))) {
+                String belongString = belongMap.get(belongKey(graphSpace,
+                                                              id.asString()));
                 Map<String, Object> map = JsonUtil.fromJson(belongString,
                                                             Map.class);
                 HugeBelong belong = HugeBelong.fromMap(map);
@@ -780,8 +783,9 @@ public class MetaManager {
         Map<String, String> accessMap =
                     this.metaDriver.scanWithPrefix(accessListKey(graphSpace));
         for (Id id : ids) {
-            if (accessMap.containsKey(id.asString())) {
-                String accessString = accessMap.get(id.asString());
+            if (accessMap.containsKey(accessKey(graphSpace, id.asString()))) {
+                String accessString = accessMap.get(accessKey(graphSpace,
+                                                              id.asString()));
                 Map<String, Object> map = JsonUtil.fromJson(accessString,
                                                             Map.class);
                 HugeAccess access = HugeAccess.fromMap(map);

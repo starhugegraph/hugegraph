@@ -130,18 +130,6 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals("13812345678", user.phone());
         Assert.assertEquals("test@hugegraph.com", user.email());
         Assert.assertEquals("http://image.hugegraph.com/image1", user.avatar());
-
-        Map<String, Object> expected = new HashMap<>();
-        expected.put("user_name", "james");
-        expected.put("user_password", "pass2");
-        expected.put("user_creator", "admin");
-        expected.put("user_create", user.create());
-        expected.put("user_update", user.update());
-        expected.put("user_phone", user.phone());
-        expected.put("user_email", user.email());
-        expected.put("user_avatar", user.avatar());
-        expected.put("id", user.id());
-        Assert.assertEquals(expected, user.asMap());
     }
 
     @Test
@@ -302,16 +290,6 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals("group2", group.name());
         Assert.assertEquals("something", group.description());
         Assert.assertEquals(group.create(), group.update());
-
-        HashMap<String, Object> expected = new HashMap<>();
-        expected.putAll(ImmutableMap.of("group_name", "group2",
-                                        "group_description", "something",
-                                        "group_creator", "admin"));
-        expected.putAll(ImmutableMap.of("group_create", group.create(),
-                                        "group_update", group.update(),
-                                        "id", group.id()));
-
-        Assert.assertEquals(expected, group.asMap());
     }
 
     @Test
@@ -376,12 +354,12 @@ public class AuthTest extends BaseCoreTest {
         HugeGroup group = authManager.getGroup(DEFAULT_GRAPH_SPACE, id, false);
         Assert.assertEquals("group-test", group.name());
 
-        Assert.assertThrows(NotFoundException.class, () -> {
+        Assert.assertThrows(IllegalArgumentException.class, () -> {
             authManager.getGroup(DEFAULT_GRAPH_SPACE, IdGenerator.of("fake"),
                                  false);
         });
 
-        Assert.assertThrows(NotFoundException.class, () -> {
+        Assert.assertThrows(IllegalArgumentException.class, () -> {
             authManager.getGroup(DEFAULT_GRAPH_SPACE, null, false);
         });
 
@@ -1535,7 +1513,7 @@ public class AuthTest extends BaseCoreTest {
                                  StringEncoding.hashPassword("pass001"));
         Id userId = authManager.createUser(user, false);
 
-        String token = authManager.loginUser("test001", "pass001", 0);
+        String token = authManager.loginUser("test001", "pass001", 0L);
 
         UserWithRole userWithRole;
         userWithRole = authManager.validateUser(token);
@@ -1558,7 +1536,6 @@ public class AuthTest extends BaseCoreTest {
         // User deleted after login and token not expire
         authManager.deleteUser(userId, false);
         userWithRole = authManager.validateUser(token);
-        Assert.assertNull(null, userWithRole.userId());
         Assert.assertEquals("test001", userWithRole.username());
         Assert.assertNull(userWithRole.role());
     }
