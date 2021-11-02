@@ -23,12 +23,14 @@ import com.baidu.hugegraph.auth.AuthManager;
 import com.baidu.hugegraph.auth.StandardAuthManager;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.meta.MetaManager;
+import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
@@ -84,8 +86,9 @@ public class CoreTestSuite {
         endpoints.add("http://127.0.0.1:2379");
         metaManager.connect("hg", MetaManager.MetaDriverType.ETCD,
                             endpoints);
-        HugeConfig conf = new HugeConfig(new PropertiesConfiguration());
-        authManager = new StandardAuthManager(metaManager, conf);
+        Configuration conf = Mockito.mock(PropertiesConfiguration.class);
+        HugeConfig config = new HugeConfig(new PropertiesConfiguration());
+        authManager = new StandardAuthManager(metaManager, config);
         authManager.initAdmin();
     }
 
