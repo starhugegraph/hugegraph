@@ -39,6 +39,7 @@ import javax.ws.rs.ForbiddenException;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -110,6 +111,7 @@ public class StandardAuthManager implements AuthManager {
         if (username != null && elem.creator() == null) {
             elem.creator(username);
         }
+        elem.update(new Date());
         return elem;
     }
 

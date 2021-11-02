@@ -26,6 +26,7 @@ import java.util.Map;
 
 import javax.security.sasl.AuthenticationException;
 
+import com.baidu.hugegraph.auth.SchemaDefine;
 import org.junit.After;
 import org.junit.Test;
 
@@ -96,8 +97,12 @@ public class AuthTest extends BaseCoreTest {
         expected.putAll(ImmutableMap.of("user_name", "tom001",
                                         "user_password", "pass1",
                                         "user_creator", "admin"));
-        expected.putAll(ImmutableMap.of("user_create", user.create(),
-                                        "user_update", user.update(),
+        expected.putAll(ImmutableMap.of("user_create",
+                                        SchemaDefine.FORMATTER.format(
+                                                              user.create()),
+                                        "user_update",
+                                        SchemaDefine.FORMATTER.format(
+                                                              user.update()),
                                         "id", user.id()));
 
         Assert.assertEquals(expected, user.asMap());
@@ -147,7 +152,7 @@ public class AuthTest extends BaseCoreTest {
 
         users = authManager.listUsers(ImmutableList.of(id1, id2, id2), false);
         Assert.assertEquals(3, users.size());
-        Assert.assertEquals("tom", users.get(0).name());
+        Assert.assertEquals("tom001", users.get(0).name());
         Assert.assertEquals("james", users.get(1).name());
         Assert.assertEquals("james", users.get(2).name());
 
@@ -169,7 +174,7 @@ public class AuthTest extends BaseCoreTest {
                             ImmutableSet.of(users.get(0).name(),
                                             users.get(1).name()));
 
-        Assert.assertEquals(2, authManager.listAllUsers(0, false).size());
+        Assert.assertEquals(0, authManager.listAllUsers(0, false).size());
         Assert.assertEquals(1, authManager.listAllUsers(1, false).size());
         Assert.assertEquals(2, authManager.listAllUsers(2, false).size());
         Assert.assertEquals(2, authManager.listAllUsers(3, false).size());
@@ -182,7 +187,7 @@ public class AuthTest extends BaseCoreTest {
         Id id = authManager.createUser(makeUser("tom001", "pass1"), false);
 
         HugeUser user = authManager.getUser(id, false);
-        Assert.assertEquals("tom", user.name());
+        Assert.assertEquals("tom001", user.name());
         Assert.assertEquals("pass1", user.password());
 
         Assert.assertThrows(NotFoundException.class, () -> {
@@ -252,15 +257,15 @@ public class AuthTest extends BaseCoreTest {
 
         Id id1 = authManager.createUser(makeUser("tom001", "pass1"), false);
         Id id2 = authManager.createUser(makeUser("james", "pass2"), false);
-        Assert.assertEquals(2, authManager.listAllUsers(-1, false).size());
+        Assert.assertEquals(3, authManager.listAllUsers(-1, false).size());
 
         HugeUser user = authManager.deleteUser(id1, false);
         Assert.assertEquals("tom001", user.name());
-        Assert.assertEquals(1, authManager.listAllUsers(-1, false).size());
+        Assert.assertEquals(3, authManager.listAllUsers(-1, false).size());
 
         user = authManager.deleteUser(id2, false);
         Assert.assertEquals("james", user.name());
-        Assert.assertEquals(0, authManager.listAllUsers(-1, false).size());
+        Assert.assertEquals(1, authManager.listAllUsers(-1, false).size());
     }
 
     @Test
@@ -276,8 +281,12 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals(group.create(), group.update());
 
         Assert.assertEquals(ImmutableMap.of("group_name", "group1",
-                                            "group_create", group.create(),
-                                            "group_update", group.update(),
+                                            "group_create",
+                                            SchemaDefine.FORMATTER.format(
+                                                        group.create()),
+                                            "group_update",
+                                            SchemaDefine.FORMATTER.format(
+                                                        group.update()),
                                             "group_creator", "admin",
                                             "id", group.id()),
                             group.asMap());
@@ -359,7 +368,7 @@ public class AuthTest extends BaseCoreTest {
                                  false);
         });
 
-        Assert.assertThrows(IllegalArgumentException.class, () -> {
+        Assert.assertThrows(NullPointerException.class, () -> {
             authManager.getGroup(DEFAULT_GRAPH_SPACE, null, false);
         });
 
@@ -1358,7 +1367,9 @@ public class AuthTest extends BaseCoreTest {
     public void testRolePermission() {
         AuthManager authManager = authManager();
 
-        authManager.createUser(makeUser("admin", "passadmin"), false);
+        Assert.assertThrows(IllegalArgumentException.class, () -> {
+            authManager.createUser(makeUser("admin", "passadmin"), false);
+        });
 
         Id user0 = authManager.createUser(makeUser("hugegraph", "pass0"),
                                           false);
@@ -1537,7 +1548,7 @@ public class AuthTest extends BaseCoreTest {
         authManager.deleteUser(userId, false);
         userWithRole = authManager.validateUser(token);
         Assert.assertEquals("test001", userWithRole.username());
-        Assert.assertNull(userWithRole.role());
+        Assert.assertEquals("{}", userWithRole.role());
     }
 
     @Test
