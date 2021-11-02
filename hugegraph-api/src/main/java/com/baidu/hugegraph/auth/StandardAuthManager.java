@@ -70,6 +70,14 @@ public class StandardAuthManager implements AuthManager {
         this.tokenGenerator = new TokenGenerator(conf);
     }
 
+    public StandardAuthManager(MetaManager metaManager, String secretKey) {
+        this.metaManager = metaManager;
+        this.usersCache = this.cache("users", AUTH_CACHE_CAPACITY, AUTH_CACHE_EXPIRE);
+        this.pwdCache = this.cache("users_pwd", AUTH_CACHE_CAPACITY, AUTH_CACHE_EXPIRE);
+        this.tokenCache = this.cache("token", AUTH_CACHE_CAPACITY, AUTH_CACHE_EXPIRE);
+        this.tokenGenerator = new TokenGenerator(secretKey);
+    }
+
     private <V> Cache<Id, V> cache(String prefix, long capacity,
                                    long expiredTime) {
         String name = prefix + "-auth";

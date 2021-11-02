@@ -86,9 +86,8 @@ public class CoreTestSuite {
         endpoints.add("http://127.0.0.1:2379");
         metaManager.connect("hg", MetaManager.MetaDriverType.ETCD,
                             endpoints);
-        Configuration conf = Mockito.mock(PropertiesConfiguration.class);
-        HugeConfig config = new HugeConfig(new PropertiesConfiguration());
-        authManager = new StandardAuthManager(metaManager, config);
+        authManager = new StandardAuthManager(metaManager,
+                      "FXQXbJtbCLxODc6tGci732pkH1cyf8Qg");
         authManager.initAdmin();
     }
 
