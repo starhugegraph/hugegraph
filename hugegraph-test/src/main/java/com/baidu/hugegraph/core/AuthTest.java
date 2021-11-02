@@ -78,8 +78,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testCreateUser() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id id = authManager.createUser(makeUser("tom001", "pass1"), false);
 
@@ -111,8 +110,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testCreateUserWithDetailsInfo() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         HugeUser user = new HugeUser("james");
         user.password("pass2");
@@ -146,8 +144,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testListUsers() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id id1 = authManager.createUser(makeUser("tom001", "pass1"), false);
         Id id2 = authManager.createUser(makeUser("james", "pass2"), false);
@@ -171,8 +168,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testListAllUsers() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         authManager.createUser(makeUser("tom001", "pass1"), false);
         authManager.createUser(makeUser("james", "pass2"), false);
@@ -191,8 +187,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testGetUser() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id id = authManager.createUser(makeUser("tom001", "pass1"), false);
 
@@ -211,8 +206,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testMatchUser() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         String password = StringEncoding.hashPassword("pass1");
         authManager.createUser(makeUser("tom001", password), false);
@@ -234,8 +228,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testUpdateUser() throws InterruptedException {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id id = authManager.createUser(makeUser("tom001", "pass1"), false);
         HugeUser user = authManager.getUser(id, false);
@@ -265,8 +258,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testDeleteUser() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id id1 = authManager.createUser(makeUser("tom001", "pass1"), false);
         Id id2 = authManager.createUser(makeUser("james", "pass2"), false);
@@ -283,8 +275,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testCreateGroup() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         HugeGroup group = makeGroup("group1");
         Id id = authManager.createGroup(DEFAULT_GRAPH_SPACE, group, false);
@@ -323,8 +314,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testListGroups() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id id1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
                                          makeGroup("group1"), false);
@@ -355,8 +345,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testListAllGroups() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         authManager.createGroup(DEFAULT_GRAPH_SPACE,
                                 makeGroup("group1"), false);
@@ -378,8 +367,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testGetGroup() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id id = authManager.createGroup(DEFAULT_GRAPH_SPACE,
                                         makeGroup("group-test"), false);
@@ -404,8 +392,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testUpdateGroup() throws InterruptedException {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         HugeGroup group = makeGroup("group1");
         group.description("description1");
@@ -432,8 +419,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testDeleteGroup() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id id1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
                                          makeGroup("group1"), false);
@@ -462,8 +448,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testCreateTarget() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         HugeTarget target = makeTarget("graph1", "127.0.0.1:8080");
         target.creator("admin");
@@ -488,8 +473,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testCreateTargetWithRess() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         String ress = "[{\"type\": \"VERTEX\", \"label\": \"person\", " +
                       "\"properties\":{\"city\": \"Beijing\"}}, " +
@@ -513,8 +497,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testListTargets() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id id1 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
                  makeTarget("target1", "url1"), false);
@@ -541,8 +524,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testListAllTargets() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         authManager.createTarget(DEFAULT_GRAPH_SPACE, makeTarget("target1",
                                  "url1"), false);
@@ -568,8 +550,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testGetTarget() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id id = authManager.createTarget(DEFAULT_GRAPH_SPACE,
                                          makeTarget("target-test", "url1"),
@@ -598,8 +579,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testUpdateTarget() throws InterruptedException {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         HugeTarget target = makeTarget("target1", "url1");
         Id id = authManager.createTarget(DEFAULT_GRAPH_SPACE, target, false);
@@ -626,8 +606,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testDeleteTarget() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id id1 = authManager.createTarget(DEFAULT_GRAPH_SPACE,
                                           makeTarget("target1", "url1"),
@@ -659,8 +638,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testCreateBelong() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id user = authManager.createUser(makeUser("tom", "pass1"), false);
         Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
@@ -754,8 +732,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testListBelong() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id user = authManager.createUser(makeUser("tom001", "pass1"),
                                          false);
@@ -811,8 +788,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testListAllBelong() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id user = authManager.createUser(makeUser("tom001", "pass1"), false);
         Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
@@ -848,8 +824,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testGetBelong() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id user = authManager.createUser(makeUser("tom001", "pass1"), false);
         Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
@@ -898,8 +873,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testUpdateBelong() throws InterruptedException {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id user = authManager.createUser(makeUser("tom001", "pass1"), false);
         Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE,
@@ -944,8 +918,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testDeleteBelong() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id user = authManager.createUser(makeUser("tom001", "pass1"), false);
         Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
@@ -991,8 +964,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testCreateAccess() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id group1 = authManager.createGroup(DEFAULT_GRAPH_SPACE,
                                             makeGroup("group1"),
@@ -1138,8 +1110,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testListAccess() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE,
                                            makeGroup("group1"),
@@ -1198,8 +1169,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testListAllAccess() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE,
                                            makeGroup("group1"),
@@ -1239,8 +1209,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testGetAccess() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE,
                                            makeGroup("group1"),
@@ -1291,8 +1260,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testUpdateAccess() throws InterruptedException {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE,
                                            makeGroup("group1"),
@@ -1359,8 +1327,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testDeleteAccess() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         Id group = authManager.createGroup(DEFAULT_GRAPH_SPACE,
                                            makeGroup("group1"),
@@ -1409,8 +1376,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testRolePermission() {
-        HugeGraph graph = graph();
-        AuthManager authManager = graph.authManager();
+        AuthManager authManager = authManager();
 
         authManager.createUser(makeUser("admin", "passadmin"), false);
 
@@ -1541,7 +1507,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testLogin() throws AuthenticationException {
-        AuthManager authManager = graph().authManager();
+        AuthManager authManager = authManager();
 
         HugeUser user = makeUser("test001",
                                  StringEncoding.hashPassword("pass001"));
@@ -1561,7 +1527,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testValidateUserByToken() throws AuthenticationException {
-        AuthManager authManager = graph().authManager();
+        AuthManager authManager = authManager();
 
         HugeUser user = makeUser("test001",
                                  StringEncoding.hashPassword("pass001"));
@@ -1597,7 +1563,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testLogout() throws AuthenticationException {
-        AuthManager authManager = graph().authManager();
+        AuthManager authManager = authManager();
 
         HugeUser user = makeUser("test001",
                                  StringEncoding.hashPassword("pass001"));
@@ -1616,7 +1582,7 @@ public class AuthTest extends BaseCoreTest {
 
     @Test
     public void testValidateUserByNameAndPassword() {
-        AuthManager authManager = graph().authManager();
+        AuthManager authManager = authManager();
 
         HugeUser user = makeUser("test001", StringEncoding.hashPassword("pass001"));
         Id userId = authManager.createUser(user, false);
