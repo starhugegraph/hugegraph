@@ -60,16 +60,22 @@ public class AuthTest extends BaseCoreTest {
         AuthManager authManager = authManager();
 
         for (HugeUser user : authManager.listAllUsers(-1, false)) {
+            Assert.assertNotNull(user);
             if (!user.name().equals("admin")) {
+                Assert.assertNotNull(user.id());
                 authManager.deleteUser(user.id(), false);
             }
         }
         for (HugeGroup group : authManager.listAllGroups(DEFAULT_GRAPH_SPACE,
                                                          -1, false)) {
+            Assert.assertNotNull(group);
+            Assert.assertNotNull(group.id());
             authManager.deleteGroup(DEFAULT_GRAPH_SPACE, group.id(), false);
         }
         for (HugeTarget target : authManager.listAllTargets(
                                  DEFAULT_GRAPH_SPACE, -1, false)) {
+            Assert.assertNotNull(target);
+            Assert.assertNotNull(target.id());
             authManager.deleteTarget(DEFAULT_GRAPH_SPACE, target.id(), false);
         }
 
