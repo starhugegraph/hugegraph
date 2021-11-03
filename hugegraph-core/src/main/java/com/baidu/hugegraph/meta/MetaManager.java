@@ -569,7 +569,7 @@ public class MetaManager {
         E.checkArgument(StringUtils.isEmpty(result),
                         "The belong name '%s' has existed", belongId);
         this.metaDriver.put(belongKey(graphSpace, belongId), serialize(belong));
-        return belong.id();
+        return IdGenerator.of(belongId);
     }
 
     public Id updateBelong(String graphSpace, HugeBelong belong)
@@ -726,7 +726,7 @@ public class MetaManager {
         E.checkArgument(StringUtils.isEmpty(result),
                         "The access name '%s' has existed", accessId);
         this.metaDriver.put(accessKey(graphSpace, accessId), serialize(access));
-        return access.id();
+        return IdGenerator.of(accessId);
     }
 
     public Id updateAccess(String graphSpace, HugeAccess access)

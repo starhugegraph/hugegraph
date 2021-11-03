@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.baidu.hugegraph.backend.id.IdGenerator;
 import org.apache.tinkerpop.gremlin.structure.Graph.Hidden;
 import org.apache.tinkerpop.gremlin.structure.T;
 
@@ -45,6 +47,7 @@ public class HugeUser extends Entity {
     private RolePermission role;
 
     public HugeUser(String name) {
+        this.id(IdGenerator.of(name));
         this.name = name;
         this.role = null;
     }

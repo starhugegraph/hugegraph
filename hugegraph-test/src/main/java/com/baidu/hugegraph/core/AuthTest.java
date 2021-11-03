@@ -170,9 +170,10 @@ public class AuthTest extends BaseCoreTest {
 
         List<HugeUser> users = authManager.listAllUsers(-1, false);
         Assert.assertEquals(3, users.size());
-        Assert.assertEquals(ImmutableSet.of("tom001", "james"),
+        Assert.assertEquals(ImmutableSet.of("admin", "james", "tom001"),
                             ImmutableSet.of(users.get(0).name(),
-                                            users.get(1).name()));
+                                            users.get(1).name(),
+                                            users.get(2).name()));
 
         Assert.assertEquals(0, authManager.listAllUsers(0, false).size());
         Assert.assertEquals(1, authManager.listAllUsers(1, false).size());
@@ -384,7 +385,7 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals(group.create(), group.update());
 
         Date oldUpdateTime = group.update();
-        Thread.sleep(1L);
+        Thread.sleep(1000L);
 
         group.description("description2");
         authManager.updateGroup(DEFAULT_GRAPH_SPACE, group, false);
@@ -1539,7 +1540,7 @@ public class AuthTest extends BaseCoreTest {
         authManager.deleteUser(userId, false);
         userWithRole = authManager.validateUser(token);
         Assert.assertEquals("test001", userWithRole.username());
-        Assert.assertEquals("{}", userWithRole.role().toJson());
+        Assert.assertEquals("{\"roles\":{}}", userWithRole.role().toJson());
     }
 
     @Test

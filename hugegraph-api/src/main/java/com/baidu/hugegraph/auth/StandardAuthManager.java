@@ -492,10 +492,10 @@ public class StandardAuthManager implements AuthManager {
     public Id createTarget(String graphSpace, HugeTarget target,
                            boolean required) {
         try {
-            this.updateCreator(target);
             if (required) {
                 verifyUserPermission(HugePermission.WRITE, target);
             }
+            this.updateCreator(target);
             Id result = this.metaManager.createTarget(graphSpace, target);
             this.invalidateUserCache();
             return result;
@@ -604,12 +604,12 @@ public class StandardAuthManager implements AuthManager {
     @Override
     public Id createBelong(String graphSpace, HugeBelong belong,
                            boolean required) {
-        this.invalidateUserCache();
         try {
             if (required) {
                 verifyUserPermission(HugePermission.WRITE, belong);
             }
             this.updateCreator(belong);
+            this.invalidateUserCache();
             return this.metaManager.createBelong(graphSpace, belong);
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
