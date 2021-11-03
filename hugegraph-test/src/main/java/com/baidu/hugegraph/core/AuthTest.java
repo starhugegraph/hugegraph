@@ -184,7 +184,7 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals(0, authManager.listAllUsers(0, false).size());
         Assert.assertEquals(1, authManager.listAllUsers(1, false).size());
         Assert.assertEquals(2, authManager.listAllUsers(2, false).size());
-        Assert.assertEquals(2, authManager.listAllUsers(3, false).size());
+        Assert.assertEquals(3, authManager.listAllUsers(3, false).size());
     }
 
     @Test
@@ -575,7 +575,7 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals(target.create(), target.update());
 
         Date oldUpdateTime = target.update();
-        Thread.sleep(1L);
+        Thread.sleep(1000L);
 
         target.url("url2");
         authManager.updateTarget(DEFAULT_GRAPH_SPACE, target, false);
@@ -876,7 +876,7 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals(belong.create(), belong.update());
 
         Date oldUpdateTime = belong.update();
-        Thread.sleep(1L);
+        Thread.sleep(1000L);
 
         belong.description("description2");
         authManager.updateBelong(DEFAULT_GRAPH_SPACE, belong, false);
@@ -1266,7 +1266,7 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals(access.create(), access.update());
 
         Date oldUpdateTime = access.update();
-        Thread.sleep(1L);
+        Thread.sleep(1000L);
 
         access.permission(HugePermission.READ);
         authManager.updateAccess(DEFAULT_GRAPH_SPACE, access, false);
@@ -1457,7 +1457,7 @@ public class AuthTest extends BaseCoreTest {
 
         RolePermission role;
         role = authManager.rolePermission(authManager.getUser(user0, false));
-        String expected = "{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"EDGE\",\"label\":\"write\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"EDGE_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"INDEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}],\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}],\"EXECUTE\":[{\"type\":\"GREMLIN\",\"label\":\"*\",\"properties\":null}]},\"hugegraph1\":{\"READ\":[]}}}";
+        String expected = "{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"READ\":[{\"type\":\"EDGE\",\"label\":\"write\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"EDGE_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"INDEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}],\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}],\"EXECUTE\":[{\"type\":\"GREMLIN\",\"label\":\"*\",\"properties\":null}]},\"hugegraph1\":{\"READ\":[]}}}}";
         Assert.assertEquals(expected, role.toJson());
 
         role = authManager.rolePermission(
@@ -1470,25 +1470,25 @@ public class AuthTest extends BaseCoreTest {
 
         role = authManager.rolePermission(
                authManager.getAccess(DEFAULT_GRAPH_SPACE, access1v, false));
-        expected = "{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}]}}}";
+        expected = "{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}]}}}}";
         Assert.assertEquals(expected, role.toJson());
 
         role = authManager.rolePermission(
                authManager.getAccess(DEFAULT_GRAPH_SPACE, access1g, false));
-        expected = "{\"roles\":{\"hugegraph\":{\"EXECUTE\":[{\"type\":\"GREMLIN\",\"label\":\"*\",\"properties\":null}]}}}";
+        expected = "{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"EXECUTE\":[{\"type\":\"GREMLIN\",\"label\":\"*\",\"properties\":null}]}}}}";
         Assert.assertEquals(expected, role.toJson());
 
         role = authManager.rolePermission(authManager.getUser(user1, false));
-        expected = "{\"roles\":{\"hugegraph1\":{\"READ\":[]}}}";
+        expected = "{\"roles\":{\"DEFAULT\":{\"hugegraph1\":{\"READ\":[]}}}}";
         Assert.assertEquals(expected, role.toJson());
 
         role = authManager.rolePermission(
                authManager.getBelong(DEFAULT_GRAPH_SPACE, belong2, false));
-        expected = "{\"roles\":{\"hugegraph1\":{\"READ\":[]}}}";
+        expected = "{\"roles\":{\"DEFAULT\":{\"hugegraph1\":{\"READ\":[]}}}}";
         Assert.assertEquals(expected, role.toJson());
 
         role = authManager.rolePermission(authManager.getTarget(DEFAULT_GRAPH_SPACE, graph1v, false));
-        expected = "{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}]}}}";
+        expected = "{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}]}}}}";
         Assert.assertEquals(expected, role.toJson());
     }
 
