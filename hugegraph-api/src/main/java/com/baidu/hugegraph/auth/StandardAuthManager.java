@@ -244,9 +244,8 @@ public class StandardAuthManager implements AuthManager {
         }
 
         try {
-            String current = currentUsername();
             existed = this.findUser(user.name(), false);
-            if (required && !existed.name().equals(current)) {
+            if (required && !existed.name().equals(currentUsername())) {
                 verifyUserPermission(HugePermission.WRITE, user);
             }
 
