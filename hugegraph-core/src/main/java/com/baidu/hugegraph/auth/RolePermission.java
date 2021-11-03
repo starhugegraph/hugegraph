@@ -250,8 +250,8 @@ public class RolePermission {
         public RolePermission deserialize(JsonParser parser,
                                           DeserializationContext ctxt)
                                           throws IOException {
-            TypeReference<?> type = new TypeReference<TreeMap<String,
-                             TreeMap<HugePermission, List<HugeResource>>>>() {};
+            TypeReference<?> type = new TypeReference<TreeMap<String, TreeMap<String,
+                             TreeMap<HugePermission, List<HugeResource>>>>>() {};
             if ("roles".equals(parser.nextFieldName())) {
                 parser.nextValue();
                 return new RolePermission(parser.readValueAs(type));
