@@ -1096,6 +1096,9 @@ public class StandardAuthManager implements AuthManager {
         user.phone("18888886666");
         user.email("admin@hugegraph.com");
         user.description("None");
+        user.update(new Date());
+        user.create(new Date());
+        user.avatar("/image.png");
         try {
             this.metaManager.createUser(user);
             this.metaManager.initDefaultGraphSpace();
