@@ -169,7 +169,7 @@ public class AuthTest extends BaseCoreTest {
         authManager.createUser(makeUser("james", "pass2"), false);
 
         List<HugeUser> users = authManager.listAllUsers(-1, false);
-        Assert.assertEquals(2, users.size());
+        Assert.assertEquals(3, users.size());
         Assert.assertEquals(ImmutableSet.of("tom001", "james"),
                             ImmutableSet.of(users.get(0).name(),
                                             users.get(1).name()));
@@ -261,7 +261,7 @@ public class AuthTest extends BaseCoreTest {
 
         HugeUser user = authManager.deleteUser(id1, false);
         Assert.assertEquals("tom001", user.name());
-        Assert.assertEquals(3, authManager.listAllUsers(-1, false).size());
+        Assert.assertEquals(2, authManager.listAllUsers(-1, false).size());
 
         user = authManager.deleteUser(id2, false);
         Assert.assertEquals("james", user.name());
@@ -279,17 +279,8 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals("group1", group.name());
         Assert.assertEquals(null, group.description());
         Assert.assertEquals(group.create(), group.update());
-
-        Assert.assertEquals(ImmutableMap.of("group_name", "group1",
-                                            "group_create",
-                                            SchemaDefine.FORMATTER.format(
-                                                        group.create()),
-                                            "group_update",
-                                            SchemaDefine.FORMATTER.format(
-                                                        group.update()),
-                                            "group_creator", "admin",
-                                            "id", group.id()),
-                            group.asMap());
+        Assert.assertEquals(DEFAULT_GRAPH_SPACE, group.graphSpace());
+        Assert.assertEquals("group1", group.id().asString());
 
         group = makeGroup("group2");
         group.description("something");
@@ -1548,7 +1539,7 @@ public class AuthTest extends BaseCoreTest {
         authManager.deleteUser(userId, false);
         userWithRole = authManager.validateUser(token);
         Assert.assertEquals("test001", userWithRole.username());
-        Assert.assertEquals("{}", userWithRole.role());
+        Assert.assertEquals("{}", userWithRole.role().toJson());
     }
 
     @Test
