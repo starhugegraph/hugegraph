@@ -197,9 +197,7 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals("tom002", user.name());
         Assert.assertEquals("pass2", user.password());
 
-        Assert.assertThrows(IllegalArgumentException.class, () -> {
-            authManager.getUser(IdGenerator.of("fake"), false);
-        });
+        Assert.assertNull(authManager.getUser(IdGenerator.of("fake"), false));
 
         Assert.assertThrows(NullPointerException.class, () -> {
             authManager.getUser(null, false);
@@ -239,7 +237,7 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals(user.create(), user.update());
 
         Date oldUpdateTime = user.update();
-        Thread.sleep(1L);
+        Thread.sleep(1000L);
 
         user.password("pass2");
         authManager.updateUser(user, false);
