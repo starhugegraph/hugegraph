@@ -1099,9 +1099,7 @@ public class StandardAuthManager implements AuthManager {
         try {
             this.metaManager.createUser(user);
             this.metaManager.initDefaultGraphSpace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        } catch (IOException e) {}
     }
 
     /**
