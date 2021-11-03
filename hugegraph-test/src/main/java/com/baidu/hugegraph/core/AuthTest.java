@@ -191,17 +191,17 @@ public class AuthTest extends BaseCoreTest {
     public void testGetUser() {
         AuthManager authManager = authManager();
 
-        Id id = authManager.createUser(makeUser("tom001", "pass1"), false);
+        Id id = authManager.createUser(makeUser("tom002", "pass2"), false);
 
         HugeUser user = authManager.getUser(id, false);
-        Assert.assertEquals("tom001", user.name());
-        Assert.assertEquals("pass1", user.password());
+        Assert.assertEquals("tom002", user.name());
+        Assert.assertEquals("pass2", user.password());
 
-        Assert.assertThrows(NotFoundException.class, () -> {
+        Assert.assertThrows(IllegalArgumentException.class, () -> {
             authManager.getUser(IdGenerator.of("fake"), false);
         });
 
-        Assert.assertThrows(NotFoundException.class, () -> {
+        Assert.assertThrows(NullPointerException.class, () -> {
             authManager.getUser(null, false);
         });
     }
@@ -211,10 +211,10 @@ public class AuthTest extends BaseCoreTest {
         AuthManager authManager = authManager();
 
         String password = StringEncoding.hashPassword("pass1");
-        authManager.createUser(makeUser("tom001", password), false);
+        authManager.createUser(makeUser("tom00m", password), false);
 
-        Assert.assertNotNull(authManager.matchUser("tom001", "pass1"));
-        Assert.assertNull(authManager.matchUser("tom001", "pass2"));
+        Assert.assertNotNull(authManager.matchUser("tom00m", "pass1"));
+        Assert.assertNull(authManager.matchUser("tom00m", "pass2"));
         Assert.assertNull(authManager.matchUser("Tom001", "pass1"));
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
@@ -1221,8 +1221,8 @@ public class AuthTest extends BaseCoreTest {
                                             HugePermission.DELETE);
             authManager.updateAccess(DEFAULT_GRAPH_SPACE, access4, false);
         }, e -> {
-            Assert.assertContains("Can't save access", e.getMessage());
-            Assert.assertContains("that not exists", e.getMessage());
+            Assert.assertContains("The access name", e.getMessage());
+            Assert.assertContains("is not existed", e.getMessage());
         });
     }
 

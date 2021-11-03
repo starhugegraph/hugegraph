@@ -237,20 +237,16 @@ public class StandardAuthManager implements AuthManager {
     @Override
     public Id updateUser(HugeUser user, boolean required) {
         Id username = IdGenerator.of(user.name());
-        HugeUser existed = this.usersCache.get(username);
-        if (existed != null) {
-            this.invalidateUserCache();
-            this.invalidatePasswordCache(user.id());
-        }
-
         try {
-            existed = this.findUser(user.name(), false);
+            HugeUser existed = this.findUser(user.name(), false);
             if (required && !existed.name().equals(currentUsername())) {
                 verifyUserPermission(HugePermission.WRITE, user);
             }
 
             this.updateCreator(user);
             this.metaManager.updateUser(user);
+            this.invalidateUserCache();
+            this.invalidatePasswordCache(user.id());
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
                                     "serialize user", e);
