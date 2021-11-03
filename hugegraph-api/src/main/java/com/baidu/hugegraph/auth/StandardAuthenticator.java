@@ -101,6 +101,10 @@ public class StandardAuthenticator implements HugeAuthenticator {
             return;
         }
 
+        List<String> endpoints = config.get(ServerOptions.META_ENDPOINTS);
+        String cluster = config.get(ServerOptions.CLUSTER);
+        metaManager.connect(cluster, MetaManager.MetaDriverType.ETCD,
+                            endpoints);
         StandardAuthManager authManager = new StandardAuthManager(metaManager,
                                                                   config);
         authManager.initAdmin();
