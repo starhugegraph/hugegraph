@@ -116,8 +116,8 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertThrows(IllegalArgumentException.class, () -> {
             authManager.createUser(makeUser("tom001", "pass1"), false);
         }, e -> {
-            Assert.assertContains("Can't save user", e.getMessage());
-            Assert.assertContains("that already exists", e.getMessage());
+            Assert.assertContains("The user name", e.getMessage());
+            Assert.assertContains("has existed", e.getMessage());
         });
     }
 
@@ -545,13 +545,13 @@ public class AuthTest extends BaseCoreTest {
                                                   false);
         Assert.assertEquals("target-test", target.name());
 
-        Assert.assertThrows(NotFoundException.class, () -> {
+        Assert.assertThrows(IllegalArgumentException.class, () -> {
             authManager.getTarget(DEFAULT_GRAPH_SPACE,
                                   IdGenerator.of("fake"),
                                   false);
         });
 
-        Assert.assertThrows(NotFoundException.class, () -> {
+        Assert.assertThrows(NullPointerException.class, () -> {
             authManager.getTarget(DEFAULT_GRAPH_SPACE, null, false);
         });
 
@@ -648,29 +648,11 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals(null, belong.description());
         Assert.assertEquals(belong.create(), belong.update());
 
-        Map<String, Object> expected = new HashMap<>();
-        expected.putAll(ImmutableMap.of("id", belong.id(),
-                                        "user", user,
-                                        "group", group1));
-        expected.putAll(ImmutableMap.of("belong_creator", "admin",
-                                        "belong_create", belong.create(),
-                                        "belong_update", belong.update()));
-        Assert.assertEquals(expected, belong.asMap());
-
         belong = authManager.getBelong(DEFAULT_GRAPH_SPACE, id2, false);
         Assert.assertEquals(user, belong.source());
         Assert.assertEquals(group2, belong.target());
         Assert.assertEquals(null, belong.description());
         Assert.assertEquals(belong.create(), belong.update());
-
-        expected = new HashMap<>();
-        expected.putAll(ImmutableMap.of("id", belong.id(),
-                                        "user", user,
-                                        "group", group2));
-        expected.putAll(ImmutableMap.of("belong_creator", "admin",
-                                        "belong_create", belong.create(),
-                                        "belong_update", belong.update()));
-        Assert.assertEquals(expected, belong.asMap());
 
         List<HugeBelong> belongs = authManager.listBelongByUser(
                          DEFAULT_GRAPH_SPACE, user, -1, false);
@@ -695,23 +677,13 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals("something2", belong.description());
         Assert.assertEquals(belong.create(), belong.update());
 
-        expected = new HashMap<>();
-        expected.putAll(ImmutableMap.of("id", belong.id(),
-                                        "user", user1,
-                                        "group", group1));
-        expected.putAll(ImmutableMap.of("belong_description", "something2",
-                                        "belong_creator", "admin",
-                                        "belong_create", belong.create(),
-                                        "belong_update", belong.update()));
-        Assert.assertEquals(expected, belong.asMap());
-
         Assert.assertThrows(IllegalArgumentException.class, () -> {
             authManager.createBelong(DEFAULT_GRAPH_SPACE,
                                      makeBelong(user, group1),
                                      false);
         }, e -> {
-            Assert.assertContains("Can't save belong", e.getMessage());
-            Assert.assertContains("that already exists", e.getMessage());
+            Assert.assertContains("The belong name", e.getMessage());
+            Assert.assertContains("has existed", e.getMessage());
         });
     }
 
@@ -836,13 +808,13 @@ public class AuthTest extends BaseCoreTest {
                                                    false);
         Assert.assertEquals(group2, belong2.target());
 
-        Assert.assertThrows(NotFoundException.class, () -> {
+        Assert.assertThrows(IllegalArgumentException.class, () -> {
             authManager.getBelong(DEFAULT_GRAPH_SPACE,
                                   IdGenerator.of("fake"),
                                   false);
         });
 
-        Assert.assertThrows(NotFoundException.class, () -> {
+        Assert.assertThrows(NullPointerException.class, () -> {
             authManager.getBelong(DEFAULT_GRAPH_SPACE, null, false);
         });
 
@@ -896,8 +868,8 @@ public class AuthTest extends BaseCoreTest {
             HugeBelong belong3 = makeBelong(user, group2);
             authManager.updateBelong(DEFAULT_GRAPH_SPACE, belong3, false);
         }, e -> {
-            Assert.assertContains("Can't save belong", e.getMessage());
-            Assert.assertContains("that not exists", e.getMessage());
+            Assert.assertContains("The belong name", e.getMessage());
+            Assert.assertContains("is not existed", e.getMessage());
         });
     }
 
@@ -981,33 +953,11 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals(HugePermission.READ, access.permission());
         Assert.assertEquals(access.create(), access.update());
 
-        Map<String, Object> expected = new HashMap<>();
-        expected.putAll(ImmutableMap.of("id", access.id(),
-                                        "group", group1,
-                                        "target", target1,
-                                        "access_permission",
-                                        HugePermission.READ,
-                                        "access_creator", "admin"));
-        expected.putAll(ImmutableMap.of("access_create", access.create(),
-                                        "access_update", access.update()));
-        Assert.assertEquals(expected, access.asMap());
-
         access = authManager.getAccess(DEFAULT_GRAPH_SPACE, id2, false);
         Assert.assertEquals(group1, access.source());
         Assert.assertEquals(target1, access.target());
         Assert.assertEquals(HugePermission.WRITE, access.permission());
         Assert.assertEquals(access.create(), access.update());
-
-        expected = new HashMap<>();
-        expected.putAll(ImmutableMap.of("id", access.id(),
-                                        "group", group1,
-                                        "target", target1,
-                                        "access_permission",
-                                        HugePermission.WRITE,
-                                        "access_creator", "admin"));
-        expected.putAll(ImmutableMap.of("access_create", access.create(),
-                                        "access_update", access.update()));
-        Assert.assertEquals(expected, access.asMap());
 
         access = authManager.getAccess(DEFAULT_GRAPH_SPACE, id3, false);
         Assert.assertEquals(group1, access.source());
@@ -1015,33 +965,11 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals(HugePermission.READ, access.permission());
         Assert.assertEquals(access.create(), access.update());
 
-        expected = new HashMap<>();
-        expected.putAll(ImmutableMap.of("id", access.id(),
-                                        "group", group1,
-                                        "target", target2,
-                                        "access_permission",
-                                        HugePermission.READ,
-                                        "access_creator", "admin"));
-        expected.putAll(ImmutableMap.of("access_create", access.create(),
-                                        "access_update", access.update()));
-        Assert.assertEquals(expected, access.asMap());
-
         access = authManager.getAccess(DEFAULT_GRAPH_SPACE, id4, false);
         Assert.assertEquals(group2, access.source());
         Assert.assertEquals(target2, access.target());
         Assert.assertEquals(HugePermission.READ, access.permission());
         Assert.assertEquals(access.create(), access.update());
-
-        expected = new HashMap<>();
-        expected.putAll(ImmutableMap.of("id", access.id(),
-                                        "group", group2,
-                                        "target", target2,
-                                        "access_permission",
-                                        HugePermission.READ,
-                                        "access_creator", "admin"));
-        expected.putAll(ImmutableMap.of("access_create", access.create(),
-                                        "access_update", access.update()));
-        Assert.assertEquals(expected, access.asMap());
 
         List<HugeAccess> accesses = authManager.listAccessByGroup(
                          DEFAULT_GRAPH_SPACE, group1, -1, false);
@@ -1070,26 +998,14 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals("something3", access.description());
         Assert.assertEquals(access.create(), access.update());
 
-        expected = new HashMap<>();
-        expected.putAll(ImmutableMap.of("id", access.id(),
-                                        "group", group2,
-                                        "target", target2,
-                                        "access_permission",
-                                        HugePermission.WRITE,
-                                        "access_creator", "admin"));
-        expected.putAll(ImmutableMap.of("access_description", "something3",
-                                        "access_create", access.create(),
-                                        "access_update", access.update()));
-        Assert.assertEquals(expected, access.asMap());
-
         Assert.assertThrows(IllegalArgumentException.class, () -> {
             authManager.createAccess(DEFAULT_GRAPH_SPACE,
                                      makeAccess(group1, target1,
                                                 HugePermission.READ),
                                      false);
         }, e -> {
-            Assert.assertContains("Can't save access", e.getMessage());
-            Assert.assertContains("that already exists", e.getMessage());
+            Assert.assertContains("The access name", e.getMessage());
+            Assert.assertContains("has existed", e.getMessage());
         });
     }
 
@@ -1223,13 +1139,13 @@ public class AuthTest extends BaseCoreTest {
                                                    id2, false);
         Assert.assertEquals(target2, access2.target());
 
-        Assert.assertThrows(NotFoundException.class, () -> {
+        Assert.assertThrows(IllegalArgumentException.class, () -> {
             authManager.getAccess(DEFAULT_GRAPH_SPACE,
                                   IdGenerator.of("fake"),
                                   false);
         });
 
-        Assert.assertThrows(NotFoundException.class, () -> {
+        Assert.assertThrows(NullPointerException.class, () -> {
             authManager.getAccess(DEFAULT_GRAPH_SPACE, null, false);
         });
 
@@ -1283,8 +1199,8 @@ public class AuthTest extends BaseCoreTest {
             access.permission(HugePermission.WRITE);
             authManager.updateAccess(DEFAULT_GRAPH_SPACE, access, false);
         }, e -> {
-            Assert.assertContains("Can't save access", e.getMessage());
-            Assert.assertContains("that not exists", e.getMessage());
+            Assert.assertContains("The access name", e.getMessage());
+            Assert.assertContains("is not existed", e.getMessage());
         });
 
         access.permission(HugePermission.READ);
