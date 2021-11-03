@@ -43,12 +43,12 @@ import com.baidu.hugegraph.util.JsonUtil;
 
 public class RolePermission {
 
-    public static final RolePermission NONE = RolePermission.role(
-                                       "none", "", HugePermission.NONE);
-    public static final RolePermission ADMIN = RolePermission.role(
-                                       "admin", "", HugePermission.ANY);
-    public static final RolePermission SPACE = RolePermission.role(
-                                       "space", "", HugePermission.SPACE);
+    public static final RolePermission NONE = RolePermission.role("system",
+                                              "system", HugePermission.NONE);
+    public static final RolePermission ADMIN = RolePermission.role("system",
+                                               "system", HugePermission.ANY);
+    public static final RolePermission SPACE = RolePermission.role("system",
+                                               "system", HugePermission.SPACE);
 
     static {
         SimpleModule module = new SimpleModule();
