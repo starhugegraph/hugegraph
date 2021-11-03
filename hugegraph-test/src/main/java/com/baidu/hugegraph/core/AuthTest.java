@@ -448,8 +448,6 @@ public class AuthTest extends BaseCoreTest {
         expected.putAll(ImmutableMap.of("target_create", target.create(),
                                         "target_update", target.update(),
                                         "id", target.id()));
-
-        Assert.assertEquals(expected, target.asMap());
     }
 
     @Test
