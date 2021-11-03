@@ -44,7 +44,7 @@ public class LoginApiTest extends BaseApiTest {
 
     @Before
     public void setup() {
-        Response r = this.createUser("test1", "test1");
+        Response r = this.createUser("test1", "password1");
         Map<String, Object> user = r.readEntity(
                                      new GenericType<Map<String, Object>>(){});
         this.userId4Test = (String) user.get("id");

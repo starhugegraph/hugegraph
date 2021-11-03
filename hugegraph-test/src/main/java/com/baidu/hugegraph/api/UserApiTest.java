@@ -96,7 +96,7 @@ public class UserApiTest extends BaseApiTest {
         String result4 = assertResponseStatus(400, r4);
         String message = assertJsonContains(result4, "message");
         Assert.assertThat(message,
-                          CoreMatchers.containsString("that already exists"));
+                          CoreMatchers.containsString("has existed"));
     }
 
     @Test
