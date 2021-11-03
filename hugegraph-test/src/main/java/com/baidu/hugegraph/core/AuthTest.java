@@ -251,8 +251,8 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertThrows(IllegalArgumentException.class, () -> {
             authManager.updateUser(makeUser("tom002", "pass1"), false);
         }, e -> {
-            Assert.assertContains("Can't save user", e.getMessage());
-            Assert.assertContains("that not exists", e.getMessage());
+            Assert.assertContains("The user name", e.getMessage());
+            Assert.assertContains("does not existed", e.getMessage());
         });
     }
 
