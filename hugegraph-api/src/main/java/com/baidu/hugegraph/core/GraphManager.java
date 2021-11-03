@@ -115,9 +115,7 @@ public final class GraphManager {
         List<String> endpoints = conf.get(ServerOptions.META_ENDPOINTS);
         this.metaManager.connect(this.cluster, MetaManager.MetaDriverType.ETCD,
                                  endpoints);
-
-        this.authManager = new StandardAuthManager(this.metaManager, conf);
-        this.authenticator.setup(this.authManager);
+        this.authManager = this.authenticator.authManager();
         if (conf.get(ServerOptions.GRAPH_LOAD_FROM_LOCAL_CONFIG)) {
             // Load graphs configured in local conf/graphs directory
             this.loadGraphs(ConfigUtil.scanGraphsDir(this.graphsDir));

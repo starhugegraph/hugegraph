@@ -40,11 +40,14 @@ public class StandardAuthenticator implements HugeAuthenticator {
     private AuthManager authManager = null;
 
     @Override
-    public void setup(HugeConfig config) {}
-
-    @Override
-    public void setup(AuthManager authManager) {
-        this.authManager = authManager;
+    public void setup(HugeConfig config) {
+        String cluster = config.get(ServerOptions.CLUSTER);
+        List<String> endpoints = config.get(ServerOptions.META_ENDPOINTS);
+        MetaManager metaManager = MetaManager.instance();
+        metaManager.connect(cluster, MetaManager.MetaDriverType.ETCD,
+                            endpoints);
+        this.authManager = new StandardAuthManager(metaManager,
+                                                   config);
     }
 
     /**

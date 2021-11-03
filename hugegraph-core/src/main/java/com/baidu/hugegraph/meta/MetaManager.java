@@ -82,19 +82,21 @@ public class MetaManager {
     public void connect(String cluster, MetaDriverType type, Object... args) {
         E.checkArgument(cluster != null && !cluster.isEmpty(),
                         "The cluster can't be null or empty");
-        this.cluster = cluster;
+        if (this.metaDriver == null) {
+            this.cluster = cluster;
 
-        switch (type) {
-            case ETCD:
-                this.metaDriver = new EtcdMetaDriver(args);
-                break;
-            case PD:
-                // TODO: uncomment after implement PdMetaDriver
-                // this.metaDriver = new PdMetaDriver(args);
-                break;
-            default:
-                throw new AssertionError(String.format(
-                          "Invalid meta driver type: %s", type));
+            switch (type) {
+                case ETCD:
+                    this.metaDriver = new EtcdMetaDriver(args);
+                    break;
+                case PD:
+                    // TODO: uncomment after implement PdMetaDriver
+                    // this.metaDriver = new PdMetaDriver(args);
+                    break;
+                default:
+                    throw new AssertionError(String.format(
+                              "Invalid meta driver type: %s", type));
+            }
         }
     }
 
