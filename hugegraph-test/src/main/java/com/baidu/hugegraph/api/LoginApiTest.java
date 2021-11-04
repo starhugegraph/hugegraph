@@ -44,7 +44,7 @@ public class LoginApiTest extends BaseApiTest {
 
     @Before
     public void setup() {
-        Response r = this.createUser("test1", "password1");
+        Response r = this.createUser("logintest1", "logintest1");
         Map<String, Object> user = r.readEntity(
                                      new GenericType<Map<String, Object>>(){});
         this.userId4Test = (String) user.get("id");
@@ -59,14 +59,14 @@ public class LoginApiTest extends BaseApiTest {
     public void testLogin() {
         Response r;
 
-        r = this.login("test1", "test1");
+        r = this.login("logintest1", "logintest1");
         String result = assertResponseStatus(200, r);
         assertJsonContains(result, "token");
 
-        r = this.login("test1", "pass1");
+        r = this.login("logintest1", "pass1");
         assertResponseStatus(401, r);
 
-        r = this.login("pass1", "pass1");
+        r = this.login("pass1", "logintest1");
         assertResponseStatus(401, r);
     }
 
@@ -75,7 +75,7 @@ public class LoginApiTest extends BaseApiTest {
         Response r;
         String result;
 
-        r = this.login("test1", "test1");
+        r = this.login("logintest1", "logintest1");
         result = assertResponseStatus(200, r);
         assertJsonContains(result, "token");
 
@@ -99,7 +99,7 @@ public class LoginApiTest extends BaseApiTest {
         Response r;
         String result;
 
-        r = this.login("test1", "test1");
+        r = this.login("logintest1", "logintest1");
         result = assertResponseStatus(200, r);
         assertJsonContains(result, "token");
 
@@ -118,7 +118,7 @@ public class LoginApiTest extends BaseApiTest {
                                    result,
                                    new TypeReference<Map<String, Object>>(){});
         Assert.assertEquals(this.userId4Test, user.get("user_id"));
-        Assert.assertEquals("test1", user.get("user_name"));
+        Assert.assertEquals("logintest1", user.get("user_name"));
 
         String invalidToken = "eyJhbGciOiJIUzI1NiJ9.eyJ1caVyX25hbWUiOiJ0ZXN0IiwidXNlcl9pZCI6Ii02Mzp0ZXN0IiwiZXhwIjoxNjI0MzUzMjUyfQ.kYot-3mSGlfSbEMzxrTs84q8YanhTTxtsKPPG25CNxA";
         headers = new MultivaluedHashMap<>();
