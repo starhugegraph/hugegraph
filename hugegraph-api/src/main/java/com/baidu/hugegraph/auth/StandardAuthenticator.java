@@ -19,14 +19,11 @@
 
 package com.baidu.hugegraph.auth;
 
-import java.io.IOException;
 import java.net.InetAddress;
-import java.util.Date;
 import java.util.List;
 
 import com.baidu.hugegraph.config.ServerOptions;
 import com.baidu.hugegraph.meta.MetaManager;
-import com.baidu.hugegraph.util.StringEncoding;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 

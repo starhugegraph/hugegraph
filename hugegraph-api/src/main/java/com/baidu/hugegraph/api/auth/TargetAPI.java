@@ -38,7 +38,6 @@ import javax.ws.rs.core.Context;
 import com.baidu.hugegraph.auth.AuthManager;
 import org.slf4j.Logger;
 
-import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
 import com.baidu.hugegraph.auth.HugeTarget;

@@ -42,24 +42,12 @@ public class LoginApiTest extends BaseApiTest {
 
     private static final String PATH = "graphs/auth";
     private static final String USER_PATH = "graphs/auth/users";
-    // private String userId4Test;
 
     @Before
-    public void setup() {
-        /*
-        Response r = this.createUser("logintest1", "logintest1");
-        Map<String, Object> user = r.readEntity(
-                                     new GenericType<Map<String, Object>>(){});
-        // assert user == null : user;
-        this.userId4Test = (String) user.get("id");
-        assert this.userId4Test != null : this.userId4Test;
-
-         */
-    }
+    public void setup() {}
 
     @After
     public void teardown() {
-        // Response r = this.deleteUser(userId4Test);
         Response r = this.client().get(USER_PATH, ImmutableMap.of("limit",
                                                                   -1));
         String result = r.readEntity(String.class);
