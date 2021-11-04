@@ -128,7 +128,7 @@ public class RolePermissionTest {
         RolePermission r12 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":null}]}}}");
         Assert.assertFalse(roleContains(role, r12));
 
-        RolePermission r13 = RolePermission.fromJson("{\"roles\"::{\"DEFAULT\"{\"hugegraph\":{\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"write\",\"properties\":null}]}}}");
+        RolePermission r13 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"write\",\"properties\":null}]}}}");
         Assert.assertFalse(roleContains(role, r13));
 
         RolePermission r14 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph2\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"write\",\"properties\":null}]}}}");

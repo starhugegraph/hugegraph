@@ -182,7 +182,7 @@ public class RolePermission {
     }
 
     public static RolePermission all(String admin) {
-        return role(admin, null, HugePermission.ANY);
+        return role("system", "system", HugePermission.ANY);
     }
 
     public static RolePermission role(String graphSpace, String graph,
