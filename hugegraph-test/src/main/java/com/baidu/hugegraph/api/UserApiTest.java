@@ -157,7 +157,7 @@ public class UserApiTest extends BaseApiTest {
         String result = assertResponseStatus(400, r);
         String message = assertJsonContains(result, "message");
         Assert.assertThat(message,
-                          CoreMatchers.containsString("Invalid user id:"));
+                          CoreMatchers.containsString("not existed"));
     }
 
     protected void createUser(String name) {
