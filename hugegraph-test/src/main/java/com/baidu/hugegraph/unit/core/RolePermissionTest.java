@@ -59,7 +59,7 @@ public class RolePermissionTest {
         Assert.assertTrue(roleContains(role2, role));
 
         RolePermission hg = RolePermission.all("hg1");
-        RolePermission role3 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hg1\":{\"ANY\":[{\"type\":\"ALL\",\"label\":\"write\",\"properties\":null}]}}}");
+        RolePermission role3 = RolePermission.fromJson("{\"roles\":{\"system\":{\"system\":{\"ANY\":[{\"type\":\"ALL\",\"label\":\"write\",\"properties\":null}]}}}");
         Assert.assertSame(hg, RolePermission.builtin(hg));
         Assert.assertSame(hg, RolePermission.fromJson(hg));
         Assert.assertTrue(roleContains(hg, role3));
