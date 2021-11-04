@@ -279,6 +279,9 @@ public class StandardAuthManager implements AuthManager {
 
         try {
             user = this.findUser(id.asString(), false);
+            E.checkArgument(user != null,
+                            "The user name '%s' is not existed",
+                            id.asString());
             E.checkArgument(!HugeAuthenticator.USER_ADMIN.equals(user.name()),
                             "Can't delete user '%s'", user.name());
             if (required) {
