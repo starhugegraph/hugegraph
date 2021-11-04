@@ -335,7 +335,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         @Override
         public byte[] get(String table, byte[] key) {
             return this.graph.get(table, new HgOwnerKey(
-                                         HgStoreClientConst.ALL_NODE_OWNER,
+                                         HgStoreClientConst.ALL_PARTITION_OWNER,
                                          key));
         }
 

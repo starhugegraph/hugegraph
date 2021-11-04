@@ -73,7 +73,7 @@ public class HstoreClient implements Closeable {
 
     public byte[] get(String table, byte[] key) {
 
-        return session.get(table,new HgOwnerKey(HgStoreClientConst.ALL_NODE_OWNER,
+        return session.get(table,new HgOwnerKey(HgStoreClientConst.ALL_PARTITION_OWNER,
                                                 key));
     }
 

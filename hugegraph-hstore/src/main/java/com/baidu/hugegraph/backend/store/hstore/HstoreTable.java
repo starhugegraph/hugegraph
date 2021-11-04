@@ -95,7 +95,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
 
     Function<BackendEntry,byte[]> ownerDelegate = (entry)->{
         if (entry == null) {
-            return HgStoreClientConst.ALL_NODE_OWNER;
+            return HgStoreClientConst.ALL_PARTITION_OWNER;
         }
         Id id = null;
         HugeType type = entry.type();
@@ -110,7 +110,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
     Function<Id,byte[]> ownerByIdDelegate = (id) -> getOwnerId(id);
     BiFunction<HugeType,Id,byte[]> ownerByQueryDelegate = (type,id) ->
                                                         getOwnerId(type, id);
-    Supplier<byte[]> ownerScanDelegate = () -> HgStoreClientConst.ALL_NODE_OWNER;
+    Supplier<byte[]> ownerScanDelegate = () -> HgStoreClientConst.ALL_PARTITION_OWNER;
 
     public Supplier<byte[]> getOwnerScanDelegate() {
         return ownerScanDelegate;
@@ -130,7 +130,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         if (id.edge()) {
             id = ((EdgeId) id).ownerVertexId();
         }
-        return id != null ? id.asBytes() : HgStoreClientConst.ALL_NODE_OWNER;
+        return id != null ? id.asBytes() : HgStoreClientConst.ALL_PARTITION_OWNER;
     }
     /**
      * 返回Id所属的点ID
@@ -142,7 +142,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
             type.code()<HugeType.SECONDARY_INDEX.code()) {
             return getOwnerId(id);
         } else{
-        return  HgStoreClientConst.ALL_NODE_OWNER;
+        return  HgStoreClientConst.ALL_PARTITION_OWNER;
         }
     }
 
