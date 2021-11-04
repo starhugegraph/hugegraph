@@ -200,7 +200,7 @@ public class MetricsAPI extends API {
                 promeMetrics.append(strType)
                         .append(helpName).append(spaceStr+ gaugeType + endlStr);
                 promeMetrics.append(helpName)
-            append(spaceStr + gauge.getValue() + endlStr);
+                        .append(spaceStr + gauge.getValue() + endlStr);
             }
         }
 
