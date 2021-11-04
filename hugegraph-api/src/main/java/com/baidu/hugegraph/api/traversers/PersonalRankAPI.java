@@ -48,7 +48,7 @@ import com.baidu.hugegraph.util.Log;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-@Path("graphs/{graph}/traversers/personalrank")
+@Path("graphspaces/{graphspace}/graphs/{graph}/traversers/personalrank")
 @Singleton
 public class PersonalRankAPI extends API {
 
@@ -58,6 +58,7 @@ public class PersonalRankAPI extends API {
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String personalRank(@Context GraphManager manager,
+                               @PathParam("graphspace") String graphSpace,
                                @PathParam("graph") String graph,
                                RankRequest request) {
         E.checkArgumentNotNull(request, "The rank request body can't be null");
@@ -87,7 +88,7 @@ public class PersonalRankAPI extends API {
                   request.maxDegree, request.maxDepth, request.sorted);
 
         Id sourceId = HugeVertex.getIdValue(request.source);
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
 
         PersonalRankTraverser traverser;
         traverser = new PersonalRankTraverser(g, request.alpha, request.maxDegree,
