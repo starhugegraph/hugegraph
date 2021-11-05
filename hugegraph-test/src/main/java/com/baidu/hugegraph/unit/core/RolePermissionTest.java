@@ -19,11 +19,11 @@
 
 package com.baidu.hugegraph.unit.core;
 
+import com.baidu.hugegraph.core.BaseCoreTest;
 import org.junit.Test;
 
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.auth.HugePermission;
-import com.baidu.hugegraph.auth.HugeProject;
 import com.baidu.hugegraph.auth.HugeResource;
 import com.baidu.hugegraph.auth.HugeResource.NameObject;
 import com.baidu.hugegraph.auth.HugeTarget;
@@ -31,7 +31,6 @@ import com.baidu.hugegraph.auth.HugeUser;
 import com.baidu.hugegraph.auth.ResourceObject;
 import com.baidu.hugegraph.auth.ResourceType;
 import com.baidu.hugegraph.auth.RolePermission;
-import com.baidu.hugegraph.auth.SchemaDefine;
 import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.schema.VertexLabel;
 import com.baidu.hugegraph.structure.HugeEdge;
@@ -46,12 +45,12 @@ public class RolePermissionTest {
     @Test
     public void testBuiltinAdmin() {
         RolePermission admin = RolePermission.admin();
-        RolePermission role1 = RolePermission.role("admin", HugePermission.ANY);
+        RolePermission role1 = RolePermission.role("system", "system", HugePermission.ANY);
         Assert.assertEquals(admin, role1);
         Assert.assertSame(admin, RolePermission.builtin(admin));
         Assert.assertSame(admin, RolePermission.builtin(role1));
 
-        RolePermission role = RolePermission.fromJson("{\"roles\":{\"admin\":{\"ANY\":[{\"type\":\"ALL\",\"label\":\"write\",\"properties\":null}]}}");
+        RolePermission role = RolePermission.fromJson("{\"roles\":{\"system\":{\"system\":{\"ANY\":[{\"type\":\"ALL\",\"label\":\"write\",\"properties\":null}]}}}}");
         Assert.assertTrue(roleContains(admin, role));
 
         RolePermission role2 = RolePermission.all("admin");
@@ -60,8 +59,8 @@ public class RolePermissionTest {
         Assert.assertTrue(roleContains(role2, role));
 
         RolePermission hg = RolePermission.all("hg1");
-        RolePermission role3 = RolePermission.fromJson("{\"roles\":{\"hg1\":{\"ANY\":[{\"type\":\"ALL\",\"label\":\"write\",\"properties\":null}]}}");
-        Assert.assertSame(hg, RolePermission.builtin(hg));
+        RolePermission role3 = RolePermission.fromJson("{\"roles\":{\"system\":{\"system\":{\"ANY\":[{\"type\":\"ALL\",\"label\":\"write\",\"properties\":null}]}}}}");
+        Assert.assertEquals(hg, RolePermission.builtin(hg));
         Assert.assertSame(hg, RolePermission.fromJson(hg));
         Assert.assertTrue(roleContains(hg, role3));
 
@@ -69,25 +68,25 @@ public class RolePermissionTest {
          * NOTE: admin role not match graph role
          * if want do this, rely on upper-layer special judgment
          */
-        Assert.assertFalse(roleContains(admin, hg));
+        Assert.assertTrue(roleContains(admin, hg));
     }
 
     @Test
     public void testBuiltinNone() {
         RolePermission none = RolePermission.none();
-        RolePermission role1 = RolePermission.role("none", HugePermission.NONE);
+        RolePermission role1 = RolePermission.role("system", "system", HugePermission.NONE);
         Assert.assertEquals(none, role1);
         Assert.assertSame(none, RolePermission.builtin(none));
         Assert.assertSame(none, RolePermission.builtin(role1));
 
-        Assert.assertEquals("{\"roles\":{\"none\":{\"NONE\":[{\"type\":\"ALL\",\"label\":\"*\",\"properties\":null}]}}}", none.toJson());
-        RolePermission role = RolePermission.fromJson("{\"roles\":{\"none\":{\"NONE\":[{\"type\":\"ALL\",\"label\":\"write\",\"properties\":null}]}}");
+        Assert.assertEquals("{\"roles\":{\"system\":{\"system\":{\"NONE\":[{\"type\":\"ALL\",\"label\":\"*\",\"properties\":null}]}}}}", none.toJson());
+        RolePermission role = RolePermission.fromJson("{\"roles\":{\"system\":{\"system\":{\"NONE\":[{\"type\":\"ALL\",\"label\":\"write\",\"properties\":null}]}}}");
         Assert.assertTrue(roleContains(none, role));
     }
 
     @Test
     public void testContains() {
-        String json = "{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"EDGE\",\"label\":\"write\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"EDGE_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"INDEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}],\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}],\"EXECUTE\":[{\"type\":\"GREMLIN\",\"label\":\"*\",\"properties\":null}]},\"hugegraph1\":{\"READ\":[]}}}";
+        String json = "{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"READ\":[{\"type\":\"EDGE\",\"label\":\"write\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"EDGE_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"INDEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}],\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}},{\"type\":\"VERTEX_LABEL\",\"label\":\"*\",\"properties\":null},{\"type\":\"PROPERTY_KEY\",\"label\":\"*\",\"properties\":null}],\"EXECUTE\":[{\"type\":\"GREMLIN\",\"label\":\"*\",\"properties\":null}]},\"hugegraph1\":{\"READ\":[]}}}}";
 
         RolePermission role = RolePermission.fromJson(json);
 
@@ -95,44 +94,44 @@ public class RolePermissionTest {
         Assert.assertEquals(role, r1);
         Assert.assertTrue(roleContains(role, r1));
 
-        RolePermission r2 = RolePermission.fromJson("{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"EDGE\",\"label\":\"write\",\"properties\":null}]}}");
+        RolePermission r2 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"READ\":[{\"type\":\"EDGE\",\"label\":\"write\",\"properties\":null}]}}}");
         Assert.assertTrue(roleContains(role, r2));
 
-        RolePermission r3 = RolePermission.fromJson("{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"EDGE\",\"label\":\"write\",\"properties\":{\"date\":\"2018-8-8\"}}]}}");
+        RolePermission r3 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"READ\":[{\"type\":\"EDGE\",\"label\":\"write\",\"properties\":{\"date\":\"2018-8-8\"}}]}}}");
         Assert.assertTrue(roleContains(role, r3));
 
-        RolePermission r4 = RolePermission.fromJson("{\"roles\":{\"hugegraph\":{\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}}]}}");
+        RolePermission r4 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}}]}}}");
         Assert.assertTrue(roleContains(role, r4));
 
-        RolePermission r5 = RolePermission.fromJson("{\"roles\":{\"hugegraph\":{\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(21)\"}}]}}");
+        RolePermission r5 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(21)\"}}]}}}");
         Assert.assertFalse(roleContains(role, r5));
 
-        RolePermission r6 = RolePermission.fromJson("{\"roles\":{\"hugegraph\":{\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":null}]}}");
+        RolePermission r6 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":null}]}}}");
         Assert.assertFalse(roleContains(role, r6));
 
-        RolePermission r7 = RolePermission.fromJson("{\"roles\":{\"hugegraph\":{\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"person2\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}}]}}");
+        RolePermission r7 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"person2\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}}]}}}");
         Assert.assertFalse(roleContains(role, r7));
 
-        RolePermission r8 = RolePermission.fromJson("{\"roles\":{\"hugegraph\":{\"WRITE\":[{\"type\":\"EDGE\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}}]}}");
+        RolePermission r8 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"WRITE\":[{\"type\":\"EDGE\",\"label\":\"person\",\"properties\":{\"city\":\"Beijing\",\"age\":\"P.gte(20)\"}}]}}}");
         Assert.assertFalse(roleContains(role, r8));
 
-        role = RolePermission.fromJson("{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"ALL\",\"label\":\"write\",\"properties\":null}]}}");
-        RolePermission r9 = RolePermission.fromJson("{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"ALL\",\"label\":\"write\",\"properties\":null}]}}");
+        role = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"READ\":[{\"type\":\"ALL\",\"label\":\"write\",\"properties\":null}]}}}");
+        RolePermission r9 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"READ\":[{\"type\":\"ALL\",\"label\":\"write\",\"properties\":null}]}}}");
         Assert.assertTrue(roleContains(role, r9));
 
-        RolePermission r10 = RolePermission.fromJson("{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"EDGE\",\"label\":\"write\",\"properties\":null}]}}");
+        RolePermission r10 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"READ\":[{\"type\":\"EDGE\",\"label\":\"write\",\"properties\":null}]}}}");
         Assert.assertTrue(roleContains(role, r10));
 
-        RolePermission r11 = RolePermission.fromJson("{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"write\",\"properties\":null}]}}");
+        RolePermission r11 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"write\",\"properties\":null}]}}}");
         Assert.assertTrue(roleContains(role, r11));
 
-        RolePermission r12 = RolePermission.fromJson("{\"roles\":{\"hugegraph\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":null}]}}");
+        RolePermission r12 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"person\",\"properties\":null}]}}}");
         Assert.assertFalse(roleContains(role, r12));
 
-        RolePermission r13 = RolePermission.fromJson("{\"roles\":{\"hugegraph\":{\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"write\",\"properties\":null}]}}");
+        RolePermission r13 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph\":{\"WRITE\":[{\"type\":\"VERTEX\",\"label\":\"write\",\"properties\":null}]}}}");
         Assert.assertFalse(roleContains(role, r13));
 
-        RolePermission r14 = RolePermission.fromJson("{\"roles\":{\"hugegraph2\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"write\",\"properties\":null}]}}");
+        RolePermission r14 = RolePermission.fromJson("{\"roles\":{\"DEFAULT\":{\"hugegraph2\":{\"READ\":[{\"type\":\"VERTEX\",\"label\":\"write\",\"properties\":null}]}}}");
         Assert.assertFalse(roleContains(role, r14));
     }
 
@@ -487,7 +486,8 @@ public class RolePermissionTest {
         Assert.assertTrue(user3.filter(r3));
         Assert.assertTrue(user3.filter(r4));
 
-        ResourceObject<?> r5 = ResourceObject.of("g1", new HugeTarget("g", ""));
+        ResourceObject<?> r5 = ResourceObject.of("g1", new HugeTarget("g",
+                          BaseCoreTest.DEFAULT_GRAPH_SPACE, ""));
         Assert.assertFalse(user.filter(r5));
 
         HugeResource root = new HugeResource(ResourceType.ROOT,
@@ -495,27 +495,6 @@ public class RolePermissionTest {
         Assert.assertTrue(root.filter(r3));
         Assert.assertTrue(root.filter(r4));
         Assert.assertTrue(root.filter(r5));
-    }
-
-    @Test
-    public void testHugeResourceFilterProject() {
-        HugeResource all = HugeResource.ALL;
-        ResourceObject<?> r1 = ResourceObject.of("hugegraph",
-                                                 new HugeProject("project1"));
-        Assert.assertFalse(all.filter(r1));
-        
-        HugeResource project = new HugeResource(ResourceType.PROJECT,
-                                                "project1",
-                                                null);
-        Assert.assertTrue(project.filter(r1));
-
-        HugeResource root = new HugeResource(ResourceType.ROOT,
-                                             HugeResource.ANY, null);
-        Assert.assertTrue(root.filter(r1));
-
-        ResourceObject<?> r2 = ResourceObject.of("hugegraph",
-                                                 new HugeProject("project2"));
-        Assert.assertFalse(project.filter(r2));
     }
 
     private boolean roleContains(RolePermission role, RolePermission other) {
