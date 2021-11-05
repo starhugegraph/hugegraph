@@ -19,7 +19,6 @@
 
 package com.baidu.hugegraph.job;
 
-import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.computer.driver.JobStatus;
 import com.baidu.hugegraph.job.computer.Computer;
 import com.baidu.hugegraph.job.computer.ComputerPool;
