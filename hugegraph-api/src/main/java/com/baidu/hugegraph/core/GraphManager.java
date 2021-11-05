@@ -130,7 +130,12 @@ public final class GraphManager {
                                  endpoints);
         this.createDefaultGraphSpaceIfNeeded();
 
-        this.authManager = this.authenticator.authManager();
+        if (this.authenticator != null) {
+            this.authManager = this.authenticator.authManager();
+        } else {
+            this.authManager = null;
+        }
+
         this.graphLoadFromLocalConfig =
                 conf.get(ServerOptions.GRAPH_LOAD_FROM_LOCAL_CONFIG);
         if (this.graphLoadFromLocalConfig) {
