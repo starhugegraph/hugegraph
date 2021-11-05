@@ -235,14 +235,6 @@ public class ServerOptions extends OptionHolder {
                     false
             );
 
-    public static final ConfigOption<String> AUTH_GRAPH_STORE =
-            new ConfigOption<>(
-                    "auth_server",
-                    "Whether is auth server.",
-                    disallowEmpty(),
-                    false
-            );
-
     public static final ConfigOption<String> AUTH_ADMIN_TOKEN =
             new ConfigOption<>(
                     "auth.admin_token",
