@@ -54,7 +54,8 @@ public class PathFilter implements ContainerRequestFilter {
             "",
             "apis",
             "metrics",
-            "versions"
+            "versions",
+            "gremlin"
     );
 
     @Override
@@ -80,8 +81,8 @@ public class PathFilter implements ContainerRequestFilter {
         for (PathSegment segment : segments) {
             path = String.join(DELIMETER, path, segment.getPath());
         }
-        LOG.info("Redirect request uri from {} to {}",
-                 uriInfo.getRequestUri().getPath(), path);
+        LOG.debug("Redirect request uri from {} to {}",
+                  uriInfo.getRequestUri().getPath(), path);
         URI requestUri = uriInfo.getRequestUriBuilder().uri(path).build();
         context.setRequestUri(uriInfo.getBaseUri(), requestUri);
     }

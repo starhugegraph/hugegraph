@@ -83,7 +83,7 @@ public final class GraphManager {
 
     private static final Logger LOG = Log.logger(RestServer.class);
 
-    private static final String DELIMETER = "-";
+    public static final String DELIMETER = "-";
 
     private final String cluster;
     private final String graphsDir;
