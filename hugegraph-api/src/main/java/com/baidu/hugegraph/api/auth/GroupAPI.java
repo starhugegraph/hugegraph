@@ -20,7 +20,6 @@
 package com.baidu.hugegraph.api.auth;
 
 import java.util.List;
-
 import javax.inject.Singleton;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -33,10 +32,9 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
-
 import org.slf4j.Logger;
 
-import com.baidu.hugegraph.HugeGraph;
+import com.baidu.hugegraph.auth.AuthManager;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
 import com.baidu.hugegraph.auth.HugeGroup;
@@ -51,7 +49,7 @@ import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-@Path("graphs/auth/groups")
+@Path("{graphspace}/graphs/auth/groups")
 @Singleton
 public class GroupAPI extends API {
 
@@ -63,14 +61,15 @@ public class GroupAPI extends API {
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String create(@Context GraphManager manager,
+                         @PathParam("graphspace") String graphSpace,
                          JsonGroup jsonGroup) {
-        LOG.debug("Graph [{}] create group: {}", SYSTEM_GRAPH, jsonGroup);
+        LOG.debug("Graph space [{}] create group: {}", graphSpace, jsonGroup);
         checkCreatingBody(jsonGroup);
 
-        HugeGraph g = graph(manager, SYSTEM_GRAPH);
-        HugeGroup group = jsonGroup.build();
-        group.id(manager.authManager().createGroup(group));
-        return manager.serializer(g).writeAuthElement(group);
+        HugeGroup group = jsonGroup.build(graphSpace);
+        AuthManager authManager = manager.authManager();
+        group.id(authManager.createGroup(graphSpace, group, true));
+        return manager.serializer().writeAuthElement(group);
     }
 
     @PUT
@@ -79,33 +78,32 @@ public class GroupAPI extends API {
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String update(@Context GraphManager manager,
+                         @PathParam("graphspace") String graphSpace,
                          @PathParam("id") String id,
                          JsonGroup jsonGroup) {
-        LOG.debug("Graph [{}] update group: {}", SYSTEM_GRAPH, jsonGroup);
+        LOG.debug("Graph space [{}] update group: {}", graphSpace, jsonGroup);
         checkUpdatingBody(jsonGroup);
 
-        HugeGraph g = graph(manager, SYSTEM_GRAPH);
-        HugeGroup group;
-        try {
-            group = manager.authManager().getGroup(UserAPI.parseId(id));
-        } catch (NotFoundException e) {
-            throw new IllegalArgumentException("Invalid group id: " + id);
-        }
-        group = jsonGroup.build(group);
-        manager.authManager().updateGroup(group);
-        return manager.serializer(g).writeAuthElement(group);
+        HugeGroup group = jsonGroup.build(graphSpace);
+        AuthManager authManager = manager.authManager();
+        authManager.updateGroup(graphSpace, group, true);
+        return manager.serializer().writeAuthElement(group);
     }
 
     @GET
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String list(@Context GraphManager manager,
+                       @PathParam("graphspace") String graphSpace,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
-        LOG.debug("Graph [{}] list groups", SYSTEM_GRAPH);
+        LOG.debug("Graph space [{}] list groups", graphSpace);
 
-        HugeGraph g = graph(manager, SYSTEM_GRAPH);
-        List<HugeGroup> groups = manager.authManager().listAllGroups(limit);
-        return manager.serializer(g).writeAuthElements("groups", groups);
+        AuthManager authManager = manager.authManager();
+        List<HugeGroup> groups = manager.authManager()
+                                        .listAllGroups(graphSpace,
+                                                       limit,
+                                                       true);
+        return manager.serializer().writeAuthElements("groups", groups);
     }
 
     @GET
@@ -113,12 +111,15 @@ public class GroupAPI extends API {
     @Path("{id}")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String get(@Context GraphManager manager,
+                      @PathParam("graphspace") String graphSpace,
                       @PathParam("id") String id) {
-        LOG.debug("Graph [{}] get group: {}", SYSTEM_GRAPH, id);
+        LOG.debug("Graph space [{}] get group: {}", graphSpace, id);
 
-        HugeGraph g = graph(manager, SYSTEM_GRAPH);
-        HugeGroup group = manager.authManager().getGroup(IdGenerator.of(id));
-        return manager.serializer(g).writeAuthElement(group);
+        AuthManager authManager = manager.authManager();
+        HugeGroup group = authManager.getGroup(graphSpace,
+                                               IdGenerator.of(id),
+                                               true);
+        return manager.serializer().writeAuthElement(group);
     }
 
     @DELETE
@@ -126,13 +127,13 @@ public class GroupAPI extends API {
     @Path("{id}")
     @Consumes(APPLICATION_JSON)
     public void delete(@Context GraphManager manager,
+                       @PathParam("graphspace") String graphSpace,
                        @PathParam("id") String id) {
-        LOG.debug("Graph [{}] delete group: {}", SYSTEM_GRAPH, id);
+        LOG.debug("Graph space [{}] delete group: {}", graphSpace, id);
 
-        @SuppressWarnings("unused") // just check if the graph exists
-        HugeGraph g = graph(manager, SYSTEM_GRAPH);
         try {
-            manager.authManager().deleteGroup(IdGenerator.of(id));
+            AuthManager authManager = manager.authManager();
+            authManager.deleteGroup(graphSpace, IdGenerator.of(id), true);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid group id: " + id);
         }
@@ -156,8 +157,8 @@ public class GroupAPI extends API {
             return group;
         }
 
-        public HugeGroup build() {
-            HugeGroup group = new HugeGroup(this.name);
+        public HugeGroup build(String graphSpace) {
+            HugeGroup group = new HugeGroup(this.name, graphSpace);
             group.description(this.description);
             return group;
         }

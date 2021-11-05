@@ -22,7 +22,6 @@ package com.baidu.hugegraph.auth;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.tinkerpop.gremlin.groovy.jsr223.dsl.credential.CredentialGraphTokens;
@@ -87,14 +86,6 @@ public class ConfigAuthenticator implements HugeAuthenticator {
     public AuthManager authManager() {
         throw new NotImplementedException(
                   "AuthManager is unsupported by ConfigAuthenticator");
-    }
-
-    @Override
-    public void initAdminUser(String password) throws Exception {
-        String adminToken = this.tokens.get(USER_ADMIN);
-        E.checkArgument(Objects.equals(adminToken, password),
-                        "The password can't be changed for " +
-                        "ConfigAuthenticator");
     }
 
     @Override
