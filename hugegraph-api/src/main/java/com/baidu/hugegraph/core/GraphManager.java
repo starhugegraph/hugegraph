@@ -19,6 +19,8 @@
 
 package com.baidu.hugegraph.core;
 
+import static com.baidu.hugegraph.space.GraphSpace.DEFAULT_GRAPH_SPACE_NAME;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Collections;
@@ -126,6 +128,8 @@ public final class GraphManager {
         List<String> endpoints = conf.get(ServerOptions.META_ENDPOINTS);
         this.metaManager.connect(this.cluster, MetaManager.MetaDriverType.ETCD,
                                  endpoints);
+        this.createDefaultGraphSpaceIfNeeded();
+
         this.authManager = this.authenticator.authManager();
         this.graphLoadFromLocalConfig =
                 conf.get(ServerOptions.GRAPH_LOAD_FROM_LOCAL_CONFIG);
@@ -148,6 +152,14 @@ public final class GraphManager {
         // listen meta changes, e.g. watch dynamically graph add/remove
         if (!conf.get(ServerOptions.AUTH_SERVER)) {
             this.listenMetaChanges();
+        }
+    }
+
+    public void createDefaultGraphSpaceIfNeeded() {
+        Map<String, GraphSpace> graphSpaceConfigs =
+                                this.metaManager.graphSpaceConfigs();
+        if (!graphSpaceConfigs.containsKey(DEFAULT_GRAPH_SPACE_NAME)) {
+            this.clearGraphSpace(DEFAULT_GRAPH_SPACE_NAME);
         }
     }
 
@@ -358,7 +370,7 @@ public final class GraphManager {
             this.metaManager.addGraphConfig(graphSpace, name, configText);
             this.metaManager.addGraph(graphSpace, name);
         }
-        this.graphs.put(name, graph);
+        this.graphs.put(graphName, graph);
         // Let gremlin server and rest server context add graph
         this.eventHub.notify(Events.GRAPH_CREATE, graphName, graph);
         return graph;
@@ -573,7 +585,8 @@ public final class GraphManager {
 
     private void loadGraph(String name, String path) {
         final Graph graph = GraphFactory.open(path);
-        this.graphs.put(name, graph);
+        String graphName = graphName(DEFAULT_GRAPH_SPACE_NAME, name);
+        this.graphs.put(graphName, graph);
         LOG.info("Graph '{}' was successfully configured via '{}'", name, path);
 
         if (this.requireAuthentication() &&

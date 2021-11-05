@@ -19,7 +19,7 @@
 
 package com.baidu.hugegraph.api.filter;
 
-import static com.baidu.hugegraph.api.space.GraphSpaceAPI.DEFAULT_GRAPH_SPACE_NAME;
+import static com.baidu.hugegraph.space.GraphSpace.DEFAULT_GRAPH_SPACE_NAME;
 
 import java.io.IOException;
 import java.net.URI;

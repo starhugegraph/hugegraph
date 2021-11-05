@@ -19,6 +19,8 @@
 
 package com.baidu.hugegraph.api.space;
 
+import static com.baidu.hugegraph.space.GraphSpace.DEFAULT_GRAPH_SPACE_NAME;
+
 import java.util.Map;
 import java.util.Set;
 
@@ -55,8 +57,6 @@ import com.google.common.collect.ImmutableMap;
 public class GraphSpaceAPI extends API {
 
     private static final Logger LOG = Log.logger(RestServer.class);
-
-    public static final String DEFAULT_GRAPH_SPACE_NAME = "default";
 
     private static final String GRAPH_SPACE_ACTION = "action";
     private static final String CONFIRM_MESSAGE = "confirm_message";
