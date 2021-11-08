@@ -35,7 +35,7 @@ import com.google.common.collect.ImmutableMap;
 
 public class UserApiTest extends BaseApiTest {
 
-    private static final String path = "graphs/auth/users";
+    private static final String path = "auth/users";
     private static final int NO_LIMIT = -1;
 
     @After

@@ -40,8 +40,8 @@ import com.baidu.hugegraph.util.JsonUtil;
 
 public class LoginApiTest extends BaseApiTest {
 
-    private static final String PATH = "graphs/auth";
-    private static final String USER_PATH = "graphs/auth/users";
+    private static final String PATH = "auth";
+    private static final String USER_PATH = "auth/users";
 
     @Before
     public void setup() {}
