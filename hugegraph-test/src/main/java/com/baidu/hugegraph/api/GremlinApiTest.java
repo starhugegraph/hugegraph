@@ -93,7 +93,7 @@ public class GremlinApiTest extends BaseApiTest {
                 + "\","
                 + "\"bindings\":{},"
                 + "\"language\":\"gremlin-groovy\","
-                + "\"aliases\":{\"graph\":\"default-hugegraph\","
+                + "\"aliases\":{\"graph\":\"DEFAULT-hugegraph\","
                 + "\"g\":\"__g_DEFAULT-hugegraph\"}}";
         assertResponseStatus(200, client().post(path, body));
 
@@ -103,7 +103,7 @@ public class GremlinApiTest extends BaseApiTest {
                 + "IdGenerator.of('server1'), NodeRole.MASTER)\","
                 + "\"bindings\":{},"
                 + "\"language\":\"gremlin-groovy\","
-                + "\"aliases\":{\"graph\":\"default-hugegraph\","
+                + "\"aliases\":{\"graph\":\"DEFAULT-hugegraph\","
                 + "\"g\":\"__g_DEFAULT-hugegraph\"}}";
         assertResponseStatus(200, client().post(path, body));
     }
@@ -115,7 +115,7 @@ public class GremlinApiTest extends BaseApiTest {
                 + "catch (UnsupportedOperationException e) {}\","
                 + "\"bindings\":{},"
                 + "\"language\":\"gremlin-groovy\","
-                + "\"aliases\":{\"graph\":\"default-hugegraph\","
+                + "\"aliases\":{\"graph\":\"DEFAULT-hugegraph\","
                 + "\"g\":\"__g_DEFAULT-hugegraph\"}}";
         assertResponseStatus(200, client().post(path, body));
     }
