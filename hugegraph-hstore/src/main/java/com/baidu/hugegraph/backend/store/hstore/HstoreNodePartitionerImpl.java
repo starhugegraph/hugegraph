@@ -66,13 +66,13 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
 
 
 
-class MockHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl{
+class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl{
     private String pdPeers;
     HgStoreNodeManager nodeManager;
     static Long DefaultStoreID = 1L;
     static int DefaultPartitionId = 1;
 
-    public MockHstoreNodePartitionerImpl(HgStoreNodeManager nodeManager, String pdPeers) {
+    public FakeHstoreNodePartitionerImpl(HgStoreNodeManager nodeManager, String pdPeers) {
         super(nodeManager, pdPeers);
         this.pdPeers = pdPeers;
         this.nodeManager = nodeManager;

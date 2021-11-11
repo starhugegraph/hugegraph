@@ -75,9 +75,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
                 if (!nodeManagerInitilized) {
                     HgStoreNodeManager nodeManager = HgStoreNodeManager.getInstance();
                     HstoreNodePartitionerImpl nodePartitioner = null;
-                    if ( true )
-                        nodePartitioner = new MockHstoreNodePartitionerImpl(
-                                nodeManager, config.get(HstoreOptions.PD_PEERS)
+                    if ( config.get(HstoreOptions.PD_FAKE) ) // 无PD模式
+                        nodePartitioner = new FakeHstoreNodePartitionerImpl(
+                                nodeManager, config.get(HstoreOptions.HSTORE_PEERS)
                         );
                     else
                         nodePartitioner = new HstoreNodePartitionerImpl(
