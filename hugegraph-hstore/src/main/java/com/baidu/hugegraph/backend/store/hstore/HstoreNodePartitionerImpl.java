@@ -59,4 +59,39 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
     public int notice(Long nodeId, HgNodeStatus status) {
         return 0;
     }
+
+
+}
+
+
+
+
+class MockHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl{
+    private String pdPeers;
+    HgStoreNodeManager nodeManager;
+    static Long DefaultStoreID = 1L;
+    static int DefaultPartitionId = 1;
+
+    public MockHstoreNodePartitionerImpl(HgStoreNodeManager nodeManager, String pdPeers) {
+        super(nodeManager, pdPeers);
+        this.pdPeers = pdPeers;
+        this.nodeManager = nodeManager;
+    }
+
+    @Override
+    public int notice(Long nodeId, HgNodeStatus status) {
+        return 0;
+    }
+
+    @Override
+    public int partition(HgNodePartitionerBuilder builder, String graphName, byte[] startKey, byte[] endKey) {
+        builder.add(DefaultStoreID,DefaultPartitionId);
+        return 0;
+    }
+
+    @Override
+    public HgStoreNode apply(String graphName, Long nodeId) {
+        return nodeManager.getNodeBuilder().setNodeId(DefaultStoreID)
+                .setAddress(pdPeers).build();
+    }
 }
