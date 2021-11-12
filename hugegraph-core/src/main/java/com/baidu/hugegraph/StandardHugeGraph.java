@@ -1007,28 +1007,6 @@ public class StandardHugeGraph implements HugeGraph {
         }
         return config.get(option);
     }
-    /*
-    @Override
-    public void registerRpcServices(RpcServiceConfig4Server serverConfig,
-                                    RpcServiceConfig4Client clientConfig) {
-        // * Skip register cache-rpc service if it's non-shared storage,
-        // * because we assume cache of non-shared storage is updated by raft.
-
-        if (!this.backendStoreFeatures().supportsSharedStorage()) {
-            return;
-        }
-
-        Class<GraphCacheNotifier> clazz1 = GraphCacheNotifier.class;
-        // The proxy is sometimes unavailable (issue #664)
-        CacheNotifier proxy = clientConfig.serviceProxy(this.name, clazz1);
-        serverConfig.addService(this.name, clazz1, new HugeGraphCacheNotifier(
-                                                   this.graphEventHub, proxy));
-
-        Class<SchemaCacheNotifier> clazz2 = SchemaCacheNotifier.class;
-        proxy = clientConfig.serviceProxy(this.name, clazz2);
-        serverConfig.addService(this.name, clazz2, new HugeSchemaCacheNotifier(
-                                                   this.schemaEventHub, proxy));
-    }*/
 
     private void closeTx() {
         try {
