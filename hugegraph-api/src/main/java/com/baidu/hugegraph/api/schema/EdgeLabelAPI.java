@@ -79,7 +79,7 @@ public class EdgeLabelAPI extends API {
         HugeGraph g = graph(manager, graphSpace, graph);
         EdgeLabel.Builder builder = jsonEdgeLabel.convert2Builder(g);
         EdgeLabel edgeLabel = builder.create();
-        return manager.serializer(g).writeEdgeLabel(edgeLabel);
+        return manager.serializer().writeEdgeLabel(edgeLabel);
     }
 
     @PUT
@@ -108,7 +108,7 @@ public class EdgeLabelAPI extends API {
         HugeGraph g = graph(manager, graphSpace, graph);
         EdgeLabel.Builder builder = jsonEdgeLabel.convert2Builder(g);
         EdgeLabel edgeLabel = append ? builder.append() : builder.eliminate();
-        return manager.serializer(g).writeEdgeLabel(edgeLabel);
+        return manager.serializer().writeEdgeLabel(edgeLabel);
     }
 
     @GET
@@ -137,7 +137,7 @@ public class EdgeLabelAPI extends API {
                 labels.add(g.schema().getEdgeLabel(name));
             }
         }
-        return manager.serializer(g).writeEdgeLabels(labels);
+        return manager.serializer().writeEdgeLabels(labels);
     }
 
     @GET
@@ -154,7 +154,7 @@ public class EdgeLabelAPI extends API {
 
         HugeGraph g = graph(manager, graphSpace, graph);
         EdgeLabel edgeLabel = g.schema().getEdgeLabel(name);
-        return manager.serializer(g).writeEdgeLabel(edgeLabel);
+        return manager.serializer().writeEdgeLabel(edgeLabel);
     }
 
     @DELETE
