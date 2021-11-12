@@ -34,12 +34,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
-
-import javax.security.sasl.AuthenticationException;
 import javax.ws.rs.ForbiddenException;
-import javax.ws.rs.NotAuthorizedException;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tinkerpop.gremlin.groovy.jsr223.GroovyTranslator;
 import org.apache.tinkerpop.gremlin.process.computer.GraphComputer;
 import org.apache.tinkerpop.gremlin.process.traversal.Bytecode;
@@ -65,7 +61,6 @@ import com.baidu.hugegraph.auth.SchemaDefine.AuthElement;
 import com.baidu.hugegraph.backend.cache.Cache;
 import com.baidu.hugegraph.backend.cache.CacheManager;
 import com.baidu.hugegraph.backend.id.Id;
-import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.backend.query.Query;
 import com.baidu.hugegraph.backend.store.BackendFeatures;
 import com.baidu.hugegraph.backend.store.BackendStoreSystemInfo;
@@ -75,8 +70,6 @@ import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.config.TypedOption;
 import com.baidu.hugegraph.exception.NotSupportException;
 import com.baidu.hugegraph.iterator.FilterIterator;
-import com.baidu.hugegraph.rpc.RpcServiceConfig4Client;
-import com.baidu.hugegraph.rpc.RpcServiceConfig4Server;
 import com.baidu.hugegraph.schema.EdgeLabel;
 import com.baidu.hugegraph.schema.IndexLabel;
 import com.baidu.hugegraph.schema.PropertyKey;
@@ -552,7 +545,8 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
     @Override
     public HugeConfig configuration() {
-        throw new NotSupportException("Graph.configuration()");
+        this.verifyAnyPermission();
+        return (HugeConfig) this.hugegraph.configuration();
     }
 
     @Override
@@ -584,6 +578,17 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     public <K, V> V option(TypedOption<K, V> option) {
         this.verifyAnyPermission();
         return this.hugegraph.option(option);
+    }
+
+    @Override
+    public String graphSpace() {
+        // none verify permission
+        return this.hugegraph.graphSpace();
+    }
+
+    @Override
+    public void graphSpace(String graphSpace) {
+        this.hugegraph.graphSpace(graphSpace);
     }
 
     @Override
@@ -680,7 +685,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     @Override
     public AuthManager authManager() {
         // Just return proxy
-        // return this.authManager;
         return null;
     }
 
@@ -696,12 +700,12 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         return this.hugegraph.raftGroupManager(group);
     }
 
-    @Override
+    /*@Override
     public void registerRpcServices(RpcServiceConfig4Server serverConfig,
                                     RpcServiceConfig4Client clientConfig) {
         this.verifyAdminPermission();
         this.hugegraph.registerRpcServices(serverConfig, clientConfig);
-    }
+    }*/
 
     @Override
     public void initBackend() {
@@ -774,9 +778,10 @@ public final class HugeGraphAuthProxy implements HugeGraph {
          * hugegraph.properties/store must be the same if enable auth.
          */
         verifyResPermission(actionPerm, true, () -> {
+            String graphSpace = this.hugegraph.graphSpace();
             String graph = this.hugegraph.name();
             Namifiable elem = HugeResource.NameObject.ANY;
-            return ResourceObject.of(graph, resType, elem);
+            return ResourceObject.of(graphSpace, graph, resType, elem);
         });
     }
 
@@ -804,11 +809,12 @@ public final class HugeGraphAuthProxy implements HugeGraph {
                                       boolean throwIfNoPerm,
                                       Supplier<V> elementFetcher) {
         return verifyResPermission(actionPerm, throwIfNoPerm, () -> {
+            String graphSpace = this.hugegraph.graphSpace();
             String graph = this.hugegraph.name();
             V elem = elementFetcher.get();
             @SuppressWarnings("unchecked")
-            ResourceObject<V> r = (ResourceObject<V>) ResourceObject.of(graph,
-                                                                        elem);
+            ResourceObject<V> r = (ResourceObject<V>)
+                              ResourceObject.of(graphSpace, graph, elem);
             return r;
         });
     }
@@ -837,11 +843,12 @@ public final class HugeGraphAuthProxy implements HugeGraph {
                                   boolean throwIfNoPerm,
                                   Supplier<V> elementFetcher) {
         return verifyResPermission(actionPerm, throwIfNoPerm, () -> {
+            String graphSpace = this.hugegraph.graphSpace();
             String graph = this.hugegraph.name();
             HugeElement elem = (HugeElement) elementFetcher.get();
             @SuppressWarnings("unchecked")
-            ResourceObject<V> r = (ResourceObject<V>) ResourceObject.of(graph,
-                                                                        elem);
+            ResourceObject<V> r = (ResourceObject<V>)
+                              ResourceObject.of(graphSpace, graph, elem);
             return r;
         });
     }
@@ -853,9 +860,10 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     private void verifyNamePermission(HugePermission actionPerm,
                                       ResourceType resType, String name) {
         verifyResPermission(actionPerm, true, () -> {
+            String graphSpace = this.hugegraph.graphSpace();
             String graph = this.hugegraph.name();
             Namifiable elem = HugeResource.NameObject.of(name);
-            return ResourceObject.of(graph, resType, elem);
+            return ResourceObject.of(graphSpace, graph, resType, elem);
         });
     }
 
@@ -888,11 +896,12 @@ public final class HugeGraphAuthProxy implements HugeGraph {
                                         boolean throwIfNoPerm,
                                         Supplier<V> schemaFetcher) {
         return verifyResPermission(actionPerm, throwIfNoPerm, () -> {
+            String graphSpace = this.hugegraph.graphSpace();
             String graph = this.hugegraph.name();
             SchemaElement elem = schemaFetcher.get();
             @SuppressWarnings("unchecked")
-            ResourceObject<V> r = (ResourceObject<V>) ResourceObject.of(graph,
-                                                                        elem);
+            ResourceObject<V> r = (ResourceObject<V>)
+                              ResourceObject.of(graphSpace, graph, elem);
             return r;
         });
     }
@@ -1088,10 +1097,13 @@ public final class HugeGraphAuthProxy implements HugeGraph {
                                                      boolean throwIfNoPerm,
                                                      HugeTask<V> task) {
             Object r = verifyResPermission(actionPerm, throwIfNoPerm, () -> {
+                String graphSpace = HugeGraphAuthProxy.this.hugegraph
+                                                           .graphSpace();
                 String graph = HugeGraphAuthProxy.this.hugegraph.name();
                 String name = task.id().toString();
                 Namifiable elem = HugeResource.NameObject.of(name);
-                return ResourceObject.of(graph, ResourceType.TASK, elem);
+                return ResourceObject.of(graphSpace, graph,
+                                         ResourceType.TASK, elem);
             }, () -> {
                 return hasTaskPermission(task);
             });
@@ -1115,6 +1127,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         }
     }
 
+    /*
     class AuthManagerProxy implements AuthManager {
 
         private AuthManager authManager;
@@ -1525,7 +1538,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         private void invalidRoleCache() {
             usersRoleCache.clear();
         }
-    }
+    }*/
 
     class VariablesProxy implements Variables {
 
