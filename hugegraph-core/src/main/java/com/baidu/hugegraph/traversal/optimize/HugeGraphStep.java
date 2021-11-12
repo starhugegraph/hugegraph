@@ -36,6 +36,7 @@ import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.backend.query.ConditionQuery;
 import com.baidu.hugegraph.backend.query.Query;
 import com.baidu.hugegraph.backend.query.QueryResults;
+import com.baidu.hugegraph.exception.NoIndexException;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.util.Log;
 
@@ -81,23 +82,42 @@ public final class HugeGraphStep<S, E extends Element>
     }
 
     private long verticesCount() {
-        if (!this.hasIds()) {
-            HugeGraph graph = TraversalUtil.getGraph(this);
-            Query query = this.makeQuery(graph, HugeType.VERTEX);
-            return graph.queryNumber(query).longValue();
+        if (this.hasIds()) {
+            return IteratorUtils.count(this.vertices());
         }
-        return IteratorUtils.count(this.vertices());
+        HugeGraph graph = TraversalUtil.getGraph(this);
+        Query query = this.makeQuery(graph, HugeType.VERTEX);
+        try {
+            return graph.queryNumber(query).longValue();
+        } catch (NoIndexException e) {
+            LOG.warn("Can't query vertex by index, will query all and filter:",
+                     e);
+        }
+        query = new Query(HugeType.VERTEX);
+        Iterator<E> result = TraversalUtil.filterResult(this.hasContainers,
+                                                        graph.vertices(query));
+        return IteratorUtils.count(result);
     }
 
     private long edgesCount() {
-        if (!this.hasIds()) {
-            HugeGraph graph = TraversalUtil.getGraph(this);
-            Query query = this.makeQuery(graph, HugeType.EDGE);
-            return graph.queryNumber(query).longValue();
+        if (this.hasIds()) {
+            return IteratorUtils.count(this.edges());
         }
-        return IteratorUtils.count(this.edges());
+        HugeGraph graph = TraversalUtil.getGraph(this);
+        Query query = this.makeQuery(graph, HugeType.EDGE);
+        try {
+            return graph.queryNumber(query).longValue();
+        } catch (NoIndexException e) {
+            LOG.warn("Can't query edge by index, will query all and filter:",
+                     e);
+        }
+        query = new Query(HugeType.EDGE);
+        Iterator<E> result = TraversalUtil.filterResult(this.hasContainers,
+                                                        graph.edges(query));
+        return IteratorUtils.count(result);
     }
 
+    @SuppressWarnings("unchecked")
     private Iterator<E> vertices() {
         LOG.debug("HugeGraphStep.vertices(): {}", this);
 
@@ -113,11 +133,19 @@ public final class HugeGraphStep<S, E extends Element>
         }
 
         Query query = this.makeQuery(graph, HugeType.VERTEX);
-        @SuppressWarnings("unchecked")
-        Iterator<E> result = (Iterator<E>) graph.vertices(query);
-        return result;
+        Iterator<E> result;
+        try {
+            return  (Iterator<E>) graph.vertices(query);
+        } catch (NoIndexException e) {
+            LOG.warn("Can't query vertex by index, will query all and filter:",
+                     e);
+        }
+        query = new Query(HugeType.VERTEX);
+        result = (Iterator<E>) graph.vertices(query);
+        return TraversalUtil.filterResult(this.hasContainers, result);
     }
 
+    @SuppressWarnings("unchecked")
     private Iterator<E> edges() {
         LOG.debug("HugeGraphStep.edges(): {}", this);
 
@@ -134,9 +162,17 @@ public final class HugeGraphStep<S, E extends Element>
         }
 
         Query query = this.makeQuery(graph, HugeType.EDGE);
-        @SuppressWarnings("unchecked")
-        Iterator<E> result = (Iterator<E>) graph.edges(query);
-        return result;
+
+        Iterator<E> result;
+        try {
+            return  (Iterator<E>) graph.edges(query);
+        } catch (NoIndexException e) {
+            LOG.warn("Can't query edge by index, will query all and filter:",
+                     e);
+        }
+        query = new Query(HugeType.EDGE);
+        result = (Iterator<E>) graph.edges(query);
+        return TraversalUtil.filterResult(this.hasContainers, result);
     }
 
     private boolean hasIds() {
