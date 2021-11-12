@@ -85,7 +85,7 @@ public class PropertyKeyAPI extends API {
         HugeGraph g = graph(manager, graphSpace, graph);
         PropertyKey.Builder builder = jsonPropertyKey.convert2Builder(g);
         SchemaElement.TaskWithSchema pk = builder.createWithTask();
-        return manager.serializer(g).writeTaskWithSchema(pk);
+        return manager.serializer().writeTaskWithSchema(pk);
     }
 
     @PUT
@@ -118,7 +118,7 @@ public class PropertyKeyAPI extends API {
             Id id = g.clearPropertyKey(propertyKey);
             SchemaElement.TaskWithSchema pk =
                     new SchemaElement.TaskWithSchema(propertyKey, id);
-            return manager.serializer(g).writeTaskWithSchema(pk);
+            return manager.serializer().writeTaskWithSchema(pk);
         }
 
         // Parse action parameter
@@ -130,7 +130,7 @@ public class PropertyKeyAPI extends API {
                                   builder.eliminate();
         SchemaElement.TaskWithSchema pk =
                 new SchemaElement.TaskWithSchema(propertyKey, IdGenerator.ZERO);
-        return manager.serializer(g).writeTaskWithSchema(pk);
+        return manager.serializer().writeTaskWithSchema(pk);
     }
 
     @GET
@@ -159,7 +159,7 @@ public class PropertyKeyAPI extends API {
                 propKeys.add(g.schema().getPropertyKey(name));
             }
         }
-        return manager.serializer(g).writePropertyKeys(propKeys);
+        return manager.serializer().writePropertyKeys(propKeys);
     }
 
     @GET
@@ -176,7 +176,7 @@ public class PropertyKeyAPI extends API {
 
         HugeGraph g = graph(manager, graphSpace, graph);
         PropertyKey propertyKey = g.schema().getPropertyKey(name);
-        return manager.serializer(g).writePropertyKey(propertyKey);
+        return manager.serializer().writePropertyKey(propertyKey);
     }
 
     @DELETE
