@@ -27,6 +27,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.baidu.hugegraph.backend.cache.VirtualGraphTransaction;
+import com.baidu.hugegraph.vgraph.VirtualGraph;
 import org.apache.tinkerpop.gremlin.process.computer.GraphComputer;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Graph;
@@ -47,7 +49,6 @@ import com.baidu.hugegraph.backend.cache.Cache;
 import com.baidu.hugegraph.backend.cache.CacheNotifier;
 import com.baidu.hugegraph.backend.cache.CacheNotifier.GraphCacheNotifier;
 import com.baidu.hugegraph.backend.cache.CacheNotifier.SchemaCacheNotifier;
-import com.baidu.hugegraph.backend.cache.CachedGraphTransaction;
 import com.baidu.hugegraph.backend.cache.CachedSchemaTransaction;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
@@ -160,6 +161,8 @@ public class StandardHugeGraph implements HugeGraph {
 
     private final RamTable ramtable;
 
+    private final VirtualGraph vgraph;
+
     public StandardHugeGraph(HugeConfig config) {
         this.params = new StandardHugeGraphParams();
         this.configuration = config;
@@ -218,6 +221,8 @@ public class StandardHugeGraph implements HugeGraph {
             LockUtil.destroy(this.name);
             throw e;
         }
+
+        this.vgraph = new VirtualGraph(this.params);
     }
 
     @Override
@@ -439,7 +444,7 @@ public class StandardHugeGraph implements HugeGraph {
         // Open a new one
         this.checkGraphNotClosed();
         try {
-            return new CachedGraphTransaction(this.params, loadGraphStore());
+            return new VirtualGraphTransaction(this.params, loadGraphStore());
         } catch (BackendException e) {
             String message = "Failed to open graph transaction";
             LOG.error("{}", message, e);
@@ -896,6 +901,7 @@ public class StandardHugeGraph implements HugeGraph {
 
         LOG.info("Close graph {}", this);
         this.taskManager.closeScheduler(this.params);
+        this.vgraph.clear();
         try {
             this.closeTx();
         } finally {
@@ -1165,6 +1171,11 @@ public class StandardHugeGraph implements HugeGraph {
         @Override
         public RamTable ramtable() {
             return StandardHugeGraph.this.ramtable;
+        }
+
+        @Override
+        public VirtualGraph vgraph() {
+            return StandardHugeGraph.this.vgraph;
         }
     }
 
