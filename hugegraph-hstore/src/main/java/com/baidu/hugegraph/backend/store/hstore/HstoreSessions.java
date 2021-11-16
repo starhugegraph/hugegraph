@@ -91,12 +91,18 @@ public abstract class HstoreSessions extends BackendSessionPool {
                                                    byte[] keyFrom,
                                                    byte[] keyTo,
                                                    int scanType);
+        public abstract BackendColumnIterator scan(String table,byte[] ownerKeyFrom,
+                                                   byte[] ownerKeyTo,
+                                                   byte[] keyFrom,
+                                                   byte[] keyTo,
+                                                   int scanType,byte[] query);
 
         public static boolean matchScanType(int expected, int actual) {
             return (expected & actual) == expected;
         }
         public abstract void merge(String table, byte[] ownerKey, byte[] key, byte[] value);
         public abstract void truncate();
+        public abstract BackendColumnIterator scan(String table, byte[] conditionQueryToByte);
     }
 
     public interface Countable {

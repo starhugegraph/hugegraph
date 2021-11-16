@@ -532,8 +532,7 @@ public class GraphTransaction extends IndexableTransaction {
             LOG.debug("Query{final:{}}", query);
             return super.query(query);
         }
-
-        QueryList<BackendEntry> queries = this.optimizeQueries(query,
+         QueryList<BackendEntry> queries = this.optimizeQueries(query,
                                                                super::query);
         LOG.debug("{}", queries);
         return queries.empty() ? QueryResults.empty() :
@@ -1334,8 +1333,17 @@ public class GraphTransaction extends IndexableTransaction {
              * 1.sysprop-query, which would not be empty.
              * 2.index-query result(ids after optimization), which may be empty.
              */
+            // TODO
             if (q == null) {
-                queries.add(this.indexQuery(cq), this.batchSize);
+                boolean sys = cq.syspropConditions().size() != 0;
+                Set<GraphIndexTransaction.MatchedIndex> indexes = this.indexTx.collectMatchedIndexes(cq);
+                if (!sys){
+                    if (CollectionUtils.isEmpty(indexes) ) {
+                        queries.add(cq);
+                        continue;
+                    }
+                }
+                queries.add(this.indexQuery(cq,indexes), this.batchSize);
             } else if (!q.empty()) {
                 queries.add(q);
             }
@@ -1426,7 +1434,8 @@ public class GraphTransaction extends IndexableTransaction {
         return null;
     }
 
-    private IdHolderList indexQuery(ConditionQuery query) {
+    private IdHolderList indexQuery(ConditionQuery query,
+                                    Set<GraphIndexTransaction.MatchedIndex> indexes) {
         /*
          * Optimize by index-query
          * It will return a list of id (maybe empty) if success,
@@ -1434,7 +1443,7 @@ public class GraphTransaction extends IndexableTransaction {
          */
         this.beforeRead();
         try {
-            return this.indexTx.queryIndex(query);
+            return this.indexTx.queryIndex(query,indexes);
         } finally {
             this.afterRead();
         }
@@ -1641,30 +1650,34 @@ public class GraphTransaction extends IndexableTransaction {
                                                 Iterator<T> results,
                                                 Query query) {
         // Filter unused or incorrect records
-        return new FilterIterator<T>(results, elem -> {
+            return new FilterIterator<T>(results, elem -> {
             // TODO: Left vertex/edge should to be auto removed via async task
-            if (elem.schemaLabel().undefined()) {
-                LOG.warn("Left record is found: id={}, label={}, properties={}",
-                         elem.id(), elem.schemaLabel().id(),
-                         elem.getPropertiesMap());
-            }
-            // Filter hidden results
-            if (!query.showHidden() && Graph.Hidden.isHidden(elem.label())) {
-                return false;
-            }
-            // Filter vertices/edges of deleting label
-            if (elem.schemaLabel().status().deleting() &&
-                !query.showDeleting()) {
-                return false;
-            }
-            // Process results that query from left index or primary-key
-            if (query.resultType().isVertex() == elem.type().isVertex() &&
-                !rightResultFromIndexQuery(query, elem)) {
-                // Only index query will come here
-                return false;
-            }
-            return true;
-        });
+                return filterElement(query, elem);
+            });
+    }
+
+    private <T extends HugeElement> Boolean filterElement(Query query, T elem) {
+        if (elem.schemaLabel().undefined()) {
+            LOG.warn("Left record is found: id={}, label={}, properties={}",
+                     elem.id(), elem.schemaLabel().id(),
+                     elem.getPropertiesMap());
+        }
+        // Filter hidden results
+        if (!query.showHidden() && Graph.Hidden.isHidden(elem.label())) {
+            return false;
+        }
+        // Filter vertices/edges of deleting label
+        if (elem.schemaLabel().status().deleting() &&
+            !query.showDeleting()) {
+            return false;
+        }
+        // Process results that query from left index or primary-key
+        if (query.resultType().isVertex() == elem.type().isVertex() &&
+            !rightResultFromIndexQuery(query, elem)) {
+            // Only index query will come here
+            return false;
+        }
+        return true;
     }
 
     private boolean rightResultFromIndexQuery(Query query, HugeElement elem) {

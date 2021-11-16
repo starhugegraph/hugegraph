@@ -177,11 +177,12 @@ public class BinarySerializer extends AbstractSerializer {
 
     protected void parseProperty(Id pkeyId, BytesBuffer buffer,
                                  HugeElement owner) {
-        PropertyKey pkey = owner.graph().propertyKey(pkeyId);
+        PropertyKey pkey = owner.graph()!=null ?
+                           owner.graph().propertyKey(pkeyId): null;
 
         // Parse value
+        if (pkey ==  null) pkey =new PropertyKey(null,pkeyId,"");
         Object value = buffer.readProperty(pkey);
-
         // Set properties of vertex/edge
         if (pkey.cardinality() == Cardinality.SINGLE) {
             owner.addProperty(pkey, value);
@@ -286,11 +287,12 @@ public class BinarySerializer extends AbstractSerializer {
 
     protected void parseVertex(byte[] value, HugeVertex vertex) {
         BytesBuffer buffer = BytesBuffer.wrap(value);
-
+        Id id = buffer.readId();
         // Parse vertex label
-        VertexLabel label = vertex.graph().vertexLabelOrNone(buffer.readId());
-        vertex.correctVertexLabel(label);
-
+        if (vertex.graph() != null) {
+            VertexLabel label = vertex.graph().vertexLabelOrNone(id);
+            vertex.correctVertexLabel(label);
+        }
         // Parse properties
         this.parseProperties(buffer, vertex);
 

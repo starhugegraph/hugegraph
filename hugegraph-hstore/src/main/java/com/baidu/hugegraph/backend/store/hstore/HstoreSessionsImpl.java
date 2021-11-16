@@ -360,6 +360,13 @@ public class HstoreSessionsImpl extends HstoreSessions {
         }
 
         @Override
+        public BackendColumnIterator scan(String table, byte[] conditionQueryToByte) {
+            assert !this.hasChanges();
+            HgKvIterator results =  this.graph.scanIterator(table,conditionQueryToByte);
+            return new ColumnIterator<HgKvIterator>(table, results);
+        }
+
+        @Override
         public BackendColumnIterator scan(String table,byte[] ownerKey,
                                           byte[] prefix) {
             assert !this.hasChanges();
@@ -376,6 +383,16 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                         new HgOwnerKey(ownerKeyFrom,keyFrom),
                                         new HgOwnerKey(ownerKeyTo,keyTo),
                                         scanType);
+            return new ColumnIterator<HgKvIterator>(table, result, keyFrom, keyTo, scanType);
+        }
+
+        @Override
+        public BackendColumnIterator scan(String table, byte[] ownerKeyFrom, byte[] ownerKeyTo, byte[] keyFrom, byte[] keyTo, int scanType, byte[] query) {
+            assert !this.hasChanges();
+            HgKvIterator result=this.graph.scanIterator(table,
+                                                        new HgOwnerKey(ownerKeyFrom,keyFrom),
+                                                        new HgOwnerKey(ownerKeyTo,keyTo),
+                                                        scanType,query);
             return new ColumnIterator<HgKvIterator>(table, result, keyFrom, keyTo, scanType);
         }
 

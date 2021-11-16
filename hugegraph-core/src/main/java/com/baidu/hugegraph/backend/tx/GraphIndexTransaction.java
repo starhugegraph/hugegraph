@@ -372,7 +372,7 @@ public class GraphIndexTransaction extends AbstractTransaction {
      * @return      converted id query
      */
     @Watched(prefix = "index")
-    public IdHolderList queryIndex(ConditionQuery query) {
+    public IdHolderList queryIndex(ConditionQuery query, Set<MatchedIndex> indexes) {
         // Index query must have been flattened in Graph tx
         query.checkFlattened();
 
@@ -398,7 +398,7 @@ public class GraphIndexTransaction extends AbstractTransaction {
             return this.queryByLabel(query);
         } else {
             // Query by userprops (or userprops + label)
-            return this.queryByUserprop(query);
+            return this.queryByUserprop(query, indexes);
         }
     }
 
@@ -458,7 +458,7 @@ public class GraphIndexTransaction extends AbstractTransaction {
     }
 
     @Watched(prefix = "index")
-    private IdHolderList queryByUserprop(ConditionQuery query) {
+    private IdHolderList queryByUserprop(ConditionQuery query, Set<MatchedIndex> indexes) {
         // Get user applied label or collect all qualified labels with
         // related index labels
         if (!this.graph().readMode().showOlap()) {
@@ -472,7 +472,8 @@ public class GraphIndexTransaction extends AbstractTransaction {
                 }
             }
         }
-        Set<MatchedIndex> indexes = this.collectMatchedIndexes(query);
+//        Set<MatchedIndex> indexes = this.collectMatchedIndexes(query);
+        indexes = this.collectMatchedIndexes(query);
         if (indexes.isEmpty()) {
             Id label = query.condition(HugeKeys.LABEL);
             throw noIndexException(this.graph(), query, label);
@@ -742,7 +743,7 @@ public class GraphIndexTransaction extends AbstractTransaction {
     }
 
     @Watched(prefix = "index")
-    private Set<MatchedIndex> collectMatchedIndexes(ConditionQuery query) {
+   protected Set<MatchedIndex> collectMatchedIndexes(ConditionQuery query) {
         SchemaTransaction schema = this.params().schemaTransaction();
         Id label = query.condition(HugeKeys.LABEL);
 
@@ -1551,7 +1552,7 @@ public class GraphIndexTransaction extends AbstractTransaction {
         this.doRemove(this.serializer.writeIndex(index));
     }
 
-    private static class MatchedIndex {
+   protected static class MatchedIndex {
 
         private SchemaLabel schemaLabel;
         private Set<IndexLabel> indexLabels;

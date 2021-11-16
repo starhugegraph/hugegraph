@@ -19,7 +19,10 @@
 
 package com.baidu.hugegraph.backend.query;
 
+import java.io.IOException;
+import java.io.Serializable;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -49,8 +52,10 @@ import com.baidu.hugegraph.util.collection.CollectionFactory;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
-public final class ConditionQuery extends IdQuery {
+public final class ConditionQuery extends IdQuery implements Serializable {
 
     private static final Set<Condition> EMPTY_CONDITIONS = ImmutableSet.of();
 
@@ -761,5 +766,13 @@ public final class ConditionQuery extends IdQuery {
         public Id indexField() {
             return indexField;
         }
+    }
+    public byte[] bytes(){
+        Gson gson= new GsonBuilder()
+                .registerTypeAdapter(Condition.class, new QueryAdapter())
+                .registerTypeAdapter(com.baidu.hugegraph.backend.id.Id.class, new QueryIdAdapter())
+                .create();
+        String cqs=gson.toJson(this);
+       return cqs.getBytes(StandardCharsets.UTF_8);
     }
 }

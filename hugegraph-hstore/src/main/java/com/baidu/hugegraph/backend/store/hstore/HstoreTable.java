@@ -29,6 +29,7 @@ import java.util.function.Supplier;
 
 import com.baidu.hugegraph.backend.id.EdgeId;
 import com.baidu.hugegraph.store.client.util.HgStoreClientConst;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 import org.slf4j.Logger;
@@ -239,16 +240,20 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
     }
 
     protected BackendColumnIterator queryAll(Session session, Query query) {
+        byte[] begin;
         if (query.paging()) {
             PageState page = PageState.fromString(query.page());
-            byte[] begin = page.position();
-            return session.scan(this.table(),
-                                this.getOwnerScanDelegate().get(),
-                                this.getOwnerScanDelegate().get(),
-                                begin, null, Session.SCAN_ANY);
-        } else {
-            return session.scan(this.table());
+            begin= page.position();
+            byte[] ownerKey = this.getOwnerScanDelegate().get();
+            if (!ArrayUtils.isEmpty(begin))
+            return query instanceof ConditionQuery ?
+                   session.scan(this.table(),ownerKey,ownerKey,begin, null,
+                                Session.SCAN_ANY,((ConditionQuery) query).bytes()) :
+                   session.scan(this.table(),ownerKey,ownerKey,begin, null, Session.SCAN_ANY);
         }
+        return query instanceof ConditionQuery? session.scan(this.table(),
+                                                             ((ConditionQuery) query).bytes()) :
+                  session.scan(this.table());
     }
 
     protected BackendColumnIterator queryById(Session session, Id id) {
@@ -292,12 +297,18 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
             type |= query.inclusiveEnd() ?
                     Session.SCAN_LTE_END : Session.SCAN_LT_END;
         }
-        return session.scan(this.table(),
-                            this.ownerByQueryDelegate.apply(query.resultType(),
-                                                            query.start()),
-                            this.ownerByQueryDelegate.apply(query.resultType(),
-                                                            query.end()),
-                            start, end, type);
+        ConditionQuery cq=null;
+        Query origin=query.originQuery();
+        byte[] ownerStart = this.ownerByQueryDelegate.apply(query.resultType(),
+                                                             query.start());
+        byte[] ownerEnd = this.ownerByQueryDelegate.apply(query.resultType(),
+                                                          query.end());
+        if (origin!= null && origin instanceof ConditionQuery
+            && (query.resultType().isEdge() || query.resultType().isVertex())) {
+            cq= (ConditionQuery) query.originQuery();
+            return session.scan(this.table(),ownerStart,ownerEnd,start, end, type,cq.bytes());
+        }
+        return session.scan(this.table(),ownerStart,ownerEnd,start, end, type);
     }
 
     protected BackendColumnIterator queryByCond(Session session,
@@ -307,13 +318,16 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
                             "Invalid scan with multi conditions: %s", query);
             Relation scan = query.relations().iterator().next();
             Shard shard = (Shard) scan.value();
-            return this.queryByRange(session, shard, query.page());
+            return this.queryByRange(session, shard, query.page(),query);
         }
-        throw new NotSupportException("query: %s", query);
+//        throw new NotSupportException("query: %s", query);
+        return this.queryAll(session,query);
     }
 
+
     protected BackendColumnIterator queryByRange(Session session, Shard shard,
-                                                 String page) {
+                                                 String page,
+                                                 ConditionQuery query) {
         byte[] start = this.shardSpliter.position(shard.start());
         byte[] end = this.shardSpliter.position(shard.end());
         if (page != null && !page.isEmpty()) {
@@ -331,7 +345,8 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
             type |= Session.SCAN_LT_END;
         }
         return session.scan(this.table(),this.ownerScanDelegate.get(),
-                            this.ownerScanDelegate.get(),start, end, type);
+                            this.ownerScanDelegate.get(),start, end, type,
+                            query.bytes());
     }
 
     protected static final BackendEntryIterator newEntryIterator(
