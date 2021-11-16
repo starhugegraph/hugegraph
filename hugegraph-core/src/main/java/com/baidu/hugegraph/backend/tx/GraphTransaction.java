@@ -1332,8 +1332,11 @@ public class GraphTransaction extends IndexableTransaction {
              * NOTE: There are two possibilities for this query:
              * 1.sysprop-query, which would not be empty.
              * 2.index-query result(ids after optimization), which may be empty.
+             *
+             * NOTE: There will be a case here where there is UserpropRelation
+             * and with no index, using hstore for Predicate in storeNode
              */
-            // TODO
+
             if (q == null) {
                 boolean sys = cq.syspropConditions().size() != 0;
                 Set<GraphIndexTransaction.MatchedIndex> indexes = this.indexTx.collectMatchedIndexes(cq);
