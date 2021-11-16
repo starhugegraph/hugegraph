@@ -56,11 +56,9 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
     }
 
     @Override
-    public int notice(Long nodeId, HgNodeStatus status) {
+    public int notice(String graphName, HgStoreNotice storeNotice) {
         return 0;
     }
-
-
 }
 
 
@@ -78,10 +76,6 @@ class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl{
         this.nodeManager = nodeManager;
     }
 
-    @Override
-    public int notice(Long nodeId, HgNodeStatus status) {
-        return 0;
-    }
 
     @Override
     public int partition(HgNodePartitionerBuilder builder, String graphName, byte[] startKey, byte[] endKey) {
@@ -93,5 +87,10 @@ class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl{
     public HgStoreNode apply(String graphName, Long nodeId) {
         return nodeManager.getNodeBuilder().setNodeId(DefaultStoreID)
                 .setAddress(pdPeers).build();
+    }
+
+    @Override
+    public int notice(String graphName, HgStoreNotice storeNotice) {
+        return 0;
     }
 }
