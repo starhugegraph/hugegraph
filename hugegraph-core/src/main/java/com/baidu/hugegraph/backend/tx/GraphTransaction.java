@@ -289,6 +289,18 @@ public class GraphTransaction extends IndexableTransaction {
         return new ArrayList<>(this.removedVertices.values());
     }
 
+    protected final Collection<HugeEdge> edgesInTxUpdated() {
+        int size = this.addedEdges.size() + this.updatedEdges.size();
+        List<HugeEdge> edges = new ArrayList<>(size);
+        edges.addAll(this.addedEdges.values());
+        edges.addAll(this.updatedEdges.values());
+        return edges;
+    }
+
+    protected final Collection<HugeEdge> edgesInTxRemoved() {
+        return new ArrayList<>(this.removedEdges.values());
+    }
+
     protected final boolean removingEdgeOwner(HugeEdge edge) {
         for (HugeVertex vertex : this.removedVertices.values()) {
             if (edge.belongToVertex(vertex)) {
