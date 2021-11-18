@@ -19,7 +19,12 @@
 
 package com.baidu.hugegraph.backend.query;
 
+import java.io.ByteArrayOutputStream;
+import java.io.Externalizable;
 import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -39,6 +44,8 @@ import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.SplicingIdGenerator;
 import com.baidu.hugegraph.backend.query.Condition.Relation;
 import com.baidu.hugegraph.backend.query.Condition.RelationType;
+import com.baidu.hugegraph.backend.query.serializer.QueryAdapter;
+import com.baidu.hugegraph.backend.query.serializer.QueryIdAdapter;
 import com.baidu.hugegraph.perf.PerfUtil.Watched;
 import com.baidu.hugegraph.structure.HugeElement;
 import com.baidu.hugegraph.structure.HugeProperty;
@@ -767,12 +774,40 @@ public final class ConditionQuery extends IdQuery implements Serializable {
             return indexField;
         }
     }
-    public byte[] bytes(){
+
+//    private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+//        out.writeObject(conditions);
+//        out.writeObject(this.optimizedType);
+//        out.writeObject(this.resultType());
+//
+//    }
+//    private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException{
+//        conditions= (Set<Condition>) in.readObject();
+//        this.optimized((OptimizedType) in.readObject());
+//        this.resultType((HugeType) in.readObject());
+//    }
+//    @Override
+//    public void writeExternal(ObjectOutput out) throws IOException {
+//        out.writeObject(conditions);
+//    }
+//
+//    @Override
+//    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+//        conditions= (Set<Condition>) in.readObject();
+//    }
+    public byte[] bytes() {
         Gson gson= new GsonBuilder()
                 .registerTypeAdapter(Condition.class, new QueryAdapter())
                 .registerTypeAdapter(com.baidu.hugegraph.backend.id.Id.class, new QueryIdAdapter())
                 .create();
         String cqs=gson.toJson(this);
        return cqs.getBytes(StandardCharsets.UTF_8);
+//        ByteArrayOutputStream byteStream =new ByteArrayOutputStream();
+//        try(ObjectOutputStream oos =new ObjectOutputStream(byteStream)){
+//            oos.writeObject(this);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//        return byteStream.toByteArray();
     }
 }

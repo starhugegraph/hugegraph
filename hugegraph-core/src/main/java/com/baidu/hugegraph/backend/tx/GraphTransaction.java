@@ -1334,7 +1334,7 @@ public class GraphTransaction extends IndexableTransaction {
              * 2.index-query result(ids after optimization), which may be empty.
              *
              * NOTE: There will be a case here where there is UserpropRelation
-             * and with no index, using hstore for Predicate in storeNode
+             * and with no index, using hstore for Predicate in StoreNode
              */
 
             if (q == null) {
