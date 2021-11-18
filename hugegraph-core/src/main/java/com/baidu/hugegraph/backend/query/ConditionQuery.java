@@ -746,7 +746,6 @@ public final class ConditionQuery extends IdQuery implements Serializable {
             if (number1.getClass().equals(number2.getClass())) {
                 return number1.equals(number2);
             }
-
             // Otherwise convert to BigDecimal to make two numbers comparable
             Number n1 = NumericUtil.convertToNumber(number1);
             Number n2 = NumericUtil.convertToNumber(number2);
@@ -775,26 +774,6 @@ public final class ConditionQuery extends IdQuery implements Serializable {
         }
     }
 
-//    private void writeObject(java.io.ObjectOutputStream out) throws IOException {
-//        out.writeObject(conditions);
-//        out.writeObject(this.optimizedType);
-//        out.writeObject(this.resultType());
-//
-//    }
-//    private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException{
-//        conditions= (Set<Condition>) in.readObject();
-//        this.optimized((OptimizedType) in.readObject());
-//        this.resultType((HugeType) in.readObject());
-//    }
-//    @Override
-//    public void writeExternal(ObjectOutput out) throws IOException {
-//        out.writeObject(conditions);
-//    }
-//
-//    @Override
-//    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-//        conditions= (Set<Condition>) in.readObject();
-//    }
     public byte[] bytes() {
         Gson gson= new GsonBuilder()
                 .registerTypeAdapter(Condition.class, new QueryAdapter())
@@ -802,12 +781,5 @@ public final class ConditionQuery extends IdQuery implements Serializable {
                 .create();
         String cqs=gson.toJson(this);
        return cqs.getBytes(StandardCharsets.UTF_8);
-//        ByteArrayOutputStream byteStream =new ByteArrayOutputStream();
-//        try(ObjectOutputStream oos =new ObjectOutputStream(byteStream)){
-//            oos.writeObject(this);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        return byteStream.toByteArray();
     }
 }
