@@ -203,16 +203,14 @@ public final class VirtualGraphTransaction extends GraphTransaction {
         // Collect changes before commit
         Collection<HugeVertex> updates = this.verticesInTxUpdated();
         Collection<HugeVertex> deletions = this.verticesInTxRemoved();
-        Id[] vertexIds = new Id[updates.size() + deletions.size()];
-        int vertexOffset = 0;
-
-        int edgesInTxSize = this.edgesInTxSize();
+        Collection<HugeEdge> updatesE = this.edgesInTxUpdated();
+        Collection<HugeEdge> deletionsE = this.edgesInTxRemoved();
 
         try {
             super.commitMutation2Backend(mutations);
+
             // Update vertex cache
             for (HugeVertex vertex : updates) {
-                vertexIds[vertexOffset++] = vertex.id();
                 if (vertex.sizeOfSubProperties() > MAX_CACHE_PROPS_PER_VERTEX) {
                     // Skip large vertex
                     this.vgraph.invalidateVertex(vertex.id());
@@ -220,21 +218,30 @@ public final class VirtualGraphTransaction extends GraphTransaction {
                 }
                 this.vgraph.updateIfPresentVertex(vertex);
             }
+            // Update edge cache
+            for (HugeEdge edge : updatesE) {
+                this.vgraph.updateIfPresentEdge(edge);
+            }
         } finally {
-            // Update removed vertex in cache whatever success or fail
+            // invalidate removed vertex in cache whatever success or fail
+            int vertexOffset = 0;
+            int edgeOffset = 0;
+            Id[] vertexIdsDeleted = new Id[deletions.size()];
+            Id[] edgeIdsDeleted = new Id[deletionsE.size()];
+
             for (HugeVertex vertex : deletions) {
-                vertexIds[vertexOffset++] = vertex.id();
-                this.vgraph.invalidateVertex(vertex.id());
+                vertexIdsDeleted[vertexOffset++] = vertex.id();
+            }
+            for (HugeEdge edge : deletionsE) {
+                edgeIdsDeleted[edgeOffset++] = edge.id();
             }
             if (vertexOffset > 0) {
-                this.vgraph.notifyChanges(Cache.ACTION_INVALIDED,
-                                   HugeType.VERTEX, vertexIds);
+                this.vgraph.notifyChanges(Cache.ACTION_INVALID,
+                                   HugeType.VERTEX, vertexIdsDeleted);
             }
-
-            // Update edge cache if any edges change
-            if (edgesInTxSize > 0) {
-                // TODO: Use a more precise strategy to update the edge cache
-                this.vgraph.notifyChanges(Cache.ACTION_CLEARED, HugeType.EDGE, null);
+            if (edgeOffset > 0) {
+                this.vgraph.notifyChanges(Cache.ACTION_INVALID,
+                        HugeType.EDGE, edgeIdsDeleted);
             }
         }
     }
