@@ -10,7 +10,7 @@ public class VirtualEdge extends VirtualElement {
 
     public VirtualEdge( // Id source, Id target, byte[] propertyBuf,
                         HugeEdge edge,
-                        VirtualElementStatus status) {
+                        byte status) {
         super( // propertyBuf,
                 status);
         this.edge = edge;
@@ -35,4 +35,8 @@ public class VirtualEdge extends VirtualElement {
 //    public void setTarget(Id target) {
 //        this.target = target;
 //    }
+
+    void orStatus(VirtualEdgeStatus status) {
+        this.status = status.or(this.status);
+    }
 }

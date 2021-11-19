@@ -73,34 +73,41 @@ public class VirtualGraph {
         return this.edgeMap.size();
     }
 
-    public HugeVertex queryVertexById(Id vId, VirtualElementStatus status) {
+    public HugeVertex queryVertexById(Id vId, VirtualVertexStatus status) {
         assert vId != null;
         return toHuge(this.vertexMap.get(vId), status);
     }
 
     public boolean updateIfPresentVertex(HugeVertex vertex) {
         assert vertex != null;
-        return this.vertexMap.computeIfPresent(vertex.id(), (id, __) -> toVirtual(vertex)) != null;
+        return this.vertexMap.computeIfPresent(vertex.id(), (id, old) -> toVirtual(old, vertex)) != null;
+    }
+
+    public void putVertex(HugeVertex vertex) {
+        assert vertex != null;
+        this.vertexMap.compute(vertex.id(), (id, old) -> toVirtual(old, vertex));
     }
 
     public void putVerteies(Iterator<HugeVertex> values) {
         assert values != null;
-        values.forEachRemaining(vertex -> this.vertexMap.put(vertex.id(), toVirtual(vertex)));
+        values.forEachRemaining(vertex -> this.vertexMap.compute(vertex.id(), (id, old) -> toVirtual(old, vertex)));
     }
 
-    public boolean updateIfPresentEdge(HugeEdge edge) {
-        assert edge != null;
-        return this.edgeMap.computeIfPresent(edge.id(), (id, __) -> toVirtual(edge)) != null;
+    public void updateIfPresentEdge(Iterator<HugeEdge> edges) {
+        assert edges != null;
+        edges.forEachRemaining(edge ->
+                this.edgeMap.computeIfPresent(edge.id(),
+                        (id, old) -> toVirtual(old, edge)));
     }
 
-    public void putEdge(HugeEdge edge) {
+    public VirtualEdge putEdge(HugeEdge edge) {
         assert edge != null;
-        this.edgeMap.put(edge.id(), toVirtual(edge));
+        return this.edgeMap.compute(edge.id(), (id, old) -> toVirtual(old, edge));
     }
 
     public void putEdges(Iterator<HugeEdge> values) {
         assert values != null;
-        values.forEachRemaining(edge -> this.edgeMap.put(edge.id(), toVirtual(edge)));
+        values.forEachRemaining(this::putEdge);
     }
 
     public void invalidateVertex(Id vId) {
@@ -127,22 +134,18 @@ public class VirtualGraph {
         this.edgeMap.clear();
     }
 
-    private HugeVertex toHuge(VirtualVertex vertex, VirtualElementStatus status) {
+    private HugeVertex toHuge(VirtualVertex vertex, VirtualVertexStatus status) {
 
         if (vertex == null) {
             return null;
         }
 
-        if (status == VirtualElementStatus.Init) {
+        if (status.match(vertex.getStatus())) {
             return vertex.getVertex();
-        }
-
-        if (vertex.status == VirtualElementStatus.OK.code()) {
-            return vertex.getVertex();
-        }
-        else {
+        } else {
             return null;
         }
+
     }
 
     private HugeEdge toHuge(VirtualEdge virtualEdge) {
@@ -152,23 +155,55 @@ public class VirtualGraph {
         return virtualEdge.getEdge();
     }
 
-    private VirtualVertex toVirtual(HugeVertex hugeVertex) {
-        if (hugeVertex.existsEdges()) {
-            VirtualVertex vertex = new VirtualVertex(hugeVertex, VirtualElementStatus.OK);
-            hugeVertex.getEdges().forEach(e -> {
-                VirtualEdge edge = toVirtual(e);
-                this.edgeMap.put(edge.getEdge().id(), edge);
-                vertex.getEdges().add(edge);
-            });
-            return vertex;
-        }
-        else {
-            return new VirtualVertex(hugeVertex, VirtualElementStatus.Init);
-        }
+    private VirtualVertex toVirtual(VirtualVertex old, HugeVertex hugeVertex) {
+        VirtualVertex newVertex = new VirtualVertex(hugeVertex, VirtualVertexStatus.Id.code());
+        VirtualVertex result = mergeVVEdge(old, newVertex, hugeVertex);
+        result = mergeVVProp(old, result, hugeVertex);
+        assert result != null;
+        return result;
     }
 
-    private VirtualEdge toVirtual(HugeEdge hugeEdge) {
-        return new VirtualEdge(hugeEdge, VirtualElementStatus.OK);
+    private VirtualEdge toVirtual(VirtualEdge old, HugeEdge hugeEdge) {
+        return new VirtualEdge(hugeEdge, VirtualEdgeStatus.OK.code());
+    }
+
+    private VirtualVertex mergeVVEdge(VirtualVertex oldV, VirtualVertex newV, HugeVertex hugeVertex) {
+        if (oldV == newV) {
+            return oldV;
+        }
+        if (hugeVertex.existsEdges()) {
+            hugeVertex.getEdges().forEach(e -> {
+                VirtualEdge edge = this.putEdge(e);
+                assert edge != null;
+                newV.getEdges().add(edge);
+            });
+            newV.orStatus(VirtualVertexStatus.Edge);
+        }
+        if (oldV == null) {
+            return newV;
+        }
+        // new vertex has no edges
+        if (!VirtualVertexStatus.Edge.match(newV.getStatus())) {
+            return oldV;
+        }
+        return newV;
+    }
+
+    private VirtualVertex mergeVVProp(VirtualVertex oldV, VirtualVertex newV, HugeVertex hugeVertex) {
+        if (oldV == newV) {
+            return oldV;
+        }
+        if (hugeVertex.isPropLoaded()) {
+            newV.orStatus(VirtualVertexStatus.Property);
+        }
+        if (oldV == null) {
+            return newV;
+        }
+        // new vertex is not loaded
+        if (!VirtualVertexStatus.Property.match(newV.getStatus())) {
+            return oldV;
+        }
+        return newV;
     }
 
     private void listenChanges() {

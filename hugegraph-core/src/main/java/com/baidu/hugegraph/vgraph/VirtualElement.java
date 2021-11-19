@@ -7,21 +7,16 @@ public abstract class VirtualElement {
     // protected byte[] propertyBuf;
 
     protected VirtualElement( // byte[] propertyBuf,
-                             VirtualElementStatus status) {
+                             byte status) {
         // this.propertyBuf = propertyBuf;
-        this.status = status.code();
-    }
-
-    public VirtualElementStatus getStatus() {
-        return VirtualElementStatus.fromCode(status);
-    }
-
-    public void setStatus(VirtualElementStatus status) {
-        this.status = status.code();
+        this.status = status;
     }
 
 //    public byte[] getPropertyBuf() {
 //        return propertyBuf;
 //    }
 
+    public byte getStatus() {
+        return status;
+    }
 }
