@@ -67,9 +67,16 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
      */
     @Override
     public int notice(String graphName, HgStoreNotice storeNotice) {
-        storeNotice.getPartitionLeaders().forEach((partId, leader) -> {
-            pdClient.updatePartitionLeader(graphName, partId, leader);
-        });
+        if (storeNotice.getPartitionLeaders() != null) {
+            storeNotice.getPartitionLeaders().forEach((partId, leader) -> {
+                pdClient.updatePartitionLeader(graphName, partId, leader);
+            });
+        }
+        if (storeNotice.getPartitionIds() != null) {
+            storeNotice.getPartitionIds().forEach(partId -> {
+                pdClient.invalidPartitionCache(graphName, partId);
+            });
+        }
         return 0;
     }
 }
