@@ -21,6 +21,9 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
         pdClient = PDClient.create(PDConfig.of(pdPeers));
     }
 
+    /**
+     * 查询分区信息，结果通过HgNodePartitionerBuilder返回
+     */
     @Override
     public int partition(HgNodePartitionerBuilder builder, String graphName, byte[] startKey, byte[] endKey) {
         try {
@@ -44,6 +47,10 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
         return 0;
     }
 
+    /**
+     * 查询hgstore信息
+     * @return hgstore
+     */
     @Override
     public HgStoreNode apply(String graphName, Long nodeId) {
         try {
@@ -55,8 +62,14 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
         }
     }
 
+    /**
+     * 通知更新缓存
+     */
     @Override
     public int notice(String graphName, HgStoreNotice storeNotice) {
+        storeNotice.getPartitionLeaders().forEach((partId, leader) -> {
+            pdClient.updatePartitionLeader(graphName, partId, leader);
+        });
         return 0;
     }
 }
