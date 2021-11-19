@@ -32,11 +32,13 @@ import com.baidu.hugegraph.backend.tx.GraphTransaction;
 import com.baidu.hugegraph.iterator.ExtendableIterator;
 import com.baidu.hugegraph.iterator.ListIterator;
 import com.baidu.hugegraph.perf.PerfUtil.Watched;
+import com.baidu.hugegraph.schema.VertexLabel;
 import com.baidu.hugegraph.structure.HugeEdge;
 import com.baidu.hugegraph.structure.HugeVertex;
 import com.baidu.hugegraph.type.HugeType;
+import com.baidu.hugegraph.type.define.Directions;
 import com.baidu.hugegraph.type.define.HugeKeys;
-import com.baidu.hugegraph.vgraph.VirtualElementStatus;
+import com.baidu.hugegraph.vgraph.VirtualVertexStatus;
 import com.baidu.hugegraph.vgraph.VirtualGraph;
 
 import java.util.ArrayList;
@@ -47,8 +49,8 @@ import java.util.List;
 
 public final class VirtualGraphTransaction extends GraphTransaction {
 
-    private static final int MAX_CACHE_PROPS_PER_VERTEX = 10000;
-    private static final int MAX_CACHE_EDGES_PER_QUERY = 100;
+//    private static final int MAX_CACHE_PROPS_PER_VERTEX = 10000;
+//    private static final int MAX_CACHE_EDGES_PER_QUERY = 100;
 
     private final VirtualGraph vgraph;
 
@@ -72,7 +74,7 @@ public final class VirtualGraphTransaction extends GraphTransaction {
         List<HugeVertex> vertices = new ArrayList<>();
         for (Id vertexId : query.ids()) {
             HugeVertex vertex = this.vgraph.queryVertexById(
-                    vertexId, VirtualElementStatus.Init);
+                    vertexId, VirtualVertexStatus.Id);
             if (vertex == null) {
                 newQuery.query(vertexId);
             } else if (vertex.expired()) {
@@ -145,17 +147,28 @@ public final class VirtualGraphTransaction extends GraphTransaction {
              * try fetch a few of the head results and determine whether to cache.
              */
             List<HugeEdge> edgesRS = new ArrayList<>();
-            rs.forEachRemaining(e -> {
-                edgesRS.add(e);
-                if (edgesRS.size() <= MAX_CACHE_EDGES_PER_QUERY) {
-                    this.vgraph.putEdge(e);
-                }
-            });
+            rs.forEachRemaining(edgesRS::add);
             if (!edgesRS.isEmpty()) {
+                putEdgesToVirtualGraph(newQuery, edgesRS.listIterator());
                 results.extend(edgesRS.listIterator());
             }
         }
         return results;
+    }
+
+    private void putEdgesToVirtualGraph(Query query, Iterator<HugeEdge> edges) {
+        if (query instanceof ConditionQuery) {
+            ConditionQuery coditionQuery = (ConditionQuery) query;
+            Id vId = coditionQuery.condition(HugeKeys.OWNER_VERTEX);
+            if (vId != null) {
+                HugeVertex vertex = HugeVertex.create(this, vId, VertexLabel.undefined(this.graph()));
+                edges.forEachRemaining(vertex::addEdge);
+                this.vgraph.putVertex(vertex);
+            }
+        }
+        else {
+            this.vgraph.putEdges(edges);
+        }
     }
 
     private Query queryEdgesFromVirtualGraphByEIds(Query query, List<HugeEdge> edges) {
@@ -176,26 +189,37 @@ public final class VirtualGraphTransaction extends GraphTransaction {
 
     private Query queryEdgesFromVirtualGraph(Query query, List<HugeEdge> results) {
         if (query instanceof ConditionQuery) {
-            ConditionQuery oldQuery = (ConditionQuery) query;
-            Id vId = oldQuery.condition(HugeKeys.OWNER_VERTEX);
+            ConditionQuery conditionQuery = (ConditionQuery) query;
+            Id vId = conditionQuery.condition(HugeKeys.OWNER_VERTEX);
             if (vId != null) {
-                HugeVertex vertex = this.vgraph.queryVertexById(vId, VirtualElementStatus.OK);
-                if (vertex != null) {
-                    if (vertex.expired()) {
-                        this.vgraph.invalidateVertex(vId);
-                    } else {
-                        vertex.getEdges().forEach(e -> {
-                            if (query.test(e)) {
-                                results.add(e);
-                            }
-                        });
-                        return null;
-                    }
+                this.getQueryEdgesFromVirtualGraph(vId, conditionQuery, results);
+                if (results.size() <= 0) {
+                    // query all edges of this vertex from backend
+                    ConditionQuery vertexAllEdgeQuery = constructEdgesQuery(vId, Directions.BOTH);
+                    Iterator<HugeEdge> allEdges = super.queryEdgesFromBackend(vertexAllEdgeQuery);
+                    putEdgesToVirtualGraph(vertexAllEdgeQuery, allEdges);
+                    this.getQueryEdgesFromVirtualGraph(vId, conditionQuery, results);
                 }
+                return null;
             }
         }
 
         return query;
+    }
+
+    private void getQueryEdgesFromVirtualGraph(Id vId, ConditionQuery query, List<HugeEdge> results) {
+        HugeVertex vertex = this.vgraph.queryVertexById(vId, VirtualVertexStatus.Edge);
+        if (vertex != null) {
+            if (vertex.expired()) {
+                this.vgraph.invalidateVertex(vId);
+            } else {
+                vertex.getEdges().forEach(e -> {
+                    if (query.test(e)) {
+                        results.add(e);
+                    }
+                });
+            }
+        }
     }
 
     @Override
@@ -211,17 +235,16 @@ public final class VirtualGraphTransaction extends GraphTransaction {
 
             // Update vertex cache
             for (HugeVertex vertex : updates) {
-                if (vertex.sizeOfSubProperties() > MAX_CACHE_PROPS_PER_VERTEX) {
-                    // Skip large vertex
-                    this.vgraph.invalidateVertex(vertex.id());
-                    continue;
-                }
+//                if (vertex.sizeOfSubProperties() > MAX_CACHE_PROPS_PER_VERTEX) {
+//                    // Skip large vertex
+//                    this.vgraph.invalidateVertex(vertex.id());
+//                    continue;
+//                }
                 this.vgraph.updateIfPresentVertex(vertex);
             }
             // Update edge cache
-            for (HugeEdge edge : updatesE) {
-                this.vgraph.updateIfPresentEdge(edge);
-            }
+            this.vgraph.updateIfPresentEdge(updatesE.iterator());
+
         } finally {
             // invalidate removed vertex in cache whatever success or fail
             int vertexOffset = 0;
