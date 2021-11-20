@@ -19,26 +19,6 @@
 
 package com.baidu.hugegraph.backend.query;
 
-import java.io.ByteArrayOutputStream;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.SplicingIdGenerator;
@@ -61,6 +41,20 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public final class ConditionQuery extends IdQuery implements Serializable {
 
@@ -777,7 +771,7 @@ public final class ConditionQuery extends IdQuery implements Serializable {
     public byte[] bytes() {
         Gson gson= new GsonBuilder()
                 .registerTypeAdapter(Condition.class, new QueryAdapter())
-                .registerTypeAdapter(com.baidu.hugegraph.backend.id.Id.class, new QueryIdAdapter())
+                .registerTypeAdapter(Id.class, new QueryIdAdapter())
                 .create();
         String cqs=gson.toJson(this);
        return cqs.getBytes(StandardCharsets.UTF_8);
