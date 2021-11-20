@@ -5,11 +5,15 @@ import com.baidu.hugegraph.pd.client.PDConfig;
 import com.baidu.hugegraph.pd.common.PDException;
 import com.baidu.hugegraph.pd.grpc.Metapb;
 import com.baidu.hugegraph.store.client.*;
-import com.baidu.hugegraph.store.client.type.HgNodeStatus;
 import com.baidu.hugegraph.store.client.util.HgStoreClientConst;
 import com.baidu.hugegraph.pd.common.HgPair;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static com.baidu.hugegraph.store.client.util.HgStoreClientConst.ALL_PARTITION_OWNER;
 
 public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStoreNodeProvider, HgStoreNodeNotifier {
 
@@ -21,6 +25,9 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
         pdClient = PDClient.create(PDConfig.of(pdPeers));
     }
 
+    /**
+     * 查询分区信息，结果通过HgNodePartitionerBuilder返回
+     */
     @Override
     public int partition(HgNodePartitionerBuilder builder, String graphName, byte[] startKey, byte[] endKey) {
         try {
@@ -44,6 +51,10 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
         return 0;
     }
 
+    /**
+     * 查询hgstore信息
+     * @return hgstore
+     */
     @Override
     public HgStoreNode apply(String graphName, Long nodeId) {
         try {
@@ -55,42 +66,79 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
         }
     }
 
+    /**
+     * 通知更新缓存
+     */
     @Override
     public int notice(String graphName, HgStoreNotice storeNotice) {
+        if (storeNotice.getPartitionLeaders() != null) {
+            storeNotice.getPartitionLeaders().forEach((partId, leader) -> {
+                pdClient.updatePartitionLeader(graphName, partId, leader);
+            });
+        }
+        if (storeNotice.getPartitionIds() != null) {
+            storeNotice.getPartitionIds().forEach(partId -> {
+                pdClient.invalidPartitionCache(graphName, partId);
+            });
+        }
         return 0;
     }
 }
 
 
-
-
-class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl{
-    private String pdPeers;
+class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl {
+    private String hstorePeers;
     HgStoreNodeManager nodeManager;
-    static Long DefaultStoreID = 1L;
-    static int DefaultPartitionId = 1;
 
-    public FakeHstoreNodePartitionerImpl(HgStoreNodeManager nodeManager, String pdPeers) {
-        super(nodeManager, pdPeers);
-        this.pdPeers = pdPeers;
+    private static int partitionCount = 2;
+    private static Map<Integer, Long> leaderMap = new ConcurrentHashMap<>();
+    private static Map<Long, String> storeMap = new ConcurrentHashMap<>();
+
+    public FakeHstoreNodePartitionerImpl(HgStoreNodeManager nodeManager, String peers) {
+        super(nodeManager, peers);
+        this.hstorePeers = peers;
         this.nodeManager = nodeManager;
+
+        // store列表
+        for (String address : hstorePeers.split(",")) {
+            storeMap.put((long) address.hashCode(), address);
+        }
+        // 分区列表
+        for (int i = 0; i < partitionCount; i++)
+            leaderMap.put(i, (long) storeMap.get(0).hashCode());
+
     }
 
 
     @Override
     public int partition(HgNodePartitionerBuilder builder, String graphName, byte[] startKey, byte[] endKey) {
-        builder.add(DefaultStoreID,DefaultPartitionId);
+        int id1 = Arrays.hashCode(startKey) % partitionCount;
+        int id2 = Arrays.hashCode(endKey) % partitionCount;
+        if (ALL_PARTITION_OWNER == startKey) {
+            storeMap.forEach((k, v) -> {
+                builder.add(k, -1);
+            });
+        } else if (startKey == endKey) {
+            builder.add(leaderMap.get(id1), id1);
+        } else {
+            builder.add(leaderMap.get(id1), id1);
+            builder.add(leaderMap.get(id2), id2);
+        }
         return 0;
     }
 
     @Override
     public HgStoreNode apply(String graphName, Long nodeId) {
-        return nodeManager.getNodeBuilder().setNodeId(DefaultStoreID)
-                .setAddress(pdPeers).build();
+        return nodeManager.getNodeBuilder().setNodeId(nodeId)
+                .setAddress(storeMap.get(nodeId)).build();
     }
 
     @Override
     public int notice(String graphName, HgStoreNotice storeNotice) {
+
+        if (storeNotice.getPartitionLeaders().size() > 0) {
+            leaderMap.putAll(storeNotice.getPartitionLeaders());
+        }
         return 0;
     }
 }
