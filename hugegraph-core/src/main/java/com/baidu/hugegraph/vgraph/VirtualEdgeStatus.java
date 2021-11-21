@@ -2,7 +2,9 @@ package com.baidu.hugegraph.vgraph;
 
 public enum VirtualEdgeStatus {
     None(0x00, "none"),
-    OK(0x01, "ok");
+    Id(0x01, "id"),
+    Property(0x02, "property"),
+    OK((Id.code | Property.code), "ok");
 
     private byte code;
     private String name;
@@ -22,17 +24,11 @@ public enum VirtualEdgeStatus {
     }
 
     public boolean match(VirtualEdgeStatus other) {
-        if (other == OK) {
-            return this == OK;
-        }
-        return (this.code & other.code) != 0;
+        return (this.code & other.code) == this.code;
     }
 
     public boolean match(byte other) {
-        if (other == OK.code) {
-            return this == OK;
-        }
-        return (this.code & other) != 0;
+        return (this.code & other) == this.code;
     }
 
     public VirtualEdgeStatus or(VirtualEdgeStatus other) {
@@ -48,6 +44,10 @@ public enum VirtualEdgeStatus {
             case 0x00:
                 return None;
             case 0x01:
+                return Id;
+            case 0x02:
+                return Property;
+            case 0x03:
                 return OK;
             default:
                 throw new IllegalStateException("Unexpected value: " + code);

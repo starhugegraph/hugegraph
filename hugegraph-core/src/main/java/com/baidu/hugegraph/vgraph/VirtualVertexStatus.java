@@ -4,8 +4,10 @@ public enum VirtualVertexStatus {
     None(0x00, "none"),
     Id(0x01, "id"),
     Property(0x02, "property"),
-    Edge(0x04, "edge"),
-    OK((Id.code | Property.code | Edge.code), "ok");
+    OutEdge(0x04, "out_edge"),
+    InEdge(0x08, "in_edge"),
+    AllEdge(OutEdge.code | InEdge.code, "all_edge"),
+    OK((Id.code | Property.code | OutEdge.code | InEdge.code), "ok");
 
     private byte code;
     private String name;
@@ -49,8 +51,12 @@ public enum VirtualVertexStatus {
             case 0x02:
                 return Property;
             case 0x04:
-                return Edge;
-            case 0x07:
+                return OutEdge;
+            case 0x08:
+                return InEdge;
+            case 0x0c:
+                return AllEdge;
+            case 0x0f:
                 return OK;
             default:
                 throw new IllegalStateException("Unexpected value: " + code);
