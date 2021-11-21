@@ -658,6 +658,11 @@ public class StandardHugeGraph implements HugeGraph {
     }
 
     @Override
+    public Iterator<Vertex> adjacentVertexWithProp(Object... ids) {
+        return this.graphTransaction().adjacentVertexWithProp(ids);
+    }
+
+    @Override
     public boolean checkAdjacentVertexExist() {
         return this.graphTransaction().checkAdjacentVertexExist();
     }
@@ -679,6 +684,14 @@ public class StandardHugeGraph implements HugeGraph {
     @Watched
     public Iterator<Edge> edges(Query query) {
         return this.graphTransaction().queryEdges(query);
+    }
+
+    @Override
+    public Iterator<Edge> edgesWithProp(Object... objects) {
+        if (objects.length == 0) {
+            return this.graphTransaction().queryEdges();
+        }
+        return this.graphTransaction().queryEdgesWithProp(objects);
     }
 
     @Override

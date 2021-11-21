@@ -3091,7 +3091,6 @@ public class EdgeCoreTest extends BaseCoreTest {
 
         // Fill edge properties
         Assert.assertEquals(2, edge.getProperties().size());
-        edge = edge.copy(); // copy to avoid modifying cached object
         Whitebox.setInternalState(edge, "propLoaded", false);
         Whitebox.setInternalState(edge, "properties",
                                   CollectionFactory.newIntObjectMap());
