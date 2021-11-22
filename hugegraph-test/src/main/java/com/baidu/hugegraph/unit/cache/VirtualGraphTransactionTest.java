@@ -138,16 +138,16 @@ public class VirtualGraphTransactionTest extends BaseUnitTest {
 
         Assert.assertTrue(vgraph.queryVertices(IdGenerator.of(1)).hasNext());
         Assert.assertTrue(vgraph.queryVertices(IdGenerator.of(2)).hasNext());
-        Assert.assertEquals(2, this.params.vgraph().getVertexSize());
+        Assert.assertEquals(2, this.params.vGraph().getVertexSize());
 
         this.params.graphEventHub().notify(Events.CACHE, "clear", null).get();
 
-        Assert.assertEquals(0, this.params.vgraph().getVertexSize());
+        Assert.assertEquals(0, this.params.vGraph().getVertexSize());
 
         Assert.assertTrue(vgraph.queryVertices(IdGenerator.of(1)).hasNext());
-        Assert.assertEquals(1, this.params.vgraph().getVertexSize());
+        Assert.assertEquals(1, this.params.vGraph().getVertexSize());
         Assert.assertTrue(vgraph.queryVertices(IdGenerator.of(2)).hasNext());
-        Assert.assertEquals(2, this.params.vgraph().getVertexSize());
+        Assert.assertEquals(2, this.params.vGraph().getVertexSize());
     }
 
     @Test
@@ -163,17 +163,17 @@ public class VirtualGraphTransactionTest extends BaseUnitTest {
         Assert.assertTrue(vgraph.queryVertices(IdGenerator.of(1)).hasNext());
         Assert.assertTrue(vgraph.queryVertices(IdGenerator.of(2)).hasNext());
         Assert.assertEquals(2,
-                            this.params.vgraph().getVertexSize());
+                            this.params.vGraph().getVertexSize());
 
         this.params.graphEventHub().notify(Events.CACHE, "invalid",
                                            HugeType.VERTEX, IdGenerator.of(1))
                    .get();
 
-        Assert.assertEquals(1, this.params.vgraph().getVertexSize());
+        Assert.assertEquals(1, this.params.vGraph().getVertexSize());
         Assert.assertTrue(vgraph.queryVertices(IdGenerator.of(2)).hasNext());
-        Assert.assertEquals(1, this.params.vgraph().getVertexSize());
+        Assert.assertEquals(1, this.params.vGraph().getVertexSize());
         Assert.assertTrue(vgraph.queryVertices(IdGenerator.of(1)).hasNext());
-        Assert.assertEquals(2, this.params.vgraph().getVertexSize());
+        Assert.assertEquals(2, this.params.vGraph().getVertexSize());
     }
 
     @Test
@@ -195,7 +195,7 @@ public class VirtualGraphTransactionTest extends BaseUnitTest {
 
         Assert.assertTrue(vgraph.queryVertices(IdGenerator.of(1)).hasNext());
         Assert.assertTrue(vgraph.queryVertices(IdGenerator.of(2)).hasNext());
-        Assert.assertEquals(2, this.params.vgraph().getVertexSize());
+        Assert.assertEquals(2, this.params.vGraph().getVertexSize());
 
         Iterator<Edge> iteratorEdge1 = vgraph.queryEdgesByVertex(IdGenerator.of(1));
         Assert.assertTrue(iteratorEdge1.hasNext());
@@ -203,16 +203,16 @@ public class VirtualGraphTransactionTest extends BaseUnitTest {
         List<Edge> edgeListByVertex = IteratorUtils.toList(iteratorEdge1);
         Iterator<Edge> iteratorEdgeByEId = vgraph.queryEdges(edge1.id(), edge2.id());
         Assert.assertArrayEquals(edgeListByVertex.toArray(), IteratorUtils.toArray(iteratorEdgeByEId));
-        Assert.assertEquals(2, this.params.vgraph().getEdgeSize());
+        Assert.assertEquals(2, this.params.vGraph().getEdgeSize());
 
         this.params.graphEventHub().notify(Events.CACHE, "clear", null).get();
-        Assert.assertEquals(0, this.params.vgraph().getVertexSize());
-        Assert.assertEquals(0, this.params.vgraph().getEdgeSize());
+        Assert.assertEquals(0, this.params.vGraph().getVertexSize());
+        Assert.assertEquals(0, this.params.vGraph().getEdgeSize());
 
         Assert.assertEquals(vgraph.queryEdge(edge1.id()), edge1);
-        Assert.assertEquals(1, this.params.vgraph().getEdgeSize());
+        Assert.assertEquals(1, this.params.vGraph().getEdgeSize());
         Assert.assertEquals(vgraph.queryEdge(edge2.id()), edge2);
-        Assert.assertEquals(2, this.params.vgraph().getEdgeSize());
+        Assert.assertEquals(2, this.params.vGraph().getEdgeSize());
     }
 
     @Test
@@ -234,16 +234,16 @@ public class VirtualGraphTransactionTest extends BaseUnitTest {
 
         Assert.assertTrue(vgraph.queryEdges(edge1.id(), edge2.id()).hasNext());
         Assert.assertEquals(2,
-                this.params.vgraph().getEdgeSize());
+                this.params.vGraph().getEdgeSize());
 
         this.params.graphEventHub().notify(Events.CACHE, "invalid",
                         HugeType.EDGE, edge1.id())
                 .get();
 
-        Assert.assertEquals(1, this.params.vgraph().getEdgeSize());
+        Assert.assertEquals(1, this.params.vGraph().getEdgeSize());
         Assert.assertEquals(vgraph.queryEdge(edge2.id()), edge2);
-        Assert.assertEquals(1, this.params.vgraph().getEdgeSize());
+        Assert.assertEquals(1, this.params.vGraph().getEdgeSize());
         Assert.assertEquals(vgraph.queryEdge(edge1.id()), edge1);
-        Assert.assertEquals(2, this.params.vgraph().getEdgeSize());
+        Assert.assertEquals(2, this.params.vGraph().getEdgeSize());
     }
 }

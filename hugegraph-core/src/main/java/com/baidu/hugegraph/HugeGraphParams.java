@@ -74,7 +74,7 @@ public interface HugeGraphParams {
     public RateLimiter readRateLimiter();
     public RamTable ramtable();
 
-    public VirtualGraph vgraph();
+    public VirtualGraph vGraph();
 
     public String schedulerType();
 }
