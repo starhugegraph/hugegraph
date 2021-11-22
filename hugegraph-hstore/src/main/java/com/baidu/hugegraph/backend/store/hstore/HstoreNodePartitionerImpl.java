@@ -20,6 +20,10 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
     private PDClient pdClient;
     private HgStoreNodeManager nodeManager;
 
+    protected  HstoreNodePartitionerImpl(){
+
+    }
+
     public HstoreNodePartitionerImpl(HgStoreNodeManager nodeManager, String pdPeers) {
         this.nodeManager = nodeManager;
         pdClient = PDClient.create(PDConfig.of(pdPeers));
@@ -95,7 +99,7 @@ class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl {
     private static Map<Long, String> storeMap = new ConcurrentHashMap<>();
 
     public FakeHstoreNodePartitionerImpl(HgStoreNodeManager nodeManager, String peers) {
-        super(nodeManager, peers);
+
         this.hstorePeers = peers;
         this.nodeManager = nodeManager;
 
@@ -105,15 +109,15 @@ class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl {
         }
         // 分区列表
         for (int i = 0; i < partitionCount; i++)
-            leaderMap.put(i, (long) storeMap.get(0).hashCode());
+            leaderMap.put(i, (long) storeMap.keySet().iterator().next());
 
     }
 
 
     @Override
     public int partition(HgNodePartitionerBuilder builder, String graphName, byte[] startKey, byte[] endKey) {
-        int id1 = Arrays.hashCode(startKey) % partitionCount;
-        int id2 = Arrays.hashCode(endKey) % partitionCount;
+        int id1 = Arrays.hashCode(startKey)  & Integer.MAX_VALUE % partitionCount;
+        int id2 = Arrays.hashCode(endKey)  & Integer.MAX_VALUE % partitionCount;
         if (ALL_PARTITION_OWNER == startKey) {
             storeMap.forEach((k, v) -> {
                 builder.add(k, -1);
