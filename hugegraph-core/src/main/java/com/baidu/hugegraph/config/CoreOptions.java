@@ -650,4 +650,11 @@ public class CoreOptions extends OptionHolder {
                     CollectionType::valueOf,
                     "EC"
             );
+
+    public static final ConfigOption<Boolean> VIRTUAL_GRAPH_ENABLE =
+            new ConfigOption<>(
+                    "graph.virtual_graph_enable",
+                    "Whether to enable the Virtual Graph.",
+                    true
+            );
 }

@@ -154,6 +154,11 @@ public class VirtualGraph {
         this.edgeMap.clear();
     }
 
+    public void close() {
+        this.unlistenChanges();
+        this.clear();
+    }
+
     private HugeEdge toHuge(VirtualEdge edge, VirtualEdgeStatus status) {
         if (edge == null) {
             return null;
