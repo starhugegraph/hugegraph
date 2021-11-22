@@ -196,7 +196,14 @@ public final class VirtualGraphTransaction extends GraphTransaction {
                 while (edges.hasNext()) {
                     HugeEdge e = edges.next();
                     if (e.direction().equals(OUT)) {
-                        vertex = e.ownerVertex();
+                        if (vertex == null) {
+                            vertex = e.ownerVertex();
+                        }
+                        else if (vertex != e.ownerVertex()){
+                            // backend supportsQueryByPage (rocksdb/hbase/cassandra,...) does not fill
+                            // all edges into one same ownerVertex.
+                            vertex.addEdge(e);
+                        }
                     }
                     else {
                         inEdges.add(e);

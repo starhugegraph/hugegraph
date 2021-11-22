@@ -520,14 +520,17 @@ public class EdgeCoreTest extends BaseCoreTest {
                                       e.getMessage());
             });
 
-            Assert.assertThrows(IllegalArgumentException.class, () -> {
-                graph.traversal().V(james.id())
-                     .outE("write").has("time", "2017-5-27\u0000")
-                     .toList();
-            }, e -> {
-                Assert.assertContains("Can't contains byte '0x00' in string",
-                                      e.getMessage());
-            });
+            if (this.params().vGraph() == null) {
+                // when virtual graph enabled, edge filter occurred in memory instead of backend
+                Assert.assertThrows(IllegalArgumentException.class, () -> {
+                    graph.traversal().V(james.id())
+                            .outE("write").has("time", "2017-5-27\u0000")
+                            .toList();
+                }, e -> {
+                    Assert.assertContains("Can't contains byte '0x00' in string",
+                            e.getMessage());
+                });
+            }
         } else {
             james.addEdge("write", book, "time", "2017-5-27\u0000");
             graph.tx().commit();
