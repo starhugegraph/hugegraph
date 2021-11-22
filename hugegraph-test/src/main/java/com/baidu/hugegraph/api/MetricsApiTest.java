@@ -98,4 +98,12 @@ public class MetricsApiTest extends BaseApiTest {
                 break;
         }
     }
+
+    @Test
+    public void testPrometheusAll() {
+        Response r = client().get(path, ImmutableMap.of());
+        String result = assertResponseStatus(200, r);
+        Assert.assertContains(
+                "com_baidu_hugegraph_vgraph_VirtualGraph_virtual_graph_hits_hugegraph", result);
+    }
 }
