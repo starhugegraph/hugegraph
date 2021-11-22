@@ -23,12 +23,16 @@ import com.baidu.hugegraph.backend.cache.Cache;
 import com.baidu.hugegraph.backend.serializer.AbstractSerializer;
 import com.baidu.hugegraph.event.EventHub;
 import com.baidu.hugegraph.event.EventListener;
+import com.baidu.hugegraph.metrics.MetricManager;
 import com.baidu.hugegraph.structure.HugeEdge;
 import com.baidu.hugegraph.structure.HugeVertex;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Events;
 import com.baidu.hugegraph.util.Log;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import com.google.common.collect.ImmutableSet;
 
 import java.lang.reflect.Array;
@@ -53,18 +57,35 @@ public class VirtualGraph {
     private EventListener cacheEventListener;
 
     private HugeGraphParams graphParams;
-    public AbstractSerializer serializer;
+    private AbstractSerializer serializer;
+    private final List<String> metricsNames;
+    private final Meter hits;
+    private final Timer calls;
+
 
     public VirtualGraph(HugeGraphParams graphParams) {
         assert graphParams != null;
         this.graphParams = graphParams;
         this.serializer = this.graphParams.serializer();
+        this.hits = new Meter();
+        this.calls = new Timer();
+        this.metricsNames = new ArrayList<>();
         this.init();
     }
 
     public void init(){
         this.vertexMap = new ConcurrentHashMap<>(INIT_VERTEX_CAPACITY);
         this.edgeMap = new ConcurrentHashMap<>(INIT_VERTEX_CAPACITY);
+
+        String hitsName = MetricRegistry.name(this.getClass(),
+                "virtual_graph_hits_" + this.graphParams.name());
+        MetricManager.INSTANCE.getRegistry().register(hitsName, this.hits);
+        String callsName = MetricRegistry.name(this.getClass(),
+                "virtual_graph_calls_" + this.graphParams.name());
+        MetricManager.INSTANCE.getRegistry().register(callsName, this.calls);
+        this.metricsNames.add(hitsName);
+        this.metricsNames.add(callsName);
+
         this.listenChanges();
     }
 
@@ -77,26 +98,31 @@ public class VirtualGraph {
     }
 
     public HugeVertex queryHugeVertexById(Id vId, VirtualVertexStatus status) {
-        VirtualVertex vertex = queryVertexById(vId, status);
-        if (vertex != null) {
-            return vertex.getVertex();
-        }
-        else {
-            return null;
+        try (Timer.Context c = this.calls.time()) {
+            VirtualVertex vertex = queryVertexById(vId, status);
+            if (vertex != null) {
+                this.hits.mark();
+                return vertex.getVertex();
+            } else {
+                return null;
+            }
         }
     }
 
     public VirtualVertex queryVertexById(Id vId, VirtualVertexStatus status) {
-        assert vId != null;
-        VirtualVertex vertex = this.vertexMap.get(vId);
-        if (vertex == null) {
-            return null;
-        }
+        try (Timer.Context c = this.calls.time()) {
+            assert vId != null;
+            VirtualVertex vertex = this.vertexMap.get(vId);
+            if (vertex == null) {
+                return null;
+            }
 
-        if (status.match(vertex.getStatus())) {
-            return vertex;
-        } else {
-            return null;
+            if (status.match(vertex.getStatus())) {
+                this.hits.mark();
+                return vertex;
+            } else {
+                return null;
+            }
         }
     }
 
@@ -140,8 +166,14 @@ public class VirtualGraph {
     }
 
     public HugeEdge queryEdgeById(Id eId, VirtualEdgeStatus status) {
-        assert eId != null;
-        return toHuge(this.edgeMap.get(eId), status);
+        try (Timer.Context c = this.calls.time()) {
+            assert eId != null;
+            HugeEdge result = toHuge(this.edgeMap.get(eId), status);
+            if (result != null) {
+                this.hits.mark();
+            }
+            return result;
+        }
     }
 
     public void invalidateEdge(Id eId) {
@@ -157,6 +189,7 @@ public class VirtualGraph {
     public void close() {
         this.unlistenChanges();
         this.clear();
+        this.metricsNames.forEach(MetricManager.INSTANCE.getRegistry()::remove);
     }
 
     private HugeEdge toHuge(VirtualEdge edge, VirtualEdgeStatus status) {
