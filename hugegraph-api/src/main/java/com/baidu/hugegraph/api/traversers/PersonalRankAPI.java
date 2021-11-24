@@ -54,6 +54,10 @@ public class PersonalRankAPI extends API {
 
     private static final Logger LOG = Log.logger(RestServer.class);
 
+    private static final double DEFAULT_DIFF = 0.0001;
+    private static final double DEFAULT_SAMPLE = 0.85;
+    private static final int DEFAULT_DEPTH = 5;
+
     @POST
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
@@ -108,15 +112,15 @@ public class PersonalRankAPI extends API {
         @JsonProperty("label")
         private String label;
         @JsonProperty("alpha")
-        private double alpha = 0.85;
+        private double alpha = DEFAULT_SAMPLE;
         @JsonProperty("max_diff")
-        private double maxDiff = 0.0001;
+        private double maxDiff = DEFAULT_DIFF;
         @JsonProperty("max_degree")
         private long maxDegree = Long.parseLong(DEFAULT_MAX_DEGREE);
         @JsonProperty("limit")
         private long limit = Long.parseLong(DEFAULT_LIMIT);
         @JsonProperty("max_depth")
-        private int maxDepth = 5;
+        private int maxDepth = DEFAULT_DEPTH;
         @JsonProperty("with_label")
         private PersonalRankTraverser.WithLabel withLabel =
                 PersonalRankTraverser.WithLabel.BOTH_LABEL;

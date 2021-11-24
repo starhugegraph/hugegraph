@@ -97,7 +97,7 @@ public class HugeTraverser {
 
     public static final long NO_LIMIT = -1L;
 
-    // for debugMesure
+    // for debugMeasure
     public long edgeIterCounter = 0;
     public long vertexIterCounter = 0;
 
