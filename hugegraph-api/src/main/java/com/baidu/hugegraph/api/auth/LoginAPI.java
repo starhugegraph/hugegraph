@@ -33,6 +33,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 
+import com.baidu.hugegraph.api.filter.AccessLogFilter;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
@@ -41,6 +42,7 @@ import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.AuthenticationFilter;
 import com.baidu.hugegraph.api.filter.StatusFilter;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
+import com.baidu.hugegraph.api.filter.AccessLogFilter.AccessLog;
 import com.baidu.hugegraph.auth.AuthConstant;
 import com.baidu.hugegraph.auth.UserWithRole;
 import com.baidu.hugegraph.core.GraphManager;
@@ -87,6 +89,7 @@ public class LoginAPI extends API {
     @Status(StatusFilter.Status.OK)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @AccessLog
     public void logout(@Context GraphManager manager,
                        @HeaderParam(HttpHeaders.AUTHORIZATION) String auth) {
         E.checkArgument(StringUtils.isNotEmpty(auth),
