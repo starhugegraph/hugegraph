@@ -135,7 +135,7 @@ public class K8sDriverProxyCoreTest extends BaseCoreTest {
         JobObserver jobObserver = Mockito.mock(JobObserver.class);
         CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
             k8sDriverProxy.getK8sDriver()
-                          .waitJob(jobId, params, jobObserver);
+                          .waitJobAsync(jobId, params, jobObserver);
         }, POOL);
 
         DefaultJobState jobState = new DefaultJobState();

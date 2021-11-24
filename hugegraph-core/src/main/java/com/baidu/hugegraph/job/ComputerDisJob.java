@@ -96,7 +96,12 @@ public class ComputerDisJob extends UserJob<Object> {
             String jobId = (String) map.get(INNER_JOB_ID);
             K8sDriverProxy k8sDriverProxy =
             new K8sDriverProxy(String.valueOf(worker * 2), algorithm);
-            k8sDriverProxy.getK8sDriver().cancelJob(jobId, k8sParams);
+            boolean flag = k8sDriverProxy.getK8sDriver().cancelJob(jobId,
+                                                                   k8sParams);
+            // TODO: cancel api is not work now, need fix it later
+            if (!flag) {
+                LOG.warn("Cancel computer task failed, please check manually");
+            }
             k8sDriverProxy.close();
         }
     }
@@ -147,8 +152,8 @@ public class ComputerDisJob extends UserJob<Object> {
         }
 
         // Watch job status here, return a future
-        k8sDriverProxy.getK8sDriver().watchJob(jobId, k8sParams,
-                                               this::onJobStateChanged);
+        k8sDriverProxy.getK8sDriver().waitJobAsync(jobId, k8sParams,
+                                                   this::onJobStateChanged);
 
         map = fromJson(this.task().input(), Map.class);
         status = map.get(INNER_STATUS).toString();
