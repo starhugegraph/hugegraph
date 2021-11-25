@@ -23,11 +23,8 @@ import com.baidu.hugegraph.HugeFactory;
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.HugeGraphParams;
 import com.baidu.hugegraph.backend.cache.VirtualGraphTransaction;
-import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.schema.SchemaManager;
-import com.baidu.hugegraph.schema.VertexLabel;
-import com.baidu.hugegraph.structure.HugeVertex;
 import com.baidu.hugegraph.testutil.Assert;
 import com.baidu.hugegraph.testutil.Whitebox;
 import com.baidu.hugegraph.type.HugeType;
@@ -118,12 +115,6 @@ public class VirtualGraphTransactionTest extends BaseUnitTest {
                 .enableLabelIndex(false)
                 .create();
 
-    }
-
-    private HugeVertex newVertex(Id id) {
-        HugeGraph graph = this.vgraph().graph();
-        VertexLabel vl = graph.vertexLabel("person");
-        return new HugeVertex(graph, id, vl);
     }
 
     @Test
