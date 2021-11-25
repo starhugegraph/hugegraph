@@ -34,28 +34,28 @@ public class MetricsUtil {
     private static final MetricRegistry registry =
                                         MetricManager.INSTANCE.getRegistry();
 
-    private static final String STRHELP = "# HELP ";
-    private static final String STRTYPE = "# TYPE ";
-    private static final String HISTOGRAMTYPE = "histogram";
+    private static final String STR_HELP = "# HELP ";
+    private static final String STR_TYPE = "# TYPE ";
+    private static final String HISTOGRAM_TYPE = "histogram";
     private static final String UNTYPED = "untyped";
-    private static final String GAUGETYPE = "gauge";
-    private static final String ENDLSTR = "\n";
-    private static final String SPACESTR = " ";
-    private static final String COUNTATTR = "{name=\"count\",} ";
-    private static final String MINATTR = "{name=\"min\",} ";
-    private static final String MAXATTR = "{name=\"max\",} ";
-    private static final String MEANATTR = "{name=\"mean\",} ";
-    private static final String STDDEVATTR = "{name=\"stddev\",} ";
-    private static final String P50ATTR = "{name=\"p50\",} ";
-    private static final String P75ATTR = "{name=\"p75\",} ";
-    private static final String P95ATTR = "{name=\"p95\",} ";
-    private static final String P98ATTR = "{name=\"p98\",} ";
-    private static final String P99ATTR = "{name=\"p99\",} ";
-    private static final String P999ATTR = "{name=\"p999\",} ";
-    private static final String MEANRATEATRR = "{name=\"mean_rate\",} ";
-    private static final String ONEMINRATEATRR = "{name=\"m1_rate\",} ";
-    private static final String FIREMINRATEATRR = "{name=\"m5_rate\",} ";
-    private static final String FIFTMINRATEATRR = "{name=\"m15_rate\",} ";
+    private static final String GAUGE_TYPE = "gauge";
+    private static final String END_LSTR = "\n";
+    private static final String SPACE_STR = " ";
+    private static final String COUNT_ATTR = "{name=\"count\",} ";
+    private static final String MIN_ATTR = "{name=\"min\",} ";
+    private static final String MAX_ATTR = "{name=\"max\",} ";
+    private static final String MEAN_ATTR = "{name=\"mean\",} ";
+    private static final String STDDEV_ATTR = "{name=\"stddev\",} ";
+    private static final String P50_ATTR = "{name=\"p50\",} ";
+    private static final String P75_ATTR = "{name=\"p75\",} ";
+    private static final String P95_ATTR = "{name=\"p95\",} ";
+    private static final String P98_ATTR = "{name=\"p98\",} ";
+    private static final String P99_ATTR = "{name=\"p99\",} ";
+    private static final String P999_ATTR = "{name=\"p999\",} ";
+    private static final String MEAN_RATE_ATRR = "{name=\"mean_rate\",} ";
+    private static final String ONE_MIN_RATE_ATRR = "{name=\"m1_rate\",} ";
+    private static final String FIVE_MIN_RATE_ATRR = "{name=\"m5_rate\",} ";
+    private static final String FIFT_MIN_RATE_ATRR = "{name=\"m15_rate\",} ";
 
     public static <T> Gauge<T> registerGauge(Class<?> clazz, String name,
                                              Gauge<T> gauge) {
@@ -84,11 +84,11 @@ public class MetricsUtil {
         registry.getGauges().forEach((key, gauge) -> {
             if (gauge != null) {
                 String helpName = replaceDotDashInKey(key);
-                promeMetrics.append(STRHELP)
-                        .append(helpName).append(ENDLSTR);
-                promeMetrics.append(STRTYPE)
-                        .append(helpName).append(SPACESTR + GAUGETYPE + ENDLSTR);
-                promeMetrics.append(helpName).append(SPACESTR).append(gauge.getValue()).append(ENDLSTR);
+                promeMetrics.append(STR_HELP)
+                        .append(helpName).append(END_LSTR);
+                promeMetrics.append(STR_TYPE)
+                        .append(helpName).append(SPACE_STR + GAUGE_TYPE + END_LSTR);
+                promeMetrics.append(helpName).append(SPACE_STR).append(gauge.getValue()).append(END_LSTR);
             }
         });
 
@@ -96,14 +96,14 @@ public class MetricsUtil {
         registry.getHistograms().forEach((key, histogram) -> {
             if (histogram != null) {
                 String helpName = replaceDotDashInKey(key);
-                promeMetrics.append(STRHELP)
-                        .append(helpName).append(ENDLSTR);
-                promeMetrics.append(STRTYPE)
+                promeMetrics.append(STR_HELP)
+                        .append(helpName).append(END_LSTR);
+                promeMetrics.append(STR_TYPE)
                         .append(helpName)
-                        .append(SPACESTR + HISTOGRAMTYPE + ENDLSTR);
+                        .append(SPACE_STR + HISTOGRAM_TYPE + END_LSTR);
 
                 promeMetrics.append(helpName)
-                        .append(COUNTATTR).append(histogram.getCount()).append(ENDLSTR);
+                        .append(COUNT_ATTR).append(histogram.getCount()).append(END_LSTR);
                 promeMetrics.append(
                         exportSnapshort(helpName, histogram.getSnapshot()));
             }
@@ -113,22 +113,22 @@ public class MetricsUtil {
         registry.getMeters().forEach((key, metric) -> {
             if (metric != null) {
                 String helpName = replaceDotDashInKey(key);
-                promeMetrics.append(STRHELP)
-                        .append(helpName).append(ENDLSTR);
-                promeMetrics.append(STRTYPE)
+                promeMetrics.append(STR_HELP)
+                        .append(helpName).append(END_LSTR);
+                promeMetrics.append(STR_TYPE)
                         .append(helpName)
-                        .append(SPACESTR + HISTOGRAMTYPE + ENDLSTR);
+                        .append(SPACE_STR + HISTOGRAM_TYPE + END_LSTR);
 
                 promeMetrics.append(helpName)
-                        .append(COUNTATTR).append(metric.getCount()).append(ENDLSTR);
+                        .append(COUNT_ATTR).append(metric.getCount()).append(END_LSTR);
                 promeMetrics.append(helpName)
-                        .append(MEANRATEATRR).append(metric.getMeanRate()).append(ENDLSTR);
+                        .append(MEAN_RATE_ATRR).append(metric.getMeanRate()).append(END_LSTR);
                 promeMetrics.append(helpName)
-                        .append(ONEMINRATEATRR).append(metric.getOneMinuteRate()).append(ENDLSTR);
+                        .append(ONE_MIN_RATE_ATRR).append(metric.getOneMinuteRate()).append(END_LSTR);
                 promeMetrics.append(helpName)
-                        .append(FIREMINRATEATRR).append(metric.getFiveMinuteRate()).append(ENDLSTR);
+                        .append(FIVE_MIN_RATE_ATRR).append(metric.getFiveMinuteRate()).append(END_LSTR);
                 promeMetrics.append(helpName)
-                        .append(FIFTMINRATEATRR).append(metric.getFifteenMinuteRate()).append(ENDLSTR);
+                        .append(FIFT_MIN_RATE_ATRR).append(metric.getFifteenMinuteRate()).append(END_LSTR);
             }
         });
 
@@ -136,20 +136,20 @@ public class MetricsUtil {
         registry.getTimers().forEach((key, timer) -> {
             if (timer != null) {
                 String helpName = replaceDotDashInKey(key);
-                promeMetrics.append(STRHELP)
-                        .append(helpName).append(ENDLSTR);
-                promeMetrics.append(STRTYPE)
+                promeMetrics.append(STR_HELP)
+                        .append(helpName).append(END_LSTR);
+                promeMetrics.append(STR_TYPE)
                         .append(helpName)
-                        .append(SPACESTR + HISTOGRAMTYPE + ENDLSTR);
+                        .append(SPACE_STR + HISTOGRAM_TYPE + END_LSTR);
 
                 promeMetrics.append(helpName)
-                        .append(COUNTATTR).append(timer.getCount()).append(ENDLSTR);
+                        .append(COUNT_ATTR).append(timer.getCount()).append(END_LSTR);
                 promeMetrics.append(helpName)
-                        .append(ONEMINRATEATRR).append(timer.getOneMinuteRate()).append(ENDLSTR);
+                        .append(ONE_MIN_RATE_ATRR).append(timer.getOneMinuteRate()).append(END_LSTR);
                 promeMetrics.append(helpName)
-                        .append(FIREMINRATEATRR).append(timer.getFiveMinuteRate()).append(ENDLSTR);
+                        .append(FIVE_MIN_RATE_ATRR).append(timer.getFiveMinuteRate()).append(END_LSTR);
                 promeMetrics.append(helpName)
-                        .append(FIFTMINRATEATRR).append(timer.getFifteenMinuteRate()).append(ENDLSTR);
+                        .append(FIFT_MIN_RATE_ATRR).append(timer.getFifteenMinuteRate()).append(END_LSTR);
                 promeMetrics.append(
                         exportSnapshort(helpName, timer.getSnapshot()));
             }
@@ -164,25 +164,25 @@ public class MetricsUtil {
         if ( snapshot != null ) {
             StringBuilder snapMetrics = new StringBuilder();
             snapMetrics.append(helpName)
-                    .append(MINATTR).append(snapshot.getMin()).append(ENDLSTR);
+                    .append(MIN_ATTR).append(snapshot.getMin()).append(END_LSTR);
             snapMetrics.append(helpName)
-                    .append(MAXATTR).append(snapshot.getMax()).append(ENDLSTR);
+                    .append(MAX_ATTR).append(snapshot.getMax()).append(END_LSTR);
             snapMetrics.append(helpName)
-                    .append(MEANATTR).append(snapshot.getMean()).append(ENDLSTR);
+                    .append(MEAN_ATTR).append(snapshot.getMean()).append(END_LSTR);
             snapMetrics.append(helpName)
-                    .append(STDDEVATTR).append(snapshot.getStdDev()).append(ENDLSTR);
+                    .append(STDDEV_ATTR).append(snapshot.getStdDev()).append(END_LSTR);
             snapMetrics.append(helpName)
-                    .append(P50ATTR).append(snapshot.getMedian()).append(ENDLSTR);
+                    .append(P50_ATTR).append(snapshot.getMedian()).append(END_LSTR);
             snapMetrics.append(helpName)
-                    .append(P75ATTR).append(snapshot.get75thPercentile()).append(ENDLSTR);
+                    .append(P75_ATTR).append(snapshot.get75thPercentile()).append(END_LSTR);
             snapMetrics.append(helpName)
-                    .append(P95ATTR).append(snapshot.get95thPercentile()).append(ENDLSTR);
+                    .append(P95_ATTR).append(snapshot.get95thPercentile()).append(END_LSTR);
             snapMetrics.append(helpName)
-                    .append(P98ATTR).append(snapshot.get98thPercentile()).append(ENDLSTR);
+                    .append(P98_ATTR).append(snapshot.get98thPercentile()).append(END_LSTR);
             snapMetrics.append(helpName)
-                    .append(P99ATTR).append(snapshot.get99thPercentile()).append(ENDLSTR);
+                    .append(P99_ATTR).append(snapshot.get99thPercentile()).append(END_LSTR);
             snapMetrics.append(helpName)
-                    .append(P999ATTR).append(snapshot.get999thPercentile()).append(ENDLSTR);
+                    .append(P999_ATTR).append(snapshot.get999thPercentile()).append(END_LSTR);
             return  snapMetrics.toString();
         }
         return "";

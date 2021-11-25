@@ -24,13 +24,11 @@ import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.query.ConditionQuery;
 import com.baidu.hugegraph.backend.query.IdQuery;
 import com.baidu.hugegraph.backend.query.Query;
-import com.baidu.hugegraph.backend.query.QueryResults;
 import com.baidu.hugegraph.backend.store.BackendMutation;
 import com.baidu.hugegraph.backend.store.BackendStore;
 import com.baidu.hugegraph.backend.store.ram.RamTable;
 import com.baidu.hugegraph.backend.tx.GraphTransaction;
 import com.baidu.hugegraph.iterator.ExtendableIterator;
-import com.baidu.hugegraph.iterator.ListIterator;
 import com.baidu.hugegraph.perf.PerfUtil.Watched;
 import com.baidu.hugegraph.structure.HugeEdge;
 import com.baidu.hugegraph.structure.HugeVertex;
@@ -93,39 +91,8 @@ public final class VirtualGraphTransaction extends GraphTransaction {
     }
 
     private Iterator<HugeVertex> queryVerticesByIds(IdQuery query, VirtualVertexStatus status) {
-        IdQuery newQuery = new IdQuery(HugeType.VERTEX, query);
-        List<HugeVertex> vertices = new ArrayList<>();
-        for (Id vertexId : query.ids()) {
-            HugeVertex vertex = this.vGraph.queryHugeVertexById(
-                    vertexId, status);
-            if (vertex == null) {
-                newQuery.query(vertexId);
-            } else if (vertex.expired()) {
-                newQuery.query(vertexId);
-                this.vGraph.invalidateVertex(vertexId);
-            } else {
-                vertices.add(vertex);
-            }
-        }
-
-        // Join results from cache and backend
-        ExtendableIterator<HugeVertex> results = new ExtendableIterator<>();
-        if (!vertices.isEmpty()) {
-            results.extend(vertices.iterator());
-        } else {
-            // Just use the origin query if find none from the cache
-            newQuery = query;
-        }
-
-        if (!newQuery.empty()) {
-            Iterator<HugeVertex> rs = super.queryVerticesFromBackend(newQuery);
-            // Generally there are not too much data with id query
-            ListIterator<HugeVertex> listIterator = QueryResults.toList(rs);
-            this.vGraph.putVerteiesWithoutEdges(listIterator.list().iterator());
-            results.extend(listIterator);
-        }
-
-        return results;
+        List<Id> vIds = new ArrayList<>(query.ids());
+        return this.vGraph.queryHugeVertexByIds(vIds, status);
     }
 
     @Override
@@ -223,19 +190,10 @@ public final class VirtualGraphTransaction extends GraphTransaction {
     }
 
     private Query queryEdgesFromVirtualGraphByEIds(Query query, List<HugeEdge> edges, VirtualEdgeStatus status) {
-        IdQuery newQuery = new IdQuery(HugeType.EDGE, query);
-        for (Id edgeId : query.ids()) {
-            HugeEdge edge = this.vGraph.queryEdgeById(edgeId, status);
-            if (edge == null) {
-                newQuery.query(edgeId);
-            } else if (edge.expired()) {
-                newQuery.query(edgeId);
-                this.vGraph.invalidateEdge(edgeId);
-            } else {
-                edges.add(edge);
-            }
-        }
-        return newQuery;
+        List<Id> eIds = new ArrayList<>(query.ids());
+        Iterator<HugeEdge> edgesFromVGraph = this.vGraph.queryEdgeByIds(eIds, status);
+        edgesFromVGraph.forEachRemaining(edge -> edges.add(edge));
+        return null;
     }
 
     private Query queryEdgesFromVirtualGraph(Query query, List<HugeEdge> results) {
@@ -259,18 +217,13 @@ public final class VirtualGraphTransaction extends GraphTransaction {
     }
 
     private void getQueryEdgesFromVirtualGraph(Id vId, ConditionQuery query, List<HugeEdge> results) {
-        VirtualVertex vertex = this.vGraph.queryVertexById(vId, getVVStatusFromQuery(query));
+        VirtualVertex vertex = this.vGraph.queryVertexWithEdges(vId, getVVStatusFromQuery(query));
         if (vertex != null) {
-            if (vertex.expired()) {
-                this.vGraph.invalidateVertex(vId);
-            } else {
-                vertex.getEdges().forEachRemaining(e -> {
-                    if (query.test(e.getEdge())) {
-                        results.add(e.getEdge());
-                    }
-                });
-
-            }
+            vertex.getEdges().forEachRemaining(e -> {
+                if (query.test(e.getEdge())) {
+                    results.add(e.getEdge());
+                }
+            });
         }
     }
 

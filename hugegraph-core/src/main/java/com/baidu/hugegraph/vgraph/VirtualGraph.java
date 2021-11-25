@@ -18,11 +18,14 @@
  */
 package com.baidu.hugegraph.vgraph;
 
+import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.HugeGraphParams;
 import com.baidu.hugegraph.backend.cache.Cache;
 import com.baidu.hugegraph.backend.serializer.AbstractSerializer;
 import com.baidu.hugegraph.event.EventHub;
 import com.baidu.hugegraph.event.EventListener;
+import com.baidu.hugegraph.iterator.ExtendableIterator;
+import com.baidu.hugegraph.iterator.MapperIterator;
 import com.baidu.hugegraph.metrics.MetricManager;
 import com.baidu.hugegraph.structure.HugeEdge;
 import com.baidu.hugegraph.structure.HugeVertex;
@@ -43,6 +46,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+
 import com.baidu.hugegraph.backend.id.Id;
 import org.slf4j.Logger;
 
@@ -55,13 +59,13 @@ public class VirtualGraph {
 
     private EventListener storeEventListener;
     private EventListener cacheEventListener;
+    private VirtualGraphBatcher batcher;
 
-    private HugeGraphParams graphParams;
-    private AbstractSerializer serializer;
+    private final HugeGraphParams graphParams;
+    private final AbstractSerializer serializer;
     private final List<String> metricsNames;
     private final Meter hits;
     private final Timer calls;
-
 
     public VirtualGraph(HugeGraphParams graphParams) {
         assert graphParams != null;
@@ -76,6 +80,7 @@ public class VirtualGraph {
     public void init(){
         this.vertexMap = new ConcurrentHashMap<>(INIT_VERTEX_CAPACITY);
         this.edgeMap = new ConcurrentHashMap<>(INIT_VERTEX_CAPACITY);
+        this.batcher = new VirtualGraphBatcher(this.graphParams, this);
 
         String hitsName = MetricRegistry.name(this.getClass(),
                 "virtual_graph_hits_" + this.graphParams.name());
@@ -97,33 +102,45 @@ public class VirtualGraph {
         return this.edgeMap.size();
     }
 
-    public HugeVertex queryHugeVertexById(Id vId, VirtualVertexStatus status) {
-        try (Timer.Context c = this.calls.time()) {
+    public Iterator<HugeVertex> queryHugeVertexByIds(List<Id> vIds, VirtualVertexStatus status) {
+        assert vIds != null;
+        assert status != VirtualVertexStatus.None;
+
+        E.checkArgument(status != VirtualVertexStatus.OutEdge && status != VirtualVertexStatus.InEdge,
+                "Get edges of vertex is not supported, please use queryVertexWithEdges.");
+
+        ExtendableIterator<HugeVertex> result = new ExtendableIterator<>();
+        List<HugeVertex> resultFromCache = new ArrayList<>(vIds.size());
+        List<Id> missingIds = new ArrayList<>();
+        for (Id vId : vIds) {
             VirtualVertex vertex = queryVertexById(vId, status);
             if (vertex != null) {
-                this.hits.mark();
-                return vertex.getVertex();
+                resultFromCache.add(vertex.getVertex());
             } else {
-                return null;
+                missingIds.add(vId);
             }
         }
+
+        result.extend(resultFromCache.listIterator());
+
+        if (missingIds.size() > 0) {
+            VirtualGraphQueryTask<VirtualVertex> batchTask = new VirtualGraphQueryTask<>(HugeType.VERTEX, missingIds);
+            this.batcher.add(batchTask);
+            try {
+                Iterator<VirtualVertex> resultFromBatch = batchTask.getFuture().get();
+                result.extend(new MapperIterator<>(resultFromBatch,
+                        VirtualVertex::getVertex));
+            }
+            catch (Exception ex) {
+                throw new HugeException("Failed to query vertex in batch", ex);
+            }
+        }
+        return result;
     }
 
-    public VirtualVertex queryVertexById(Id vId, VirtualVertexStatus status) {
-        try (Timer.Context c = this.calls.time()) {
-            assert vId != null;
-            VirtualVertex vertex = this.vertexMap.get(vId);
-            if (vertex == null) {
-                return null;
-            }
-
-            if (status.match(vertex.getStatus())) {
-                this.hits.mark();
-                return vertex;
-            } else {
-                return null;
-            }
-        }
+    public VirtualVertex queryVertexWithEdges(Id vId, VirtualVertexStatus status) {
+        assert vId != null;
+        return queryVertexById(vId, status);
     }
 
     public boolean updateIfPresentVertex(HugeVertex vertex, Iterator<HugeEdge> inEdges) {
@@ -131,16 +148,9 @@ public class VirtualGraph {
         return this.vertexMap.computeIfPresent(vertex.id(), (id, old) -> toVirtual(old, vertex, inEdges)) != null;
     }
 
-    public void putVertex(HugeVertex vertex, Iterator<HugeEdge> inEdges) {
+    public VirtualVertex putVertex(HugeVertex vertex, Iterator<HugeEdge> inEdges) {
         assert vertex != null;
-        this.vertexMap.compute(vertex.id(), (id, old) -> toVirtual(old, vertex, inEdges));
-    }
-
-    public void putVerteiesWithoutEdges(Iterator<HugeVertex> values) {
-        assert values != null;
-        values.forEachRemaining(vertex ->
-                this.vertexMap.compute(vertex.id(), (id, old) ->
-                        toVirtual(old, vertex, null, null)));
+        return this.vertexMap.compute(vertex.id(), (id, old) -> toVirtual(old, vertex, inEdges));
     }
 
     public void updateIfPresentEdge(Iterator<HugeEdge> edges) {
@@ -165,15 +175,38 @@ public class VirtualGraph {
         this.vertexMap.remove(vId);
     }
 
-    public HugeEdge queryEdgeById(Id eId, VirtualEdgeStatus status) {
-        try (Timer.Context c = this.calls.time()) {
-            assert eId != null;
-            HugeEdge result = toHuge(this.edgeMap.get(eId), status);
-            if (result != null) {
-                this.hits.mark();
+    public Iterator<HugeEdge> queryEdgeByIds(List<Id> eIds, VirtualEdgeStatus status) {
+        assert eIds != null;
+        assert status != VirtualEdgeStatus.None;
+
+        ExtendableIterator<HugeEdge> result = new ExtendableIterator<>();
+        List<HugeEdge> resultFromCache = new ArrayList<>(eIds.size());
+        List<Id> missingIds = new ArrayList<>();
+        eIds.forEach(eId -> {
+            HugeEdge edge = queryEdgeById(eId, status);
+            if (edge != null) {
+                resultFromCache.add(edge);
+            } else {
+                missingIds.add(eId);
             }
-            return result;
+        });
+
+        result.extend(resultFromCache.listIterator());
+
+        if (missingIds.size() > 0) {
+            VirtualGraphQueryTask<VirtualEdge> batchTask = new VirtualGraphQueryTask<>(HugeType.EDGE, missingIds);
+            this.batcher.add(batchTask);
+            try {
+                Iterator<VirtualEdge> resultFromBatch = batchTask.getFuture().get();
+                result.extend(new MapperIterator<>(resultFromBatch,
+                        VirtualEdge::getEdge));
+            }
+            catch (Exception ex) {
+                throw new HugeException("Failed to query vertex in batch", ex);
+            }
         }
+
+        return result;
     }
 
     public void invalidateEdge(Id eId) {
@@ -187,15 +220,55 @@ public class VirtualGraph {
     }
 
     public void close() {
+        this.batcher.close();
         this.unlistenChanges();
         this.clear();
         this.metricsNames.forEach(MetricManager.INSTANCE.getRegistry()::remove);
+    }
+
+    private VirtualVertex queryVertexById(Id vId, VirtualVertexStatus status) {
+        assert vId != null;
+
+        try (Timer.Context ignored = this.calls.time()) {
+            VirtualVertex vertex = this.vertexMap.get(vId);
+            if (vertex == null) {
+                return null;
+            }
+
+            if (vertex.getVertex().expired()) {
+                this.invalidateVertex(vId);
+                return null;
+            }
+
+            if (status.match(vertex.getStatus())) {
+                this.hits.mark();
+                return vertex;
+            } else {
+                return null;
+            }
+        }
+    }
+
+    private HugeEdge queryEdgeById(Id eId, VirtualEdgeStatus status) {
+        try (Timer.Context ignored = this.calls.time()) {
+            HugeEdge edge = toHuge(this.edgeMap.get(eId), status);
+            if (edge != null) {
+                this.hits.mark();
+            }
+            return edge;
+        }
     }
 
     private HugeEdge toHuge(VirtualEdge edge, VirtualEdgeStatus status) {
         if (edge == null) {
             return null;
         }
+
+        if (edge.getEdge().expired()) {
+            this.invalidateEdge(edge.getEdge().id());
+            return null;
+        }
+
         if (status.match(edge.getStatus())) {
             return edge.getEdge();
         } else {
