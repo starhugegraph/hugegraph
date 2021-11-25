@@ -20,6 +20,8 @@
 
 package com.baidu.hugegraph.api.filter;
 
+import com.baidu.hugegraph.auth.HugePermission;
+import com.baidu.hugegraph.util.DateUtil;
 import com.baidu.hugegraph.util.Log;
 import org.slf4j.Logger;
 
@@ -27,8 +29,11 @@ import javax.inject.Singleton;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.ext.Provider;
 import java.io.IOException;
+import java.util.Date;
+import java.util.Optional;
 
 
 /**
@@ -43,20 +48,36 @@ public class AccessLogFilter implements ContainerResponseFilter {
 
     /**
      * Use filter to log request info
-     * @param containerRequestContext requestContext
-     * @param containerResponseContext responseContext
+     * @param requestContext requestContext
+     * @param responseContext responseContext
      */
     @Override
-    public void filter(ContainerRequestContext containerRequestContext, ContainerResponseContext containerResponseContext) throws IOException {
-        // grab corresponding request / response info from context;
-        String method = containerRequestContext.getRequest().getMethod();
-        String path = containerRequestContext.getUriInfo().getPath();
-        int code = containerResponseContext.getStatus();
+    public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) throws IOException {
+        // Grab corresponding request / response info from context;
+        String method = requestContext.getRequest().getMethod();
+        String path = requestContext.getUriInfo().getPath();
+        int code = responseContext.getStatus();
 
-        System.out.println("access logger is triggered");
+        String userName = "anonymous";
+        String userId = "";
+        String roles = HugePermission.NONE.string();
+
+        // Calculate response time
+        Date accessTime = Optional.ofNullable(requestContext.getDate()).orElse(DateUtil.DATE_ZERO);
+        Date finalizeTime = Optional.ofNullable(responseContext.getDate()).orElse(DateUtil.DATE_ZERO);
+        long responseTime = finalizeTime.equals(DateUtil.DATE_ZERO) ? 0 : finalizeTime.getTime() - accessTime.getTime();
+
+        // Grab user info
+        SecurityContext securityContext = requestContext.getSecurityContext();
+        if (securityContext instanceof AuthenticationFilter.Authorizer) {
+            AuthenticationFilter.Authorizer authorizer = (AuthenticationFilter.Authorizer)securityContext;
+            userName = authorizer.username();
+            userId = authorizer.userId();
+            roles = authorizer.role().toString();
+        }
 
         // build log string
         // TODO by Scorpiour: Use Formatted log template to replace hard-written string when logging
-        LOG.info("{} {} - {}", method, path, code);
+        LOG.info("{} /{} Status: {} - user: {} {} - roles: {} in {} ms", method, path, code, userId, userName, roles, responseTime);
     }
 }
