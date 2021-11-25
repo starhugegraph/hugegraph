@@ -17,7 +17,7 @@
 
         <RollingRandomAccessFile name="error" fileName="${LOG_PATH}/error-${FILE_NAME}.log"
             filePattern="${LOG_PATH}/$${date:yyyy-MM}/error-${FILE_NAME}-%d{yyyy-MM-dd-HH}-%i.gz"
-            bufferSize="524288" immediateFlush="true">
+            bufferedIO="true" bufferSize="524288" immediateFlush="false">
             <ThresholdFilter level="WARN" onMath="ACCEPT" onMismatch="DENY"/>
             <JsonLayout compact="false" eventEol="true" locationInfo="true">
                 <KeyValuePair key="timestamp" value="$${date:yyyy-MM-dd HH:mm:ss.SSS}"/>
@@ -42,7 +42,7 @@
         <!-- Normal server log config -->
         <RollingRandomAccessFile name="file" fileName="${LOG_PATH}/${FILE_NAME}.log"
             filePattern="${LOG_PATH}/$${date:yyyy-MM}/${FILE_NAME}-%d{yyyy-MM-dd}-%i.log"
-            immediateFlush="true">
+            bufferedIO="true" bufferSize="524288" immediateFlush="false">
             <ThresholdFilter level="TRACE" onMatch="ACCEPT" onMismatch="DENY"/>
             <JsonLayout compact="true" eventEol="true" >
                 <KeyValuePair key="timestamp" value="$${date:yyyy-MM-dd HH:mm:ss.SSS}"/>
@@ -68,7 +68,7 @@
         <!-- Separate & compress audit log, buffer size is 512KB -->
         <RollingRandomAccessFile name="audit" fileName="${LOG_PATH}/audit-${FILE_NAME}.log"
             filePattern="${LOG_PATH}/$${date:yyyy-MM}/audit-${FILE_NAME}-%d{yyyy-MM-dd-HH}-%i.gz"
-            bufferSize="524288" immediateFlush="false">
+            bufferedIO="true" bufferSize="524288" immediateFlush="false">
             <ThresholdFilter level="TRACE" onMatch="ACCEPT" onMismatch="DENY"/>
             <!-- Use simple format for audit log to speed up -->
             <JsonLayout compact="true" eventEol="true" >
