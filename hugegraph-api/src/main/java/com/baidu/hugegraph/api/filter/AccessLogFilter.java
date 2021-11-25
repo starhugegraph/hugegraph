@@ -20,58 +20,43 @@
 
 package com.baidu.hugegraph.api.filter;
 
-
-import com.baidu.hugegraph.backend.store.raft.rpc.ListPeersProcessor;
 import com.baidu.hugegraph.util.Log;
 import org.slf4j.Logger;
 
-import javax.ws.rs.NameBinding;
+import javax.inject.Singleton;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.ext.Provider;
 import java.io.IOException;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+
 
 /**
  * AccessLogFilter performs as a middleware that log all the http accesses.
  * @since 2021-11-24
  */
 @Provider
-public class AccessLogFilter {
+@Singleton
+public class AccessLogFilter implements ContainerResponseFilter {
 
-    private static final Logger LOG = Log.logger(ListPeersProcessor.class);
-
-    @NameBinding
-    @Target({ ElementType.TYPE, ElementType.METHOD })
-    @Retention(value = RetentionPolicy.RUNTIME)
-    public @interface AccessLog { }
+    private static final Logger LOG = Log.logger(AccessLogFilter.class);
 
     /**
-     * use inner logger class to implement response filter
+     * Use filter to log request info
+     * @param containerRequestContext requestContext
+     * @param containerResponseContext responseContext
      */
-    @AccessLog
-    public static class AccessLogger implements ContainerResponseFilter {
+    @Override
+    public void filter(ContainerRequestContext containerRequestContext, ContainerResponseContext containerResponseContext) throws IOException {
+        // grab corresponding request / response info from context;
+        String method = containerRequestContext.getRequest().getMethod();
+        String path = containerRequestContext.getUriInfo().getPath();
+        int code = containerResponseContext.getStatus();
 
-        /**
-         * Use filter to log request info
-         * @param containerRequestContext requestContext
-         * @param containerResponseContext responseContext
-         */
-        @Override
-        public void filter(ContainerRequestContext containerRequestContext, ContainerResponseContext containerResponseContext) throws IOException {
-            // grab corresponding request / response info from context;
-            String method = containerRequestContext.getRequest().getMethod();
-            String path = containerRequestContext.getUriInfo().getPath();
+        System.out.println("access logger is triggered");
 
-            int code = containerResponseContext.getStatus();
-
-            // build log string
-            // TODO by Scorpiour: Use Formatted log template to replace hard-written string when logging
-            LOG.info("{} {} - {}", method, path, code);
-        }
+        // build log string
+        // TODO by Scorpiour: Use Formatted log template to replace hard-written string when logging
+        LOG.info("{} {} - {}", method, path, code);
     }
 }

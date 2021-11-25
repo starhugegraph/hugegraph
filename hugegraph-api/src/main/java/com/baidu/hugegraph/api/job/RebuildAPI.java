@@ -29,7 +29,6 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 
-import com.baidu.hugegraph.api.filter.AccessLogFilter;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
@@ -53,7 +52,6 @@ public class RebuildAPI extends API {
     @Status(Status.ACCEPTED)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @RolesAllowed({"admin", "$owner=$graph $action=index_write"})
-    @AccessLogFilter.AccessLog
     public Map<String, Id> vertexLabelRebuild(@Context GraphManager manager,
                                               @PathParam("graph") String graph,
                                               @PathParam("name") String name) {
@@ -70,7 +68,6 @@ public class RebuildAPI extends API {
     @Status(Status.ACCEPTED)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @RolesAllowed({"admin", "$owner=$graph $action=index_write"})
-    @AccessLogFilter.AccessLog
     public Map<String, Id> edgeLabelRebuild(@Context GraphManager manager,
                                             @PathParam("graph") String graph,
                                             @PathParam("name") String name) {
@@ -87,7 +84,6 @@ public class RebuildAPI extends API {
     @Status(Status.ACCEPTED)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @RolesAllowed({"admin", "$owner=$graph $action=index_write"})
-    @AccessLogFilter.AccessLog
     public Map<String, Id> indexLabelRebuild(@Context GraphManager manager,
                                              @PathParam("graph") String graph,
                                              @PathParam("name") String name) {
