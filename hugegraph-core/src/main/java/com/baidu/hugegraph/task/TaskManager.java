@@ -107,6 +107,7 @@ public final class TaskManager {
 
     public void closeScheduler(HugeGraphParams graph) {
         TaskScheduler scheduler = this.schedulers.get(graph);
+        long tid = Thread.currentThread().getId();
         if (scheduler != null) {
             /*
              * Synch close+remove scheduler and iterate scheduler, details:
@@ -119,11 +120,19 @@ public final class TaskManager {
              * graph tx. As a result, graph tx will mistakenly not be closed
              * after 'graph.close()'.
              */
+            Date currentTime = DateUtil.now();
+            LOG.debug("Entering scheduler lock of closeScheduler(), trying to remove graphs, with tid {}, time {} ...", tid, currentTime);
+            int poolActivateCount = this.schedulerExecutor.getActiveCount();
+            int poolQueueSize = this.schedulerExecutor.getQueue().size();
+            long taskCount = this.schedulerExecutor.getTaskCount();
+            LOG.debug("current pool thread usage: activateCount {} , queueSize {} , taskCount {}", poolActivateCount, poolQueueSize, taskCount);
+
             synchronized (scheduler) {
                 if (scheduler.close()) {
                     this.schedulers.remove(graph);
                 }
             }
+            LOG.debug("exit scheduler lock with tid {} , consumed {} ms", tid, DateUtil.now().getTime() - currentTime.getTime());
         }
 
         if (!this.taskExecutor.isTerminated()) {
@@ -311,7 +320,7 @@ public final class TaskManager {
                 StandardTaskScheduler scheduler = (StandardTaskScheduler) entry;
                 // Maybe other thread close&remove scheduler at the same time
                 Date currentTime = DateUtil.now();
-                LOG.debug("enter scheduler lock with tid {}, time {}", tid, currentTime);
+                LOG.debug("Entering scheduler lock of scheduleOrExecuteJob(), with tid {}, time {}", tid, currentTime);
                 int poolActivateCount = this.schedulerExecutor.getActiveCount();
                 int poolQueueSize = this.schedulerExecutor.getQueue().size();
                 long taskCount = this.schedulerExecutor.getTaskCount();

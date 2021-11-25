@@ -36,6 +36,7 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 
+import com.baidu.hugegraph.api.filter.AccessLogFilter;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeException;
@@ -74,6 +75,7 @@ public class GremlinAPI extends API {
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @RolesAllowed({"admin", "$owner=$graph $action=gremlin_execute"})
+    @AccessLogFilter.AccessLog
     public Map<String, Id> post(@Context GraphManager manager,
                                 @PathParam("graph") String graph,
                                 GremlinRequest request) {

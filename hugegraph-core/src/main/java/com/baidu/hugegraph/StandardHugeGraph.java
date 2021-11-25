@@ -163,6 +163,8 @@ public class StandardHugeGraph implements HugeGraph {
 
     private final RamTable ramtable;
 
+
+
     public StandardHugeGraph(HugeConfig config) {
         this.params = new StandardHugeGraphParams();
         this.configuration = config;
@@ -317,6 +319,7 @@ public class StandardHugeGraph implements HugeGraph {
 
     @Override
     public void initBackend() {
+        LOG.info("Initializing Graph '{}' ...", this.name);
         this.loadSchemaStore().open(this.configuration);
         this.loadSystemStore().open(this.configuration);
         this.loadGraphStore().open(this.configuration);
