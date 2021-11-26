@@ -52,7 +52,9 @@ public class AccessLogFilter implements ContainerResponseFilter {
      * @param responseContext responseContext
      */
     @Override
-    public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) throws IOException {
+    public void filter(
+            ContainerRequestContext requestContext,
+            ContainerResponseContext responseContext) throws IOException {
         // Grab corresponding request / response info from context;
         String method = requestContext.getRequest().getMethod();
         String path = requestContext.getUriInfo().getPath();

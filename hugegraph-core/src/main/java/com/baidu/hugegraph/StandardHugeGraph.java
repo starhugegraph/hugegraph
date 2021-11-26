@@ -163,8 +163,6 @@ public class StandardHugeGraph implements HugeGraph {
 
     private final RamTable ramtable;
 
-
-
     public StandardHugeGraph(HugeConfig config) {
         this.params = new StandardHugeGraphParams();
         this.configuration = config;

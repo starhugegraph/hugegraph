@@ -46,7 +46,6 @@ public class VersionAPI extends API {
                                        "core", CoreVersion.VERSION.toString(),
                                        "gremlin", CoreVersion.GREMLIN_VERSION,
                                        "api", ApiVersion.VERSION.toString());
-
         return ImmutableMap.of("versions", versions);
     }
 }

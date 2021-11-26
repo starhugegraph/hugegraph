@@ -29,7 +29,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import com.baidu.hugegraph.util.*;
+import com.baidu.hugegraph.util.DateUtil;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeException;
