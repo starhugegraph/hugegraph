@@ -128,8 +128,7 @@ public class VirtualGraph {
             this.batcher.add(batchTask);
             try {
                 Iterator<VirtualVertex> resultFromBatch = batchTask.getFuture().get();
-                result.extend(new MapperIterator<>(resultFromBatch,
-                        VirtualVertex::getVertex));
+                result.extend(new MapperIterator<>(resultFromBatch, v -> v.expired() ? null : v.getVertex()));
             }
             catch (Exception ex) {
                 throw new HugeException("Failed to query vertex in batch", ex);
@@ -198,8 +197,7 @@ public class VirtualGraph {
             this.batcher.add(batchTask);
             try {
                 Iterator<VirtualEdge> resultFromBatch = batchTask.getFuture().get();
-                result.extend(new MapperIterator<>(resultFromBatch,
-                        VirtualEdge::getEdge));
+                result.extend(new MapperIterator<>(resultFromBatch, e -> e.expired() ? null : e.getEdge()));
             }
             catch (Exception ex) {
                 throw new HugeException("Failed to query vertex in batch", ex);

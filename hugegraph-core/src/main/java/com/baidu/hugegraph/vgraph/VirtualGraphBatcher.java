@@ -4,6 +4,7 @@ import com.baidu.hugegraph.HugeGraphParams;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.query.IdQuery;
 import com.baidu.hugegraph.backend.tx.GraphTransaction;
+import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.iterator.MapperIterator;
 import com.baidu.hugegraph.structure.HugeEdge;
 import com.baidu.hugegraph.structure.HugeVertex;
@@ -26,13 +27,12 @@ import static com.baidu.hugegraph.type.HugeType.EDGE;
 
 public class VirtualGraphBatcher {
 
-    private static final int BATCH_BUFFER_MAX_SIZE = 1000;
-    private static final int BATCH_SIZE = 50;
-    private static final int BATCH_TIME_MS = 100;
+    private final int batchBufferSize;
+    private final int batchSize;
+    private final int batchTimeMS;
 
     private final HugeGraphParams graphParams;
     private final VirtualGraph vGraph;
-    private final ThreadLocal<GraphTransaction> transaction;
     private final java.util.Timer batchTimer;
     private final ExecutorService batchExecutor;
 
@@ -44,9 +44,11 @@ public class VirtualGraphBatcher {
 
         this.graphParams = graphParams;
         this.vGraph = vGraph;
-        this.transaction = ThreadLocal.withInitial(() -> null);
+        this.batchBufferSize = this.graphParams.configuration().get(CoreOptions.VIRTUAL_GRAPH_BATCH_BUFFER_SIZE);
+        this.batchSize = this.graphParams.configuration().get(CoreOptions.VIRTUAL_GRAPH_BATCH_SIZE);
+        this.batchTimeMS = this.graphParams.configuration().get(CoreOptions.VIRTUAL_GRAPH_BATCH_TIME_MS);
         this.batchTimer = new Timer();
-        this.batchQueue = new LinkedBlockingQueue<>(BATCH_BUFFER_MAX_SIZE);
+        this.batchQueue = new LinkedBlockingQueue<>(batchBufferSize);
         this.batchExecutor = ExecutorUtil.newFixedThreadPool(
                 1, "virtual-graph-batch-worker-" + this.graphParams.graph().name());
         this.start();
@@ -56,8 +58,8 @@ public class VirtualGraphBatcher {
         assert task != null;
         this.batchQueue.add(task);
 
-        if (this.batchQueue.size() >= BATCH_SIZE) {
-            List<VirtualGraphQueryTask> taskList = new ArrayList<>(BATCH_SIZE);
+        if (this.batchQueue.size() >= batchSize) {
+            List<VirtualGraphQueryTask> taskList = new ArrayList<>(batchSize);
             this.batchQueue.drainTo(taskList);
             if (taskList.size() > 0) {
                 this.batchExecutor.submit(() ->this.batchProcess(taskList));
@@ -66,20 +68,11 @@ public class VirtualGraphBatcher {
     }
 
     public void start() {
-        this.batchTimer.scheduleAtFixedRate(new IntervalGetTask(), BATCH_TIME_MS, BATCH_TIME_MS);
+        this.batchTimer.scheduleAtFixedRate(new IntervalGetTask(), batchTimeMS, batchTimeMS);
     }
 
     public void close() {
         this.batchTimer.cancel();
-    }
-
-    private GraphTransaction getOrNewTransaction() {
-        GraphTransaction transaction = this.transaction.get();
-        if (transaction == null) {
-            transaction = new GraphTransaction(this.graphParams, this.graphParams.loadGraphStore());
-            this.transaction.set(transaction);
-        }
-        return transaction;
     }
 
     private void batchProcess(List<VirtualGraphQueryTask> tasks) {
@@ -102,19 +95,18 @@ public class VirtualGraphBatcher {
                 }
             }
 
-            GraphTransaction tran = getOrNewTransaction();
-            queryFromBackend(tran, vertexMap, edgeMap);
+            queryFromBackend(vertexMap, edgeMap);
 
             for (VirtualGraphQueryTask task : tasks) {
                 switch (task.getHugeType()) {
                     case VERTEX:
                         MapperIterator<Id, VirtualVertex> vertexIterator = new MapperIterator<Id, VirtualVertex>(
-                                task.getIds().iterator(), id -> vertexMap.get(id));
+                                task.getIds().iterator(), vertexMap::get);
                         task.getFuture().complete(vertexIterator);
                         break;
                     case EDGE:
                         MapperIterator<Id, VirtualEdge> edgeIterator = new MapperIterator<Id, VirtualEdge>(
-                                task.getIds().iterator(), id -> edgeMap.get(id));
+                                task.getIds().iterator(), edgeMap::get);
                         task.getFuture().complete(edgeIterator);
                         break;
                     default:
@@ -130,10 +122,10 @@ public class VirtualGraphBatcher {
         }
     }
 
-    private void queryFromBackend(GraphTransaction tran, Map<Id, VirtualVertex> vertexMap,
+    private void queryFromBackend(Map<Id, VirtualVertex> vertexMap,
                                   Map<Id, VirtualEdge> edgeMap) {
-
-        synchronized (tran) {
+        try( GraphTransaction tran = new GraphTransaction(this.graphParams,
+                this.graphParams.loadGraphStore())) {
             if (vertexMap.size() > 0) {
                 IdQuery query = new IdQuery(VERTEX, vertexMap.keySet());
                 Iterator<Vertex> vertexIterator = tran.queryVertices(query);
@@ -155,8 +147,8 @@ public class VirtualGraphBatcher {
         @Override
         public void run() {
             while (batchQueue.size() > 0) {
-                List<VirtualGraphQueryTask> taskList = new ArrayList<>(BATCH_SIZE);
-                batchQueue.drainTo(taskList, BATCH_SIZE);
+                List<VirtualGraphQueryTask> taskList = new ArrayList<>(batchSize);
+                batchQueue.drainTo(taskList, batchSize);
                 if (taskList.size() > 0) {
                     batchProcess(taskList);
                 }

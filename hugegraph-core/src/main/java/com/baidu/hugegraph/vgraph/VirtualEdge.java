@@ -20,6 +20,10 @@ public class VirtualEdge extends VirtualElement {
         return edge;
     }
 
+    public boolean expired() {
+        return edge.expired();
+    }
+
 //    public Id getSource() {
 //        return source;
 //    }

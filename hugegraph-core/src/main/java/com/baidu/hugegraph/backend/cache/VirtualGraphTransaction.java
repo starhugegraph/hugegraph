@@ -135,11 +135,6 @@ public final class VirtualGraphTransaction extends GraphTransaction {
 
             Iterator<HugeEdge> rs = super.queryEdgesFromBackend(newQuery);
 
-            /*
-             * Iterator can't be cached, caching list instead
-             * there may be super node and too many edges in a query,
-             * try fetch a few of the head results and determine whether to cache.
-             */
             List<HugeEdge> edgesRS = new ArrayList<>();
             rs.forEachRemaining(edgesRS::add);
             if (!edgesRS.isEmpty()) {
@@ -192,7 +187,7 @@ public final class VirtualGraphTransaction extends GraphTransaction {
     private Query queryEdgesFromVirtualGraphByEIds(Query query, List<HugeEdge> edges, VirtualEdgeStatus status) {
         List<Id> eIds = new ArrayList<>(query.ids());
         Iterator<HugeEdge> edgesFromVGraph = this.vGraph.queryEdgeByIds(eIds, status);
-        edgesFromVGraph.forEachRemaining(edge -> edges.add(edge));
+        edgesFromVGraph.forEachRemaining(edges::add);
         return null;
     }
 
