@@ -56,7 +56,7 @@ public final class TaskManager {
     public static final String TASK_SCHEDULER = "task-scheduler-%d";
 
     protected static final int SCHEDULE_PERIOD = 3; // Unit second
-    private static final int THREADS = CoreOptions.CPUS;
+    private static final int THREADS = CoreOptions.CPUS / 2;
     private static final TaskManager MANAGER = new TaskManager(THREADS);
 
     private final Map<HugeGraphParams, TaskScheduler> schedulers;
