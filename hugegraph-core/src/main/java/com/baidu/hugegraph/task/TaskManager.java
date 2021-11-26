@@ -287,8 +287,7 @@ public final class TaskManager {
     }
 
     protected void notifyNewTask(HugeTask<?> task) {
-        Queue<Runnable> queue = ((ThreadPoolExecutor) this.schedulerExecutor)
-                                                          .getQueue();
+        Queue<Runnable> queue = this.schedulerExecutor.getQueue();
         if (queue.size() <= 1) {
             /*
              * Notify to schedule tasks initiatively when have new task
@@ -319,6 +318,9 @@ public final class TaskManager {
     private void scheduleOrExecuteJobForGraph(StandardTaskScheduler scheduler) {
         E.checkNotNull(scheduler, "scheduler");
 
+        if (!scheduler.graph().started()) {
+            return;
+        }
         ServerInfoManager serverManager = scheduler.serverManager();
         String graph = scheduler.graphName();
 
