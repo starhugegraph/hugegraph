@@ -657,4 +657,29 @@ public class CoreOptions extends OptionHolder {
                     "Whether to enable the Virtual Graph.",
                     true
             );
+
+    public static final ConfigOption<Integer> VIRTUAL_GRAPH_BATCH_BUFFER_SIZE =
+            new ConfigOption<>(
+                    "graph.virtual_graph_batch_buffer_size",
+                    "The size of buffer for batch load in Virtual Graph.",
+                    rangeInt(0, 65535),
+                    1000
+            );
+
+    public static final ConfigOption<Integer> VIRTUAL_GRAPH_BATCH_SIZE =
+            new ConfigOption<>(
+                    "graph.virtual_graph_batch_size",
+                    "The size of each batch when batch loading in Virtual Graph.",
+                    rangeInt(0, 65535),
+                    50
+            );
+
+    public static final ConfigOption<Integer> VIRTUAL_GRAPH_BATCH_TIME_MS =
+            new ConfigOption<>(
+                    "graph.virtual_graph_batch_time_ms",
+                    "Interval in milliseconds to batch load queries in buffer of Virtual Graph.",
+                    rangeInt(0, Integer.MAX_VALUE),
+                    100
+            );
+
 }

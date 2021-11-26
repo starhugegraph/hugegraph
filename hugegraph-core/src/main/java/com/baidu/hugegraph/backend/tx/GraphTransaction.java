@@ -101,7 +101,7 @@ import com.baidu.hugegraph.util.InsertionOrderUtil;
 import com.baidu.hugegraph.util.LockUtil;
 import com.google.common.collect.ImmutableList;
 
-public class GraphTransaction extends IndexableTransaction {
+public class GraphTransaction extends IndexableTransaction implements AutoCloseable {
 
     public static final int COMMIT_BATCH = (int) Query.COMMIT_BATCH;
 
