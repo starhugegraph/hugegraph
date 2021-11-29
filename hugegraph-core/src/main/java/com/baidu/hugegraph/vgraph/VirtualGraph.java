@@ -20,8 +20,7 @@ package com.baidu.hugegraph.vgraph;
 
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.HugeGraphParams;
-import com.baidu.hugegraph.backend.cache.Cache;
-import com.baidu.hugegraph.backend.serializer.AbstractSerializer;
+import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.event.EventHub;
 import com.baidu.hugegraph.event.EventListener;
 import com.baidu.hugegraph.iterator.ExtendableIterator;
@@ -36,6 +35,8 @@ import com.baidu.hugegraph.util.Log;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.collect.ImmutableSet;
 
 import java.lang.reflect.Array;
@@ -44,25 +45,21 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import com.baidu.hugegraph.backend.id.Id;
 import org.slf4j.Logger;
 
 public class VirtualGraph {
-    private static final int INIT_VERTEX_CAPACITY = 10000;
     private static final Logger LOG = Log.logger(VirtualGraph.class);
 
-    private ConcurrentMap<Id, VirtualVertex> vertexMap;
-    private ConcurrentMap<Id, VirtualEdge> edgeMap;
+    private Cache<Id, VirtualVertex> vertexCache;
+    private Cache<Id, VirtualEdge> edgeCache;
 
     private EventListener storeEventListener;
     private EventListener cacheEventListener;
     private VirtualGraphBatcher batcher;
 
     private final HugeGraphParams graphParams;
-    private final AbstractSerializer serializer;
     private final List<String> metricsNames;
     private final Meter hits;
     private final Timer calls;
@@ -70,7 +67,6 @@ public class VirtualGraph {
     public VirtualGraph(HugeGraphParams graphParams) {
         assert graphParams != null;
         this.graphParams = graphParams;
-        this.serializer = this.graphParams.serializer();
         this.hits = new Meter();
         this.calls = new Timer();
         this.metricsNames = new ArrayList<>();
@@ -78,8 +74,18 @@ public class VirtualGraph {
     }
 
     public void init(){
-        this.vertexMap = new ConcurrentHashMap<>(INIT_VERTEX_CAPACITY);
-        this.edgeMap = new ConcurrentHashMap<>(INIT_VERTEX_CAPACITY);
+        this.vertexCache = Caffeine.newBuilder()
+                .initialCapacity(this.graphParams.configuration().get(
+                                CoreOptions.VIRTUAL_GRAPH_VERTEX_INIT_CAPACITY))
+                .maximumSize(this.graphParams.configuration().get(
+                        CoreOptions.VIRTUAL_GRAPH_VERTEX_MAX_SIZE))
+                .build();
+        this.edgeCache = Caffeine.newBuilder()
+                .initialCapacity(this.graphParams.configuration().get(
+                        CoreOptions.VIRTUAL_GRAPH_EDGE_INIT_CAPACITY))
+                .maximumSize(this.graphParams.configuration().get(
+                        CoreOptions.VIRTUAL_GRAPH_EDGE_MAX_SIZE))
+                .build();
         this.batcher = new VirtualGraphBatcher(this.graphParams, this);
 
         String hitsName = MetricRegistry.name(this.getClass(),
@@ -95,11 +101,11 @@ public class VirtualGraph {
     }
 
     public int getVertexSize() {
-        return this.vertexMap.size();
+        return (int) this.vertexCache.estimatedSize();
     }
 
     public int getEdgeSize() {
-        return this.edgeMap.size();
+        return (int) this.edgeCache.estimatedSize();
     }
 
     public Iterator<HugeVertex> queryHugeVertexByIds(List<Id> vIds, VirtualVertexStatus status) {
@@ -107,7 +113,7 @@ public class VirtualGraph {
         assert status != VirtualVertexStatus.None;
 
         E.checkArgument(status != VirtualVertexStatus.OutEdge && status != VirtualVertexStatus.InEdge,
-                "Get edges of vertex is not supported, please use queryVertexWithEdges.");
+                "Get edges of vertex is not supported in this method, please use queryVertexWithEdges.");
 
         ExtendableIterator<HugeVertex> result = new ExtendableIterator<>();
         List<HugeVertex> resultFromCache = new ArrayList<>(vIds.size());
@@ -144,24 +150,54 @@ public class VirtualGraph {
 
     public boolean updateIfPresentVertex(HugeVertex vertex, Iterator<HugeEdge> inEdges) {
         assert vertex != null;
-        return this.vertexMap.computeIfPresent(vertex.id(), (id, old) -> toVirtual(old, vertex, inEdges)) != null;
+        VirtualVertex vertexFromCache = this.vertexCache.getIfPresent(vertex.id());
+        if (vertexFromCache != null) {
+            VirtualVertex vertexMerged = toVirtual(vertexFromCache, vertex, inEdges);
+            if (vertexMerged != null) {
+                this.vertexCache.put(vertex.id(), vertexMerged);
+                return true;
+            }
+        }
+        return false;
     }
 
     public VirtualVertex putVertex(HugeVertex vertex, Iterator<HugeEdge> inEdges) {
         assert vertex != null;
-        return this.vertexMap.compute(vertex.id(), (id, old) -> toVirtual(old, vertex, inEdges));
+        VirtualVertex vertexFromCache = this.vertexCache.getIfPresent(vertex.id());
+        VirtualVertex vertexMerged = toVirtual(vertexFromCache, vertex, inEdges);
+        if (vertexMerged != null) {
+            this.vertexCache.put(vertex.id(), vertexMerged);
+        }
+        else {
+            this.vertexCache.invalidate(vertex.id());
+        }
+        return vertexMerged;
     }
 
     public void updateIfPresentEdge(Iterator<HugeEdge> edges) {
         assert edges != null;
-        edges.forEachRemaining(edge ->
-                this.edgeMap.computeIfPresent(edge.id(),
-                        (id, old) -> toVirtual(old, edge)));
+        edges.forEachRemaining(edge -> {
+            VirtualEdge old = this.edgeCache.getIfPresent(edge.id());
+            if (old != null) {
+                VirtualEdge edgeMerged = toVirtual(old, edge);
+                if (edgeMerged != null) {
+                    this.edgeCache.put(edge.id(), edgeMerged);
+                }
+            }
+        });
     }
 
     public VirtualEdge putEdge(HugeEdge edge) {
         assert edge != null;
-        return this.edgeMap.compute(edge.id(), (id, old) -> toVirtual(old, edge));
+        VirtualEdge old = this.edgeCache.getIfPresent(edge.id());
+        VirtualEdge edgeMerged = toVirtual(old, edge);
+        if (edgeMerged != null) {
+            this.edgeCache.put(edge.id(), edgeMerged);
+        }
+        else {
+            this.edgeCache.invalidate(edge.id());
+        }
+        return edgeMerged;
     }
 
     public void putEdges(Iterator<HugeEdge> values) {
@@ -171,7 +207,7 @@ public class VirtualGraph {
 
     public void invalidateVertex(Id vId) {
         assert vId != null;
-        this.vertexMap.remove(vId);
+        this.vertexCache.invalidate(vId);
     }
 
     public Iterator<HugeEdge> queryEdgeByIds(List<Id> eIds, VirtualEdgeStatus status) {
@@ -200,7 +236,7 @@ public class VirtualGraph {
                 result.extend(new MapperIterator<>(resultFromBatch, e -> e.expired() ? null : e.getEdge()));
             }
             catch (Exception ex) {
-                throw new HugeException("Failed to query vertex in batch", ex);
+                throw new HugeException("Failed to query edge in batch", ex);
             }
         }
 
@@ -209,12 +245,12 @@ public class VirtualGraph {
 
     public void invalidateEdge(Id eId) {
         assert eId != null;
-        this.edgeMap.remove(eId);
+        this.edgeCache.invalidate(eId);
     }
 
     public void clear(){
-        this.vertexMap.clear();
-        this.edgeMap.clear();
+        this.vertexCache.invalidateAll();
+        this.edgeCache.invalidateAll();
     }
 
     public void close() {
@@ -228,7 +264,7 @@ public class VirtualGraph {
         assert vId != null;
 
         try (Timer.Context ignored = this.calls.time()) {
-            VirtualVertex vertex = this.vertexMap.get(vId);
+            VirtualVertex vertex = this.vertexCache.getIfPresent(vId);
             if (vertex == null) {
                 return null;
             }
@@ -249,7 +285,7 @@ public class VirtualGraph {
 
     private HugeEdge queryEdgeById(Id eId, VirtualEdgeStatus status) {
         try (Timer.Context ignored = this.calls.time()) {
-            HugeEdge edge = toHuge(this.edgeMap.get(eId), status);
+            HugeEdge edge = toHuge(this.edgeCache.getIfPresent(eId), status);
             if (edge != null) {
                 this.hits.mark();
             }
@@ -405,7 +441,7 @@ public class VirtualGraph {
             Object[] args = event.args();
             E.checkArgument(args.length > 0 && args[0] instanceof String,
                     "Expect event action argument");
-            if (Cache.ACTION_INVALID.equals(args[0])) {
+            if (com.baidu.hugegraph.backend.cache.Cache.ACTION_INVALID.equals(args[0])) {
                 event.checkArgs(String.class, HugeType.class, Object.class);
                 HugeType type = (HugeType) args[1];
                 if (type.isVertex()) {
@@ -413,7 +449,7 @@ public class VirtualGraph {
                     Object arg2 = args[2];
                     if (arg2 instanceof Id) {
                         Id id = (Id) arg2;
-                        this.vertexMap.remove(id);
+                        this.vertexCache.invalidate(id);
                     } else if (arg2 != null && arg2.getClass().isArray()) {
                         int size = Array.getLength(arg2);
                         for (int i = 0; i < size; i++) {
@@ -421,7 +457,7 @@ public class VirtualGraph {
                             E.checkArgument(id instanceof Id,
                                     "Expect instance of Id in array, " +
                                             "but got '%s'", id.getClass());
-                            this.vertexMap.remove((Id) id);
+                            this.vertexCache.invalidate(id);
                         }
                     } else {
                         E.checkArgument(false,
@@ -433,7 +469,7 @@ public class VirtualGraph {
                     Object arg2 = args[2];
                     if (arg2 instanceof Id) {
                         Id id = (Id) arg2;
-                        this.edgeMap.remove(id);
+                        this.edgeCache.invalidate(id);
                     } else if (arg2 != null && arg2.getClass().isArray()) {
                         int size = Array.getLength(arg2);
                         for (int i = 0; i < size; i++) {
@@ -441,7 +477,7 @@ public class VirtualGraph {
                             E.checkArgument(id instanceof Id,
                                     "Expect instance of Id in array, " +
                                             "but got '%s'", id.getClass());
-                            this.edgeMap.remove((Id) id);
+                            this.edgeCache.invalidate(id);
                         }
                     } else {
                         E.checkArgument(false,
@@ -450,7 +486,7 @@ public class VirtualGraph {
                     }
                 }
                 return true;
-            } else if (Cache.ACTION_CLEAR.equals(args[0])) {
+            } else if (com.baidu.hugegraph.backend.cache.Cache.ACTION_CLEAR.equals(args[0])) {
                 event.checkArgs(String.class, HugeType.class);
                 HugeType type = (HugeType) args[1];
                 this.clearCache(type, false);
@@ -480,14 +516,14 @@ public class VirtualGraph {
 
     private void clearCache(HugeType type, boolean notify) {
         if (type == null || type == HugeType.VERTEX) {
-            this.vertexMap.clear();
+            this.vertexCache.invalidateAll();
         }
         if (type == null || type == HugeType.EDGE) {
-            this.edgeMap.clear();
+            this.edgeCache.invalidateAll();
         }
 
         if (notify) {
-            this.notifyChanges(Cache.ACTION_CLEARED, null, null);
+            this.notifyChanges(com.baidu.hugegraph.backend.cache.Cache.ACTION_CLEARED, null, null);
         }
     }
 }

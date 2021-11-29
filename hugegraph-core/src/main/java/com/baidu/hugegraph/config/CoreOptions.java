@@ -714,4 +714,35 @@ public class CoreOptions extends OptionHolder {
                     100
             );
 
+    public static final ConfigOption<Integer> VIRTUAL_GRAPH_VERTEX_INIT_CAPACITY =
+            new ConfigOption<>(
+                    "graph.virtual_graph_vertex_init_capacity",
+                    "The minimum number of vertices cached in Virtual Graph.",
+                    rangeInt(0, Integer.MAX_VALUE),
+                    10000
+            );
+
+    public static final ConfigOption<Integer> VIRTUAL_GRAPH_VERTEX_MAX_SIZE =
+            new ConfigOption<>(
+                    "graph.virtual_graph_vertex_max_size",
+                    "The maximum number of vertices cached in Virtual Graph.",
+                    rangeInt(0, Integer.MAX_VALUE),
+                    100000
+            );
+
+    public static final ConfigOption<Integer> VIRTUAL_GRAPH_EDGE_INIT_CAPACITY =
+            new ConfigOption<>(
+                    "graph.virtual_graph_edge_init_capacity",
+                    "The minimum number of edges cached in Virtual Graph.",
+                    rangeInt(0, Integer.MAX_VALUE),
+                    10000
+            );
+
+    public static final ConfigOption<Integer> VIRTUAL_GRAPH_EDGE_MAX_SIZE =
+            new ConfigOption<>(
+                    "graph.virtual_graph_edge_max_size",
+                    "The maximum number of edges cached in Virtual Graph.",
+                    rangeInt(0, Integer.MAX_VALUE),
+                    100000
+            );
 }
