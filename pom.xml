@@ -107,6 +107,7 @@
         <javassist.version>3.21.0-GA</javassist.version>
         <shell-executable>bash</shell-executable>
         <fabric8.version>5.6.0</fabric8.version>
+        <caffeine.vertion>2.9.2</caffeine.vertion>
     </properties>
     <modules>
         <module>hugegraph-core</module>
@@ -207,6 +208,11 @@
                 <groupId>org.apache.tinkerpop</groupId>
                 <artifactId>gremlin-driver</artifactId>
                 <version>${tinkerpop.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ben-manes.caffeine</groupId>
+                <artifactId>caffeine</artifactId>
+                <version>${caffeine.vertion}</version>
             </dependency>
 
             <!-- utility -->
