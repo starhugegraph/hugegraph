@@ -134,7 +134,7 @@ public class HugeTraverser {
         Set<Id> neighbors = newIdSet();
         for (Id source : vertices) {
             Iterator<Edge> edges = this.edgesOfVertex(source, dir,
-                                                      label, degree);
+                                                      label, degree, false);
             while (edges.hasNext()) {
                 this.edgeIterCounter++;
                 HugeEdge e = (HugeEdge) edges.next();
@@ -156,7 +156,7 @@ public class HugeTraverser {
 
     protected Iterator<Id> adjacentVertices(Id source, Directions dir,
                                             Id label, long limit) {
-        Iterator<Edge> edges = this.edgesOfVertex(source, dir, label, limit);
+        Iterator<Edge> edges = this.edgesOfVertex(source, dir, label, limit, false);
         return new MapperIterator<>(edges, e -> {
             HugeEdge edge = (HugeEdge) e;
             return edge.id().otherVertexId();
@@ -179,7 +179,8 @@ public class HugeTraverser {
 
     @Watched
     protected Iterator<Edge> edgesOfVertex(Id source, Directions dir,
-                                           Id label, long limit) {
+                                           Id label, long limit,
+                                           boolean withEdgeProperties) {
         Id[] labels = {};
         if (label != null) {
             labels = new Id[]{label};
@@ -189,13 +190,15 @@ public class HugeTraverser {
         if (limit != NO_LIMIT) {
             query.limit(limit);
         }
+        query.withProperties(withEdgeProperties);
         return this.graph.edges(query);
     }
 
     @Watched
     protected Iterator<Edge> edgesOfVertexAF(Id source, Directions dir,
                                              Id label, long limit,
-                                             Steps steps) {
+                                             Steps steps,
+                                             boolean withEdgeProperties) {
         Id[] labels = {};
         if (label != null) {
             labels = new Id[]{label};
@@ -205,6 +208,9 @@ public class HugeTraverser {
         if (limit != NO_LIMIT) {
             query.limit(limit);
         }
+        // check if we need edgeProperties.
+        query.withProperties(withEdgeProperties ||
+                                     !steps.isEdgeStepPropertiesEmpty());
 
         Iterator<Edge> result = this.graph.edges(query);
         return edgesOfVertexStep(result, steps);
@@ -369,14 +375,15 @@ public class HugeTraverser {
 
     @Watched
     protected Iterator<Edge> edgesOfVertex(Id source, Directions dir,
-                                           Map<Id, String> labels, long limit) {
+                                           Map<Id, String> labels, long limit,
+                                           boolean withProperties) {
         if (labels == null || labels.isEmpty()) {
-            return this.edgesOfVertex(source, dir, (Id) null, limit);
+            return this.edgesOfVertex(source, dir, (Id) null, limit, withProperties);
         }
         ExtendableIterator<Edge> results = new ExtendableIterator<>();
         for (Id label : labels.keySet()) {
             E.checkNotNull(label, "edge label");
-            results.extend(this.edgesOfVertex(source, dir, label, limit));
+            results.extend(this.edgesOfVertex(source, dir, label, limit, withProperties));
         }
 
         if (limit == NO_LIMIT) {
@@ -392,15 +399,17 @@ public class HugeTraverser {
     @Watched
     protected Iterator<Edge> edgesOfVertexAF(Id source, Directions dir,
                                              Id[] labels, long limit,
-                                             Steps steps) {
+                                             Steps steps,
+                                             boolean withEdgeProperties) {
         if (labels == null || labels.length == 0) {
-            return this.edgesOfVertexAF(source, dir, (Id) null, limit, steps);
+            return this.edgesOfVertexAF(source, dir, (Id) null,
+                                        limit, steps, withEdgeProperties);
         }
         ExtendableIterator<Edge> results = new ExtendableIterator<>();
         for (Id label : labels) {
             E.checkNotNull(label, "edge label");
             results.extend(this.edgesOfVertexAF(source, dir, label,
-                                                limit, steps));
+                                                limit, steps, withEdgeProperties));
         }
 
         if (limit == NO_LIMIT) {
@@ -418,20 +427,23 @@ public class HugeTraverser {
             Iterator<Edge> edges = this.edgesOfVertex(source,
                                                       edgeStep.direction(),
                                                       edgeStep.labels(),
-                                                      edgeStep.limit());
+                                                      edgeStep.limit(),
+                                                      false);
             return edgeStep.skipSuperNodeIfNeeded(edges);
         }
         return this.edgesOfVertex(source, edgeStep, false);
     }
 
-    protected Iterator<Edge> edgesOfVertexAF(Id source, Steps steps) {
+    protected Iterator<Edge> edgesOfVertexAF(Id source, Steps steps,
+                                             boolean withEdgeProperties) {
 
         if (steps.isEdgeStepPropertiesEmpty()) {
             Iterator<Edge> edges = this.edgesOfVertexAF(source,
                                                         steps.direction(),
                                                         steps.edgeLabels(),
                                                         steps.limit(),
-                                                        steps);
+                                                        steps,
+                                                        withEdgeProperties);
             return steps.skipSuperNodeIfNeeded(edges);
         }
 
@@ -442,6 +454,7 @@ public class HugeTraverser {
         if (steps.limit() != NO_LIMIT) {
             query.limit(steps.limit());
         }
+//        query.withProperties(withEdgeProperties);
         Iterator<Edge> edges = this.graph().edges(query);
         edges = edgesOfVertexStep(edges, steps);
         return steps.skipSuperNodeIfNeeded(edges);
@@ -987,6 +1000,7 @@ public class HugeTraverser {
         // cache for edges, initial capacity to avoid mem-fragment
         private final ArrayList<HugeEdge> cache = new ArrayList<>(MAX_CACHED_COUNT);
         private int cachePointer = 0;
+        private boolean withEdgeProperties;
 
         // of parent
         private HugeEdge currentEdge = null;
@@ -995,11 +1009,13 @@ public class HugeTraverser {
         // todo: may add edge-filter and/or vertice-filter ...
 
         public NestedIterator(HugeTraverser traverser, Iterator<Edge> parent,
-                              Steps steps, Set<Id> visited) {
+                              Steps steps, Set<Id> visited,
+                              boolean withEdgeProperties) {
             this.traverser = traverser;
             this.parentIterator = parent;
             this.steps = steps;
             this.visited = visited;
+            this.withEdgeProperties = withEdgeProperties;
         }
 
         @Override
@@ -1025,7 +1041,7 @@ public class HugeTraverser {
                 this.cachePointer++;
                 this.currentIterator = traverser.edgesOfVertexAF(
                         this.currentEdge.id().otherVertexId(),
-                        steps);
+                        steps, withEdgeProperties);
             }
             return true;
         }
@@ -1061,16 +1077,17 @@ public class HugeTraverser {
     }
 
     public Iterator<Edge> createNestedIterator(Id sourceV, Steps steps, int depth,
-                                               Set<Id> visited) {
+                                               Set<Id> visited,
+                                               boolean withEdgeProperties) {
         E.checkArgument(depth > 0,
                         "The depth should large than 0 for nested iterator");
 
         visited.add(sourceV);
 
         // build a chained iterator path with length of depth
-        Iterator<Edge> it = this.edgesOfVertexAF(sourceV, steps);
+        Iterator<Edge> it = this.edgesOfVertexAF(sourceV, steps, withEdgeProperties);
         for (int i = 1; i < depth; i++) {
-            it = new NestedIterator(this, it, steps, visited);
+            it = new NestedIterator(this, it, steps, visited, withEdgeProperties);
         }
         return it;
     }

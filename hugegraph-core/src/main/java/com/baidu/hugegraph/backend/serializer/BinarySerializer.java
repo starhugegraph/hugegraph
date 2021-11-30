@@ -249,7 +249,7 @@ public class BinarySerializer extends AbstractSerializer {
     }
 
     protected void parseEdge(BackendColumn col, HugeVertex vertex,
-                             HugeGraph graph) {
+                             HugeGraph graph, boolean withEdgeProperties) {
         // owner-vertex + dir + edge-label + sort-values + other-vertex
 
         BytesBuffer buffer = BytesBuffer.wrap(col.name);
@@ -269,6 +269,9 @@ public class BinarySerializer extends AbstractSerializer {
         HugeEdge edge = HugeEdge.constructEdge(vertex, direction, edgeLabel,
                                                sortValues, otherVertexId);
 
+        if(!withEdgeProperties) {
+            return;
+        }
         // Parse edge-id + edge-properties
         buffer = BytesBuffer.wrap(col.value);
 
@@ -300,7 +303,8 @@ public class BinarySerializer extends AbstractSerializer {
         }
     }
 
-    protected void parseColumn(BackendColumn col, HugeVertex vertex) {
+    protected void parseColumn(BackendColumn col, HugeVertex vertex,
+                               boolean withEdgeProperties) {
         BytesBuffer buffer = BytesBuffer.wrap(col.name);
         Id id = this.keyWithIdPrefix ? buffer.readId() : vertex.id();
         E.checkState(buffer.remaining() > 0, "Missing column type");
@@ -313,7 +317,7 @@ public class BinarySerializer extends AbstractSerializer {
         // Parse edge
         else if (type == HugeType.EDGE_IN.code() ||
                  type == HugeType.EDGE_OUT.code()) {
-            this.parseEdge(col, vertex, vertex.graph());
+            this.parseEdge(col, vertex, vertex.graph(), withEdgeProperties);
         }
         // Parse system property
         else if (type == HugeType.SYS_PROPERTY.code()) {
@@ -430,7 +434,8 @@ public class BinarySerializer extends AbstractSerializer {
     }
 
     @Override
-    public HugeVertex readVertex(HugeGraph graph, BackendEntry bytesEntry) {
+    public HugeVertex readVertex(HugeGraph graph, BackendEntry bytesEntry,
+                                 boolean withEdgeProperties) {
         if (bytesEntry == null) {
             return null;
         }
@@ -448,7 +453,7 @@ public class BinarySerializer extends AbstractSerializer {
             if (entry.type().isEdge()) {
                 // NOTE: the entry id type is vertex even if entry type is edge
                 // Parse vertex edges
-                this.parseColumn(col, vertex);
+                this.parseColumn(col, vertex, withEdgeProperties);
             } else {
                 assert entry.type().isVertex();
                 // Parse vertex properties

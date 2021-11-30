@@ -65,6 +65,7 @@ public class Query implements Cloneable {
     private boolean showDeleting;
     private boolean showExpired;
     private boolean olap;
+    private boolean withProperties;
     private Set<Id> olapPks;
 
     private Aggregate aggregate;
@@ -92,6 +93,8 @@ public class Query implements Cloneable {
         this.showHidden = false;
         this.showDeleting = false;
 
+        this.withProperties = true;
+
         this.aggregate = null;
         this.showExpired = false;
         this.olap = false;
@@ -106,6 +109,8 @@ public class Query implements Cloneable {
         this.capacity = query.capacity();
         this.showHidden = query.showHidden();
         this.showDeleting = query.showDeleting();
+        this.withProperties = query.withProperties();
+
         this.aggregate = query.aggregate();
         this.showExpired = query.showExpired();
         this.olap = query.olap();
@@ -427,6 +432,14 @@ public class Query implements Cloneable {
 
     public boolean showDeleting() {
         return this.showDeleting;
+    }
+
+    public void withProperties(boolean withProperties) {
+        this.withProperties = withProperties;
+    }
+
+    public boolean withProperties() {
+        return this.withProperties;
     }
 
     public void showDeleting(boolean showDeleting) {
