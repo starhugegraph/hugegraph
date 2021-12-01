@@ -1131,5 +1131,13 @@ public abstract class RocksDBStore extends AbstractBackendStore<Session> {
                 this.unregisterTableManager(this.olapTableName(pkId));
             }
         }
+
+        @Override
+        public boolean existOlapTable(Id pkId) {
+            String name = this.olapTableName(pkId);
+            RocksDBTable table = this.olapTable(name);
+            RocksDBSessions db = this.db(HugeType.OLAP);
+            return table != null && db.existsTable(table.table());
+        }
     }
 }

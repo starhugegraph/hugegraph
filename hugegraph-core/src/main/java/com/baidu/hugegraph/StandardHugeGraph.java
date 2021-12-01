@@ -684,6 +684,10 @@ public class StandardHugeGraph implements HugeGraph {
     public Id addPropertyKey(PropertyKey pkey) {
         assert this.name.equals(pkey.graph().name());
         if (pkey.olap()) {
+            // Ensure olap table exist, if not rebuild it later
+            if (this.schemaTransaction().existOlapTable(pkey.id())) {
+                return IdGenerator.ZERO;
+            }
             this.clearVertexCache();
         }
         return this.schemaTransaction().addPropertyKey(pkey);

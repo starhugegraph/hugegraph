@@ -798,5 +798,12 @@ public abstract class CassandraStore
                 this.unregisterTableManager(name);
             }
         }
+
+        @Override
+        public boolean existOlapTable(Id pkId) {
+            String name = this.olapTableName(pkId);
+            CassandraTable table = this.olapTable(name);
+            return table != null && this.existsTable(table.table());
+        }
     }
 }

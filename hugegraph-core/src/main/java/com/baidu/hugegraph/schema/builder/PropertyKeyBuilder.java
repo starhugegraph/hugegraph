@@ -134,7 +134,7 @@ public class PropertyKeyBuilder extends AbstractBuilder
 
         return this.lockCheckAndCreateSchema(type, this.name, name -> {
             PropertyKey propertyKey = this.propertyKeyOrNull(name);
-            if (propertyKey != null) {
+            if (propertyKey != null && propertyKey.oltp()) {
                 if (this.checkExist || !hasSameProperties(propertyKey)) {
                     throw new ExistedException(type, name);
                 }
