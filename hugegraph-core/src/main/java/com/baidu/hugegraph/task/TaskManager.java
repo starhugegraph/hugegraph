@@ -28,6 +28,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import com.baidu.hugegraph.StandardHugeGraph;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeException;
@@ -318,8 +319,10 @@ public final class TaskManager {
     private void scheduleOrExecuteJobForGraph(StandardTaskScheduler scheduler) {
         E.checkNotNull(scheduler, "scheduler");
 
-        if (!scheduler.graph().started()) {
-            return;
+        if (!scheduler.graph().name().equals("system")) {
+            if (!scheduler.graph().started()) {
+                return;
+            }
         }
         ServerInfoManager serverManager = scheduler.serverManager();
         String graph = scheduler.graphName();
