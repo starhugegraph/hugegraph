@@ -147,6 +147,15 @@ public class PropertyKeyBuilder extends AbstractBuilder
             this.checkAggregateType();
             this.checkOlap();
 
+            // Rebuild olap table if propertyKey exists but table miss
+            if (propertyKey != null && propertyKey.olap()) {
+                if (!this.graph().existsOlapTable(propertyKey)) {
+                    this.graph().addPropertyKey(propertyKey);
+                }
+                return new SchemaElement.TaskWithSchema(propertyKey,
+                                                        IdGenerator.ZERO);
+            }
+
             propertyKey = this.build();
             assert propertyKey.name().equals(name);
             Id id = this.graph().addPropertyKey(propertyKey);
