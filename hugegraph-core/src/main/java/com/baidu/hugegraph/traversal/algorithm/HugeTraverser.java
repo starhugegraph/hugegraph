@@ -165,7 +165,7 @@ public class HugeTraverser {
 
     protected Set<Id> adjacentVertices(Id source, EdgeStep step) {
         Set<Id> neighbors = newSet();
-        Iterator<Edge> edges = this.edgesOfVertex(source, step);
+        Iterator<Edge> edges = this.edgesOfVertex(source, step, false);
         while (edges.hasNext()) {
             this.edgeIterCounter++;
             neighbors.add(((HugeEdge) edges.next()).id().otherVertexId());
@@ -174,7 +174,7 @@ public class HugeTraverser {
     }
 
     protected int vertexDegree(Id source, EdgeStep step) {
-        return Iterators.size(this.edgesOfVertex(source, step));
+        return Iterators.size(this.edgesOfVertex(source, step, false));
     }
 
     @Watched
@@ -422,18 +422,6 @@ public class HugeTraverser {
         });
     }
 
-    protected Iterator<Edge> edgesOfVertex(Id source, EdgeStep edgeStep) {
-        if (edgeStep.properties() == null || edgeStep.properties().isEmpty()) {
-            Iterator<Edge> edges = this.edgesOfVertex(source,
-                                                      edgeStep.direction(),
-                                                      edgeStep.labels(),
-                                                      edgeStep.limit(),
-                                                      false);
-            return edgeStep.skipSuperNodeIfNeeded(edges);
-        }
-        return this.edgesOfVertex(source, edgeStep, false);
-    }
-
     protected Iterator<Edge> edgesOfVertexAF(Id source, Steps steps,
                                              boolean withEdgeProperties) {
 
@@ -454,32 +442,33 @@ public class HugeTraverser {
         if (steps.limit() != NO_LIMIT) {
             query.limit(steps.limit());
         }
-//        query.withProperties(withEdgeProperties);
         Iterator<Edge> edges = this.graph().edges(query);
         edges = edgesOfVertexStep(edges, steps);
         return steps.skipSuperNodeIfNeeded(edges);
     }
 
-    protected Iterator<Edge> edgesOfVertexWithSK(Id source, EdgeStep edgeStep) {
-        assert edgeStep.properties() != null &&
-               !edgeStep.properties().isEmpty();
-        return this.edgesOfVertex(source, edgeStep, true);
-    }
+//    protected Iterator<Edge> edgesOfVertex(Id source, EdgeStep edgeStep) {
+//        return edgesOfVertex(source, edgeStep, true);
+//    }
 
-    private Iterator<Edge> edgesOfVertex(Id source, EdgeStep edgeStep,
-                                         boolean mustAllSK) {
+    protected Iterator<Edge> edgesOfVertex(Id source, EdgeStep edgeStep,
+                                         boolean withProperties) {
+        if (edgeStep.properties() == null || edgeStep.properties().isEmpty()) {
+            Iterator<Edge> edges = this.edgesOfVertex(source,
+                                                      edgeStep.direction(),
+                                                      edgeStep.labels(),
+                                                      edgeStep.limit(),
+                                                      withProperties);
+            return edgeStep.skipSuperNodeIfNeeded(edges);
+        }
+
         Id[] edgeLabels = edgeStep.edgeLabels();
         Query query = GraphTransaction.constructEdgesQuery(
                       source,
                       edgeStep.direction(),
                       edgeLabels);
-        ConditionQuery filter = null;
-        if (mustAllSK) {
-            this.fillFilterBySortKeys(query, edgeLabels, edgeStep.properties());
-        } else {
-            filter = (ConditionQuery) query.copy();
-            this.fillFilterByProperties(filter, edgeStep.properties());
-        }
+        ConditionQuery filter = (ConditionQuery) query.copy();
+        this.fillFilterByProperties(filter, edgeStep.properties());
         query.capacity(Query.NO_CAPACITY);
         if (edgeStep.limit() != NO_LIMIT) {
             query.limit(edgeStep.limit());
