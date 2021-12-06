@@ -19,6 +19,7 @@
 
 package com.baidu.hugegraph.backend.store.hstore;
 
+import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.query.Condition;
 import com.baidu.hugegraph.backend.query.Condition.Relation;
@@ -27,22 +28,95 @@ import com.baidu.hugegraph.backend.serializer.BinarySerializer;
 import com.baidu.hugegraph.backend.store.BackendEntry;
 import com.baidu.hugegraph.backend.store.BackendEntry.BackendColumnIterator;
 import com.baidu.hugegraph.backend.store.hstore.HstoreSessions.Session;
+import com.baidu.hugegraph.pd.client.PDClient;
+import com.baidu.hugegraph.pd.client.PDConfig;
+import com.baidu.hugegraph.pd.grpc.*;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.define.HugeKeys;
 import com.baidu.hugegraph.util.E;
+import javafx.util.Pair;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class HstoreTables {
 
     public static class Counters extends HstoreTable {
 
         private static final String TABLE = HugeType.COUNTER.string();
+        private static final int DELTA = 1000;
+        private static final int times = 10000;
+        private static final String DELIMITER="/";
+        private static ConcurrentHashMap<String, Pair> ids = new ConcurrentHashMap<>();
 
-        public Counters(String database) {
-            super(database, TABLE);
+
+        public Counters(String namespace) {
+            super(namespace, TABLE);
+        }
+
+        //Get Counter from PD and have a data increment locally,
+        // which you can consider persisting to if something unexpected happens
+        public long getCounterFromPd(Session session, HugeType type) {
+            AtomicLong currentId,maxId;
+            PDClient pdClient = null;
+            Pair<AtomicLong, AtomicLong> idPair;
+            String key = toKey(this.getDatabase(),session.getGraphName(),type);
+            if ((idPair = ids.get(key)) == null) {
+                synchronized (ids) {
+                    if ((idPair = ids.get(key)) == null) {
+                        try {
+                            currentId = new AtomicLong(0);
+                            maxId = new AtomicLong(0);
+                            idPair = new Pair(currentId, maxId);
+                            ids.put(key, idPair);
+                        } catch (Exception e) {
+                            throw new BackendException(String.format(
+                                    "Failed to get the ID from pd,%s", e));
+                        }
+                    }
+                }
+            }
+            currentId = idPair.getKey();
+            maxId = idPair.getValue();
+            for (int i = 0; i < times; i++) {
+                long id;
+                if ((id = currentId.incrementAndGet()) <= maxId.longValue())
+                    return id;
+                synchronized (currentId) {
+                    if (currentId.longValue() > maxId.longValue()) {
+                        try {
+                            if (pdClient == null) {
+                                String conf = session.getConf()
+                                                     .get(HstoreOptions.PD_PEERS);
+                                pdClient = PDClient.create(PDConfig.of(conf));
+                            }
+                            Pdpb.GetIdResponse idByKey = pdClient.getIdByKey(
+                                                                  key, DELTA);
+                            idPair.getValue().getAndSet(idByKey.getId() +
+                                                        idByKey.getDelta());
+                            idPair.getKey().getAndSet(idByKey.getId());
+                        } catch (Exception e) {
+                            throw new BackendException(String.format(
+                                    "Failed to get the ID from pd,%s", e));
+                        }
+                    }
+                }
+            }
+            E.checkArgument(false,
+                            "Having made too many attempts to get the ID for type '%s'",
+                            type.name());
+            return 0L;
+        }
+
+        private String toKey(String namespace,String graphName, HugeType type){
+            StringBuilder builder = new StringBuilder();
+            builder.append(namespace).append(DELIMITER)
+                    .append(graphName).append(DELIMITER)
+                    .append(type.code());
+            return builder.toString();
         }
 
         public long getCounter(Session session, HugeType type) {
@@ -58,9 +132,9 @@ public class HstoreTables {
         public  static  final byte[] COUNTER_OWNER = new byte[] { 'c' };
 
         public void increaseCounter(Session session, HugeType type, long increment) {
-            byte[] key = new byte[]{type.code()};
-            session.increase(this.table(), COUNTER_OWNER,
-                             key, b(increment));
+//            byte[] key = new byte[]{type.code()};
+//            session.increase(this.table(), COUNTER_OWNER,
+//                             key, b(increment));
         }
 
         private static byte[] b(long value) {

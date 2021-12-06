@@ -308,7 +308,7 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         @Override
         public long getCounter(HugeType type) {
             super.checkOpened();
-            return this.counters.getCounter(super.sessions.session(), type);
+            return this.counters.getCounterFromPd(super.sessions.session(), type);
         }
 
         @Override

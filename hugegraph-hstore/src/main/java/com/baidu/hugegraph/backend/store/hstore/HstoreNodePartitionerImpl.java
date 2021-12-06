@@ -6,7 +6,7 @@ import com.baidu.hugegraph.pd.common.PDException;
 import com.baidu.hugegraph.pd.grpc.Metapb;
 import com.baidu.hugegraph.store.client.*;
 import com.baidu.hugegraph.store.client.util.HgStoreClientConst;
-import com.baidu.hugegraph.pd.common.HgPair;
+import com.baidu.hugegraph.store.term.HgPair;
 
 import java.util.Arrays;
 import java.util.List;

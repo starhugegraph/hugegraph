@@ -170,12 +170,14 @@ public class HstoreSessionsImpl extends HstoreSessions {
         private Map<String, List<HgOwnerKey>> deletePrefixBatch;
         private Map<String, MutablePair<HgOwnerKey, HgOwnerKey>> deleteRangeBatch;
         private HgStoreSession graph;
-        private String graphName;
+
+
 
 
         public HstoreSession(HugeConfig conf, String graphName) {
             resetBuffer();
-            this.graphName = graphName;
+            setGraphName(graphName);
+            setConf(conf);
             HgSessionManager manager = HgSessionManager.getInstance();
             this.graph = manager.openSession(graphName);
         }

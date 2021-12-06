@@ -68,8 +68,10 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
 
     private final RocksDBShardSpliter shardSpliter;
 
+    private String database;
     public HstoreTable(String database, String table) {
         super(String.format("%s+%s", database, table));
+        this.database = database;
         this.shardSpliter = new RocksDBShardSpliter(this.table());
     }
 
@@ -82,6 +84,11 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
             return this.shardSpliter.getSplits(session, splitSize);
         });
     }
+
+    public String getDatabase() {
+        return database;
+    }
+
 
     @Override
     public void init(Session session) {

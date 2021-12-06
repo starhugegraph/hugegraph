@@ -57,6 +57,8 @@ public abstract class HstoreSessions extends BackendSessionPool {
         public static final int SCAN_GTE_BEGIN = 0x0c;
         public static final int SCAN_LT_END = 0x10;
         public static final int SCAN_LTE_END = 0x30;
+        private HugeConfig conf;
+        private String graphName;
 
         public abstract Pair<byte[], byte[]> keyRange(String table);
 
@@ -103,6 +105,22 @@ public abstract class HstoreSessions extends BackendSessionPool {
         public abstract void merge(String table, byte[] ownerKey, byte[] key, byte[] value);
         public abstract void truncate();
         public abstract BackendColumnIterator scan(String table, byte[] conditionQueryToByte);
+
+        public HugeConfig getConf() {
+            return conf;
+        }
+
+        public void setConf(HugeConfig conf) {
+            this.conf = conf;
+        }
+
+        public String getGraphName() {
+            return graphName;
+        }
+
+        public void setGraphName(String graphName) {
+            this.graphName = graphName;
+        }
     }
 
     public interface Countable {
