@@ -139,8 +139,7 @@ class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl {
 
     @Override
     public int notice(String graphName, HgStoreNotice storeNotice) {
-
-        if (storeNotice.getPartitionLeaders().size() > 0) {
+        if (storeNotice.getPartitionLeaders() != null && storeNotice.getPartitionLeaders().size() > 0) {
             leaderMap.putAll(storeNotice.getPartitionLeaders());
         }
         return 0;
