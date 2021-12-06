@@ -22,6 +22,16 @@
             <artifactId>hg-store-client</artifactId>
             <version>1.0-SNAPSHOT</version>
             <scope>compile</scope>
+<!--            <exclusions>-->
+<!--                <exclusion>-->
+<!--                    <groupId>io.grpc</groupId>-->
+<!--                    <artifactId>grpc-core</artifactId>-->
+<!--                </exclusion>-->
+<!--                <exclusion>-->
+<!--                    <groupId>io.grpc</groupId>-->
+<!--                    <artifactId>grpc-api</artifactId>-->
+<!--                </exclusion>-->
+<!--            </exclusions>-->
         </dependency>
         <dependency>
             <groupId>com.baidu.hugegraph</groupId>

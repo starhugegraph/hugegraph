@@ -124,6 +124,11 @@ public class HstoreDBStore extends AbstractBackendStore<RocksDBSessions.Session>
     }
 
     @Override
+    public void close(boolean force) {
+
+    }
+
+    @Override
     public boolean opened() {
         return hstoreClient != null;
     }

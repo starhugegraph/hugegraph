@@ -315,6 +315,11 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         public boolean isSchemaStore() {
             return true;
         }
+
+        @Override
+        public void close(boolean force) {
+
+        }
     }
 
     //
@@ -357,6 +362,11 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         @Override
         public boolean isSchemaStore() {
             return false;
+        }
+
+        @Override
+        public void close(boolean force) {
+
         }
 
         @Override

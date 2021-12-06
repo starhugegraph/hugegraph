@@ -473,7 +473,7 @@ public class GraphIndexTransaction extends AbstractTransaction {
             }
         }
 //        Set<MatchedIndex> indexes = this.collectMatchedIndexes(query);
-        indexes = this.collectMatchedIndexes(query);
+//        indexes = this.collectMatchedIndexes(query);
         if (indexes.isEmpty()) {
             Id label = query.condition(HugeKeys.LABEL);
             throw noIndexException(this.graph(), query, label);
