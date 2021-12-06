@@ -66,6 +66,14 @@ public class ServerOptions extends OptionHolder {
                     "master"
             );
 
+    public static final ConfigOption<Integer> SERVER_EVENT_HUB_THREADS =
+            new ConfigOption<>(
+                    "server.event_hub_threads",
+                    "The event hub threads of server.",
+                    rangeInt(1, 2 * CoreOptions.CPUS),
+                    1
+            );
+
     public static final ConfigOption<Integer> MAX_WORKER_THREADS =
             new ConfigOption<>(
                     "restserver.max_worker_threads",
@@ -135,12 +143,44 @@ public class ServerOptions extends OptionHolder {
                     2 * CoreOptions.CPUS
             );
 
-    public static final ConfigListOption<String> GRAPHS =
+    public static final ConfigListOption<String> META_ENDPOINTS =
             new ConfigListOption<>(
-                    "graphs",
-                    "The map of graphs' name and config file.",
+                    "meta.endpoints",
+                    "The URL of meta endpoints.",
                     disallowEmpty(),
-                    "hugegraph:conf/hugegraph.properties"
+                    "http://127.0.0.1:2379"
+            );
+
+    public static final ConfigOption<String> CLUSTER =
+            new ConfigOption<>(
+                    "cluster",
+                    "The cluster name.",
+                    disallowEmpty(),
+                    "hg-test"
+            );
+
+    public static final ConfigOption<Boolean> GRAPH_LOAD_FROM_LOCAL_CONFIG =
+            new ConfigOption<>(
+                    "graph.load_from_local_config",
+                    "Whether to load graphs from local configs.",
+                    disallowEmpty(),
+                    false
+            );
+
+    public static final ConfigOption<String> GRAPHS =
+            new ConfigOption<>(
+                    "graphs",
+                    "The directory store graphs' config file.",
+                    disallowEmpty(),
+                    "./conf/graphs"
+            );
+
+    public static final ConfigOption<Boolean> SERVER_START_IGNORE_SINGLE_GRAPH_ERROR =
+            new ConfigOption<>(
+                    "server.start_ignore_single_graph_error",
+                    "Whether to start ignore single graph error.",
+                    disallowEmpty(),
+                    false
             );
 
     public static final ConfigOption<Integer> MAX_VERTICES_PER_BATCH =
@@ -193,6 +233,14 @@ public class ServerOptions extends OptionHolder {
                     "or com.baidu.hugegraph.auth.ConfigAuthenticator.",
                     null,
                     ""
+            );
+
+    public static final ConfigOption<Boolean> AUTH_SERVER =
+            new ConfigOption<>(
+                    "auth_server",
+                    "Whether is auth server.",
+                    disallowEmpty(),
+                    false
             );
 
     public static final ConfigOption<String> AUTH_GRAPH_STORE =
@@ -249,5 +297,73 @@ public class ServerOptions extends OptionHolder {
                     "when the https protocol is enabled.",
                     null,
                     "hugegraph"
+            );
+
+    public static final ConfigOption<String> K8S_API_ENABLE =
+            new ConfigOption<>(
+                    "k8s.api",
+                    "The k8s api start status " +
+                    "when the computer service is enabled.",
+                    null,
+                    "false"
+            );
+
+    public static final ConfigOption<String> K8S_KUBE_CONFIG =
+            new ConfigOption<>(
+                    "k8s.kubeconfig",
+                    "The k8s kube config file " +
+                    "when the computer service is enabled.",
+                    null,
+                    ""
+            );
+
+    public static final ConfigOption<String> K8S_HUGEGRAPH_URL =
+            new ConfigOption<>(
+                    "k8s.hugegraph_url",
+                    "The hugegraph url for k8s work " +
+                    "when the computer service is enabled.",
+                    null,
+                    ""
+            );
+
+    public static final ConfigOption<String> K8S_NAMESPACE =
+            new ConfigOption<>(
+                    "k8s.namespace",
+                    "The hugegraph url for k8s work " +
+                    "when the computer service is enabled.",
+                    null,
+                    ""
+            );
+
+    public static final ConfigOption<String> K8S_ENABLE_INTERNAL_ALGORITHM =
+            new ConfigOption<>(
+                    "k8s.enable_internal_algorithm",
+                    "Open k8s internal algorithm",
+                    null,
+                    "false"
+            );
+
+    public static final ConfigOption<String> K8S_INTERNAL_ALGORITHM_IMAGE_URL =
+            new ConfigOption<>(
+                    "k8s.internal_algorithm_image_url",
+                    "K8s internal algorithm image url",
+                    null,
+                    ""
+            );
+
+    public static final ConfigOption<String> K8S_INTERNAL_ALGORITHM =
+            new ConfigOption<>(
+                    "k8s.internal_algorithm",
+                    "K8s internal algorithm",
+                    null,
+                    "[]"
+            );
+
+    public static final ConfigListOption<String> K8S_ALGORITHMS =
+            new ConfigListOption<>(
+                    "k8s.algorithms",
+                    "K8s algorithms",
+                    null,
+                    "[]"
             );
 }

@@ -23,7 +23,6 @@
             <artifactId>hugegraph-rpc</artifactId>
             <version>1.0.0</version>
             <exclusions>
-                <!-- conflict with jraft -->
                 <exclusion>
                     <groupId>com.alipay.sofa</groupId>
                     <artifactId>bolt</artifactId>
@@ -40,12 +39,10 @@
                     <groupId>com.alipay.sofa</groupId>
                     <artifactId>hessian</artifactId>
                 </exclusion>
-                <!-- conflict with cassandra-netty/tinkerpop-server  -->
                 <exclusion>
                     <groupId>io.netty</groupId>
                     <artifactId>netty-all</artifactId>
                 </exclusion>
-                <!-- conflict with grpc -->
                 <exclusion>
                     <groupId>io.grpc</groupId>
                     <artifactId>grpc-api</artifactId>
@@ -190,7 +187,7 @@
                             </addDefaultSpecificationEntries>
                         </manifest>
                         <manifestEntries>
-                            <Implementation-Version>0.66.0.0</Implementation-Version>
+                            <Implementation-Version>0.67.0.0</Implementation-Version>
                         </manifestEntries>
                     </archive>
                 </configuration>

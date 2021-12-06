@@ -6,10 +6,15 @@
 scriptEvaluationTimeout: 30000
 
 channelizer: org.apache.tinkerpop.gremlin.server.channel.WsAndHttpChannelizer
-graphs: {
-  hugegraph: conf/hugegraph.properties,
-  system: conf/system.properties
-}
+
+graphs: {}
+
+# authentication: {
+#   authenticator: com.baidu.hugegraph.auth.StandardAuthenticator,
+#   authenticationHandler: com.baidu.hugegraph.auth.WsAndHttpBasicAuthHandler,
+#   config: {tokens: conf/rest-server.properties}
+# }
+
 scriptEngines: {
   gremlin-groovy: {
     plugins: {

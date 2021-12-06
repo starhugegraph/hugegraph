@@ -19,7 +19,6 @@
 
 package com.baidu.hugegraph.api.profile;
 
-import java.io.File;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -30,19 +29,21 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.GET;
-import javax.ws.rs.NotSupportedException;
+import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
 
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
+import com.baidu.hugegraph.api.filter.StatusFilter.Status;
 import com.baidu.hugegraph.auth.HugeAuthenticator.RequiredPerm;
 import com.baidu.hugegraph.auth.HugePermission;
 import com.baidu.hugegraph.config.HugeConfig;
@@ -50,6 +51,7 @@ import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.type.define.GraphReadMode;
+import com.baidu.hugegraph.util.ConfigUtil;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.JsonUtil;
 import com.baidu.hugegraph.util.Log;
@@ -62,7 +64,13 @@ public class GraphsAPI extends API {
 
     private static final Logger LOG = Log.logger(RestServer.class);
 
+    private static final String GRAPH_ACTION = "action";
+    private static final String CONFIRM_MESSAGE = "confirm_message";
+    private static final String GRAPH_ACTION_CLEAR = "clear";
+    private static final String GRAPH_ACTION_RELOAD = "reload";
+
     private static final String CONFIRM_CLEAR = "I'm sure to delete all data";
+    private static final String CONFIRM_DROP = "I'm sure to drop the graph";
 
     @GET
     @Timed
@@ -77,8 +85,8 @@ public class GraphsAPI extends API {
             String role = RequiredPerm.roleFor(graph, HugePermission.READ);
             if (sc.isUserInRole(role)) {
                 try {
-                    HugeGraph g = graph(manager, graph);
-                    filterGraphs.add(g.name());
+                    graph(manager, graph);
+                    filterGraphs.add(graph);
                 } catch (ForbiddenException ignored) {
                     // ignore
                 }
@@ -97,7 +105,23 @@ public class GraphsAPI extends API {
         LOG.debug("Get graph by name '{}'", graph);
 
         HugeGraph g = graph(manager, graph);
-        return ImmutableMap.of("name", g.name(), "backend", g.backend());
+        return ImmutableMap.of("name", graph, "backend", g.backend());
+    }
+
+    @POST
+    @Timed
+    @Path("{name}")
+    @Status(Status.CREATED)
+    @Consumes(APPLICATION_JSON)
+    @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"admin"})
+    public Object create(@Context GraphManager manager,
+                         @PathParam("name") String name,
+                         String configText) {
+        LOG.debug("Create graph {} with config options '{}'", name, configText);
+        HugeGraph graph = manager.createGraph(name, configText, true);
+        graph.tx().close();
+        return ImmutableMap.of("name", name, "backend", graph.backend());
     }
 
     @GET
@@ -105,40 +129,85 @@ public class GraphsAPI extends API {
     @Path("{graph}/conf")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @RolesAllowed("admin")
-    public File getConf(@Context GraphManager manager,
-                        @PathParam("graph") String graph) {
+    public String getConf(@Context GraphManager manager,
+                          @PathParam("graph") String graph) {
         LOG.debug("Get graph configuration by name '{}'", graph);
 
         HugeGraph g = graph4admin(manager, graph);
 
         HugeConfig config = (HugeConfig) g.configuration();
-        File file = config.getFile();
-        if (file == null) {
-            throw new NotSupportedException("Can't access the api in " +
-                      "a node which started with non local file config.");
+        return ConfigUtil.writeConfigToString(config);
+    }
+
+    @PUT
+    @Timed
+    @Path("{name}")
+    @Consumes(APPLICATION_JSON)
+    @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed("admin")
+    public Map<String, String> manage(
+                               @Context GraphManager manager,
+                               @PathParam("name") String name,
+                               Map<String, String> actionMap) {
+        LOG.debug("Clear graph by name '{}'", name);
+        E.checkArgument(actionMap != null &&
+                        actionMap.containsKey(GRAPH_ACTION),
+                        "Please pass '%s' for graph manage", GRAPH_ACTION);
+        String action = actionMap.get(GRAPH_ACTION);
+        switch (action) {
+            case GRAPH_ACTION_CLEAR:
+                String message = actionMap.get(CONFIRM_MESSAGE);
+                E.checkArgument(CONFIRM_CLEAR.equals(message),
+                                "Please take the message: %s", CONFIRM_CLEAR);
+                HugeGraph g = graph(manager, name);
+                g.truncateBackend();
+                // truncateBackend() will open tx, so must close here(commit)
+                g.tx().commit();
+                return ImmutableMap.of(name, "cleared");
+            case GRAPH_ACTION_RELOAD:
+                manager.reload(name);
+                return ImmutableMap.of(name, "reloaded");
+            default:
+                throw new AssertionError(String.format(
+                          "Invalid graph action: '%s'", action));
         }
-        return file;
     }
 
     @DELETE
     @Timed
-    @Path("{graph}/clear")
-    @Consumes(APPLICATION_JSON)
-    @RolesAllowed("admin")
-    public void clear(@Context GraphManager manager,
-                      @PathParam("graph") String graph,
-                      @QueryParam("confirm_message") String message) {
-        LOG.debug("Clear graph by name '{}'", graph);
+    @Path("{name}")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"admin"})
+    public void delete(@Context GraphManager manager,
+                       @PathParam("name") String name,
+                       @QueryParam("confirm_message") String message) {
+        LOG.debug("Remove graph by name '{}'", name);
+        E.checkArgument(CONFIRM_DROP.equals(message),
+                        "Please take the message: %s", CONFIRM_DROP);
+        manager.dropGraph(name, true);
+    }
 
-        HugeGraph g = graph(manager, graph);
-
-        if (!CONFIRM_CLEAR.equals(message)) {
-            throw new IllegalArgumentException(String.format(
-                      "Please take the message: %s", CONFIRM_CLEAR));
+    @PUT
+    @Timed
+    @Path("manage")
+    @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"admin"})
+    public Object reload(@Context GraphManager manager,
+                         Map<String, String> actionMap) {
+        LOG.debug("Manage graphs with '{}'", actionMap);
+        E.checkArgument(actionMap != null &&
+                        actionMap.containsKey(GRAPH_ACTION),
+                        "Please pass '%s' for graphs manage", GRAPH_ACTION);
+        String action = actionMap.get(GRAPH_ACTION);
+        switch (action) {
+            case GRAPH_ACTION_RELOAD:
+                manager.reload();
+                return ImmutableMap.of("graphs", "reloaded");
+            default:
+                throw new AssertionError(String.format(
+                          "Invalid graphs action: '%s'", action));
         }
-        g.truncateBackend();
-        // truncateBackend() will open tx, so must close here(commit)
-        g.tx().commit();
     }
 
     @PUT

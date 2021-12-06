@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.HugeGraphParams;
 import com.baidu.hugegraph.concurrent.PausableScheduledThreadPool;
+import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.util.Consumers;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.ExecutorUtil;
@@ -44,19 +45,24 @@ public final class TaskManager {
     private static final Logger LOG = Log.logger(TaskManager.class);
 
     public static final String TASK_WORKER_PREFIX = "task-worker";
+    public static final String BACKUP_TASK_WORKER_PREFIX =
+                               "backup-" + TASK_WORKER_PREFIX;
     public static final String TASK_WORKER = TASK_WORKER_PREFIX + "-%d";
+    public static final String BACKUP_TASK_WORKER =
+                               BACKUP_TASK_WORKER_PREFIX + "-%d";
     public static final String TASK_DB_WORKER = "task-db-worker-%d";
     public static final String SERVER_INFO_DB_WORKER =
                                "server-info-db-worker-%d";
     public static final String TASK_SCHEDULER = "task-scheduler-%d";
 
     protected static final int SCHEDULE_PERIOD = 3; // Unit second
-    private static final int THREADS = 4;
+    private static final int THREADS = CoreOptions.CPUS / 2;
     private static final TaskManager MANAGER = new TaskManager(THREADS);
 
     private final Map<HugeGraphParams, TaskScheduler> schedulers;
 
     private final ExecutorService taskExecutor;
+    private final ExecutorService backupForLoadTaskExecutor;
     private final ExecutorService taskDbExecutor;
     private final ExecutorService serverInfoDbExecutor;
     private final PausableScheduledThreadPool schedulerExecutor;
@@ -70,6 +76,8 @@ public final class TaskManager {
 
         // For execute tasks
         this.taskExecutor = ExecutorUtil.newFixedThreadPool(pool, TASK_WORKER);
+        this.backupForLoadTaskExecutor =
+                ExecutorUtil.newFixedThreadPool(pool, BACKUP_TASK_WORKER);
         // For save/query task state, just one thread is ok
         this.taskDbExecutor = ExecutorUtil.newFixedThreadPool(
                               1, TASK_DB_WORKER);
@@ -88,7 +96,9 @@ public final class TaskManager {
         E.checkArgumentNotNull(graph, "The graph can't be null");
 
         TaskScheduler scheduler = new StandardTaskScheduler(graph,
-                                  this.taskExecutor, this.taskDbExecutor,
+                                  this.taskExecutor,
+                                  this.backupForLoadTaskExecutor,
+                                  this.taskDbExecutor,
                                   this.serverInfoDbExecutor);
         this.schedulers.put(graph, scheduler);
     }
@@ -118,9 +128,17 @@ public final class TaskManager {
             this.closeTaskTx(graph);
         }
 
+        if (!this.backupForLoadTaskExecutor.isTerminated()) {
+            this.closeBackupForLoadTaskTx(graph);
+        }
+
         if (!this.schedulerExecutor.isTerminated()) {
             this.closeSchedulerTx(graph);
         }
+    }
+
+    public void forceRemoveScheduler(HugeGraphParams params) {
+        this.schedulers.remove(params);
     }
 
     private void closeTaskTx(HugeGraphParams graph) {
@@ -137,6 +155,23 @@ public final class TaskManager {
             }
         } catch (Exception e) {
             throw new HugeException("Exception when closing task tx", e);
+        }
+    }
+
+    private void closeBackupForLoadTaskTx(HugeGraphParams graph) {
+        final boolean selfIsTaskWorker = Thread.currentThread().getName()
+                                         .startsWith(BACKUP_TASK_WORKER_PREFIX);
+        final int totalThreads = selfIsTaskWorker ? THREADS - 1 : THREADS;
+        try {
+            if (selfIsTaskWorker) {
+                // Call closeTx directly if myself is task thread(ignore others)
+                graph.closeTx();
+            } else {
+                Consumers.executeOncePerThread(this.backupForLoadTaskExecutor,
+                                               totalThreads, graph::closeTx);
+            }
+        } catch (Exception e) {
+            throw new HugeException("Exception when closing backup task tx", e);
         }
     }
 
@@ -202,6 +237,16 @@ public final class TaskManager {
             }
         }
 
+        if (terminated && !this.backupForLoadTaskExecutor.isShutdown()) {
+            this.backupForLoadTaskExecutor.shutdown();
+            try {
+                terminated = this.backupForLoadTaskExecutor
+                                 .awaitTermination(timeout, unit);
+            } catch (Throwable e) {
+                ex = e;
+            }
+        }
+
         if (terminated && !this.serverInfoDbExecutor.isShutdown()) {
             this.serverInfoDbExecutor.shutdown();
             try {
@@ -242,8 +287,7 @@ public final class TaskManager {
     }
 
     protected void notifyNewTask(HugeTask<?> task) {
-        Queue<Runnable> queue = ((ThreadPoolExecutor) this.schedulerExecutor)
-                                                          .getQueue();
+        Queue<Runnable> queue = this.schedulerExecutor.getQueue();
         if (queue.size() <= 1) {
             /*
              * Notify to schedule tasks initiatively when have new task
@@ -274,6 +318,9 @@ public final class TaskManager {
     private void scheduleOrExecuteJobForGraph(StandardTaskScheduler scheduler) {
         E.checkNotNull(scheduler, "scheduler");
 
+        if (!scheduler.started()) {
+            return;
+        }
         ServerInfoManager serverManager = scheduler.serverManager();
         String graph = scheduler.graphName();
 

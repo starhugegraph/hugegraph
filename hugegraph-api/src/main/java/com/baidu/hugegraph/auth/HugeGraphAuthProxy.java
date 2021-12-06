@@ -39,6 +39,7 @@ import javax.security.sasl.AuthenticationException;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotAuthorizedException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.tinkerpop.gremlin.groovy.jsr223.GroovyTranslator;
 import org.apache.tinkerpop.gremlin.process.computer.GraphComputer;
 import org.apache.tinkerpop.gremlin.process.traversal.Bytecode;
@@ -119,7 +120,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     public HugeGraphAuthProxy(HugeGraph hugegraph) {
         LOG.info("Wrap graph '{}' with HugeGraphAuthProxy", hugegraph.name());
         HugeConfig config = (HugeConfig) hugegraph.configuration();
-        long expired = config.get(AuthOptions.AUTH_CACHE_EXPIRE);
+        long expired = config.get(AuthOptions.AUTH_PROXY_CACHE_EXPIRE);
         long capacity = config.get(AuthOptions.AUTH_CACHE_CAPACITY);
 
         this.hugegraph = hugegraph;
@@ -226,6 +227,12 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     public boolean existsPropertyKey(String key) {
         verifyNameExistsPermission(ResourceType.PROPERTY_KEY, key);
         return this.hugegraph.existsPropertyKey(key);
+    }
+
+    @Override
+    public boolean existsOlapTable(PropertyKey key) {
+        verifySchemaPermission(HugePermission.READ, key);
+        return this.hugegraph.existsOlapTable(key);
     }
 
     @Override
@@ -1025,10 +1032,10 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         }
 
         @Override
-        public <V> HugeTask<V> delete(Id id) {
+        public <V> HugeTask<V> delete(Id id, boolean force) {
             verifyTaskPermission(HugePermission.DELETE,
                                  this.taskScheduler.task(id));
-            return this.taskScheduler.delete(id);
+            return this.taskScheduler.delete(id, force);
         }
 
         @Override
@@ -1503,9 +1510,10 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         }
 
         @Override
-        public String loginUser(String username, String password) {
+        public String loginUser(String username, String password,
+                                long expire) {
             try {
-                return this.authManager.loginUser(username, password);
+                return this.authManager.loginUser(username, password, expire);
             } catch (AuthenticationException e) {
                 throw new NotAuthorizedException(e.getMessage(), e);
             }
@@ -1514,6 +1522,18 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         @Override
         public void logoutUser(String token) {
             this.authManager.logoutUser(token);
+        }
+
+        @Override
+        public String createToken(String username) {
+            if (StringUtils.isEmpty(username)) {
+                Context context = getContext();
+                E.checkState(context != null,
+                             "Missing authentication context " +
+                             "when verifying resource permission");
+                username = context.user().username();
+            }
+            return this.authManager.createToken(username);
         }
 
         private void switchAuthManager(AuthManager authManager) {

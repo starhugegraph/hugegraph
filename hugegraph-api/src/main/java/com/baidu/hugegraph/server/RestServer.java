@@ -21,13 +21,14 @@ package com.baidu.hugegraph.server;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
 import javax.ws.rs.core.UriBuilder;
 
+import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.CompletionHandler;
 import org.glassfish.grizzly.GrizzlyFuture;
 import org.glassfish.grizzly.http.server.HttpServer;
@@ -38,9 +39,10 @@ import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.slf4j.Logger;
 
-import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.config.ServerOptions;
+import com.baidu.hugegraph.event.EventHub;
+import com.baidu.hugegraph.k8s.K8sDriverProxy;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.version.ApiVersion;
@@ -50,17 +52,39 @@ public class RestServer {
     private static final Logger LOG = Log.logger(RestServer.class);
 
     private final HugeConfig conf;
+    private final EventHub eventHub;
     private HttpServer httpServer = null;
 
-    public RestServer(HugeConfig conf) {
+    public RestServer(HugeConfig conf, EventHub hub) {
         this.conf = conf;
+        this.eventHub = hub;
     }
 
     public void start() throws IOException {
         String url = this.conf.get(ServerOptions.REST_SERVER_URL);
         URI uri = UriBuilder.fromUri(url).build();
+        String k8sApiEnable = this.conf.get(ServerOptions.K8S_API_ENABLE);
+        if (!StringUtils.isEmpty(k8sApiEnable) && "true".equals(k8sApiEnable)) {
+            String namespace = this.conf.get(ServerOptions.K8S_NAMESPACE);
+            String kubeConfigPath = this.conf.get(
+                   ServerOptions.K8S_KUBE_CONFIG);
+            String hugegraphUrl = this.conf.get(
+                   ServerOptions.K8S_HUGEGRAPH_URL);
+            String enableInternalAlgorithm = this.conf.get(
+                   ServerOptions.K8S_ENABLE_INTERNAL_ALGORITHM);
+            String internalAlgorithmImageUrl = this.conf.get(
+                   ServerOptions.K8S_INTERNAL_ALGORITHM_IMAGE_URL);
+            String internalAlgorithm = this.conf.get(
+                   ServerOptions.K8S_INTERNAL_ALGORITHM);
+            Map<String, String> algorithms = this.conf.getMap(
+                   ServerOptions.K8S_ALGORITHMS);
+            K8sDriverProxy.setConfig(namespace, kubeConfigPath,
+                                     hugegraphUrl, enableInternalAlgorithm,
+                                     internalAlgorithmImageUrl,
+                                     internalAlgorithm, algorithms);
+        }
 
-        ResourceConfig rc = new ApplicationConfig(this.conf);
+        ResourceConfig rc = new ApplicationConfig(this.conf, this.eventHub);
 
         this.httpServer = this.configHttpServer(uri, rc);
         try {
@@ -75,7 +99,7 @@ public class RestServer {
     private HttpServer configHttpServer(URI uri, ResourceConfig rc) {
         String protocol = uri.getScheme();
         final HttpServer server;
-        if (protocol != null && protocol.equals("https")) {
+        if ("https".equals(protocol)) {
             SSLContextConfigurator sslContext = new SSLContextConfigurator();
             String keystoreFile = this.conf.get(
                                   ServerOptions.SSL_KEYSTORE_FILE);
@@ -165,11 +189,12 @@ public class RestServer {
         this.httpServer.shutdownNow();
     }
 
-    public static RestServer start(String conf) throws Exception {
+    public static RestServer start(String conf, EventHub hub) throws Exception {
         LOG.info("RestServer starting...");
         ApiVersion.check();
 
-        RestServer server = new RestServer(new HugeConfig(conf));
+        HugeConfig config = new HugeConfig(conf);
+        RestServer server = new RestServer(config, hub);
         server.start();
         LOG.info("RestServer started");
 
@@ -206,22 +231,5 @@ public class RestServer {
         // NOTE: addProperty will make exist option's value become List
         this.conf.setProperty(ServerOptions.MAX_WRITE_THREADS.name(),
                               String.valueOf(maxWriteThreads));
-    }
-
-    public static void main(String[] args) throws Exception {
-        if (args.length != 1) {
-            LOG.error("RestServer need one config file, but given {}",
-                      Arrays.asList(args));
-            throw new HugeException("RestServer need one config file");
-        }
-
-        try {
-            RestServer.start(args[0]);
-            Thread.currentThread().join();
-        } catch (Exception e) {
-            LOG.error("RestServer error:", e);
-            throw e;
-        }
-        LOG.info("RestServer stopped");
     }
 }

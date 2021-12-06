@@ -79,6 +79,7 @@ public class StandardTaskScheduler implements TaskScheduler {
     private final ServerInfoManager serverManager;
 
     private final ExecutorService taskExecutor;
+    private final ExecutorService backupForLoadTaskExecutor;
     private final ExecutorService taskDbExecutor;
 
     private final EventListener eventListener;
@@ -93,6 +94,7 @@ public class StandardTaskScheduler implements TaskScheduler {
 
     public StandardTaskScheduler(HugeGraphParams graph,
                                  ExecutorService taskExecutor,
+                                 ExecutorService backupForLoadTaskExecutor,
                                  ExecutorService taskDbExecutor,
                                  ExecutorService serverInfoDbExecutor) {
         E.checkNotNull(graph, "graph");
@@ -101,6 +103,7 @@ public class StandardTaskScheduler implements TaskScheduler {
 
         this.graph = graph;
         this.taskExecutor = taskExecutor;
+        this.backupForLoadTaskExecutor = backupForLoadTaskExecutor;
         this.taskDbExecutor = taskDbExecutor;
 
         this.serverManager = new ServerInfoManager(graph, serverInfoDbExecutor);
@@ -114,6 +117,10 @@ public class StandardTaskScheduler implements TaskScheduler {
     @Override
     public HugeGraph graph() {
         return this.graph.graph();
+    }
+
+    public boolean started() {
+        return this.graph.started();
     }
 
     public String graphName() {
@@ -258,6 +265,10 @@ public class StandardTaskScheduler implements TaskScheduler {
         this.initTaskCallable(task);
         assert !this.tasks.containsKey(task.id()) : task;
         this.tasks.put(task.id(), task);
+        if (this.graph().mode().loading()) {
+            LOG.info("Schedule task {} to backup for load task executor", task);
+            return this.backupForLoadTaskExecutor.submit(task);
+        }
         return this.taskExecutor.submit(task);
     }
 
@@ -268,6 +279,10 @@ public class StandardTaskScheduler implements TaskScheduler {
         E.checkArgument(this.tasks.containsKey(task.id()),
                         "Can't resubmit task '%s' not been submitted before",
                         task.id());
+        if (this.graph().mode().loading()) {
+            LOG.info("Schedule task {} to backup for load task executor", task);
+            return this.backupForLoadTaskExecutor.submit(task);
+        }
         return this.taskExecutor.submit(task);
     }
 
@@ -455,13 +470,17 @@ public class StandardTaskScheduler implements TaskScheduler {
     }
 
     protected void remove(HugeTask<?> task) {
+        this.remove(task, false);
+    }
+
+    protected void remove(HugeTask<?> task, boolean force) {
         E.checkNotNull(task, "remove task");
         HugeTask<?> delTask = this.tasks.remove(task.id());
         if (delTask != null && delTask != task) {
             LOG.warn("Task '{}' may be inconsistent status {}(expect {})",
                       task.id(), task.status(), delTask.status());
         }
-        assert delTask == null || delTask.completed() ||
+        assert force || delTask == null || delTask.completed() ||
                delTask.cancelling() || delTask.isCancelled() : delTask;
     }
 
@@ -567,7 +586,7 @@ public class StandardTaskScheduler implements TaskScheduler {
     }
 
     @Override
-    public <V> HugeTask<V> delete(Id id) {
+    public <V> HugeTask<V> delete(Id id, boolean force) {
         this.checkOnMasterNode("delete");
 
         HugeTask<?> task = this.task(id);
@@ -582,11 +601,11 @@ public class StandardTaskScheduler implements TaskScheduler {
          * when the database status is inconsistent.
          */
         if (task != null) {
-            E.checkArgument(task.completed(),
+            E.checkArgument(force || task.completed(),
                             "Can't delete incomplete task '%s' in status %s" +
                             ", Please try to cancel the task first",
                             id, task.status());
-            this.remove(task);
+            this.remove(task, force);
         }
 
         return this.call(() -> {
@@ -596,7 +615,7 @@ public class StandardTaskScheduler implements TaskScheduler {
                 return null;
             }
             HugeTask<V> result = HugeTask.fromVertex(vertex);
-            E.checkState(result.completed(),
+            E.checkState(force || result.completed(),
                          "Can't delete incomplete task '%s' in status %s",
                          id, result.status());
             this.tx().removeVertex(vertex);
