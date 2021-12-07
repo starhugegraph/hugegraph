@@ -1460,7 +1460,7 @@ public class AuthTest extends BaseCoreTest {
         authManager.deleteUser(userId, false);
         userWithRole = authManager.validateUser(token);
         Assert.assertEquals("test001", userWithRole.username());
-        Assert.assertEquals("{\"roles\":{}}", userWithRole.role().toJson());
+        Assert.assertEquals(null, userWithRole.role());
     }
 
     @Test
