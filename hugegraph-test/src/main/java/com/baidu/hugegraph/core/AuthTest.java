@@ -199,7 +199,7 @@ public class AuthTest extends BaseCoreTest {
 
         Assert.assertNull(authManager.getUser(IdGenerator.of("fake"), false));
 
-        Assert.assertThrows(NullPointerException.class, () -> {
+        Assert.assertThrows(IllegalArgumentException.class, () -> {
             authManager.getUser(null, false);
         });
     }
@@ -582,7 +582,7 @@ public class AuthTest extends BaseCoreTest {
                                                    id,
                                                    false);
         Assert.assertEquals("target1", target2.name());
-        Assert.assertEquals("url2", target2.url());
+        Assert.assertEquals("url1", target2.url());
         Assert.assertEquals(oldUpdateTime, target2.create());
         Assert.assertNotEquals(oldUpdateTime, target2.update());
     }
