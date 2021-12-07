@@ -77,7 +77,7 @@ public interface AuthManager {
     public Id createAccess(String graphSpace, HugeAccess access,
                            boolean required);
     public HugeAccess updateAccess(String graphSpace, HugeAccess access,
-                           boolean required);
+                                   boolean required);
     public HugeAccess deleteAccess(String graphSpace, Id id, boolean required);
     public HugeAccess getAccess(String graphSpace, Id id, boolean required);
     public List<HugeAccess> listAccess(String graphSpace, List<Id> ids,
