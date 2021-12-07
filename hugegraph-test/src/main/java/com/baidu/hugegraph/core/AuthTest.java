@@ -197,7 +197,9 @@ public class AuthTest extends BaseCoreTest {
         Assert.assertEquals("tom002", user.name());
         Assert.assertEquals("pass2", user.password());
 
-        Assert.assertNull(authManager.getUser(IdGenerator.of("fake"), false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> {
+            authManager.getUser(IdGenerator.of("fake"), false);
+        });
 
         Assert.assertThrows(IllegalArgumentException.class, () -> {
             authManager.getUser(null, false);
