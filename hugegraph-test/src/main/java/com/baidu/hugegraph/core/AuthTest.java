@@ -1203,10 +1203,10 @@ public class AuthTest extends BaseCoreTest {
 
         access.permission(HugePermission.READ);
         access.description("description updated");
-        id = authManager.updateAccess(DEFAULT_GRAPH_SPACE, access, false);
+        HugeAccess access1 = authManager.updateAccess(DEFAULT_GRAPH_SPACE, access, false);
 
         HugeAccess access3 = authManager.getAccess(DEFAULT_GRAPH_SPACE,
-                                                   id, false);
+                                                   access1.id(), false);
         Assert.assertEquals(group, access3.source());
         Assert.assertEquals(target, access3.target());
         Assert.assertEquals("description updated", access3.description());
