@@ -269,7 +269,9 @@ public class BinarySerializer extends AbstractSerializer {
         HugeEdge edge = HugeEdge.constructEdge(vertex, direction, edgeLabel,
                                                sortValues, otherVertexId);
 
-        if(!withEdgeProperties) {
+        if (!withEdgeProperties && !edge.hasTtl()) {
+            // only skip properties for edge without ttl
+            // todo: save expiredTime before properties
             return;
         }
         // Parse edge-id + edge-properties
