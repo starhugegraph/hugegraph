@@ -447,10 +447,6 @@ public class HugeTraverser {
         return steps.skipSuperNodeIfNeeded(edges);
     }
 
-//    protected Iterator<Edge> edgesOfVertex(Id source, EdgeStep edgeStep) {
-//        return edgesOfVertex(source, edgeStep, true);
-//    }
-
     protected Iterator<Edge> edgesOfVertex(Id source, EdgeStep edgeStep,
                                          boolean withProperties) {
         if (edgeStep.properties() == null || edgeStep.properties().isEmpty()) {
