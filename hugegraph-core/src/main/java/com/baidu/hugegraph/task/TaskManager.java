@@ -66,7 +66,7 @@ public final class TaskManager {
     private final ExecutorService serverInfoDbExecutor;
     private final PausableScheduledThreadPool schedulerExecutor;
 
-    public synchronized static TaskManager instance(int threads) {
+    public static TaskManager instance(int threads) {
         THREADS = threads;
         if (MANAGER == null) {
             MANAGER = new TaskManager(THREADS);
