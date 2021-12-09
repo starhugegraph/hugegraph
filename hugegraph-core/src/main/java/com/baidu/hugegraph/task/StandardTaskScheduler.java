@@ -265,7 +265,7 @@ public class StandardTaskScheduler implements TaskScheduler {
         this.initTaskCallable(task);
         assert !this.tasks.containsKey(task.id()) : task;
         this.tasks.put(task.id(), task);
-        if (this.graph().mode().loading()) {
+        if (this.graph.mode().loading()) {
             LOG.info("Schedule task {} to backup for load task executor", task);
             return this.backupForLoadTaskExecutor.submit(task);
         }
