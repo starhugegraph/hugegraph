@@ -52,11 +52,6 @@ public class CachedGraphTransactionTest extends BaseUnitTest {
         TaskManager.instance(4);
     }
 
-    @AfterClass
-    public static void clearTaskManager() {
-        HugeFactory.shutdown(30L);
-    }
-
     @Before
     public void setup() {
         HugeGraph graph = HugeFactory.open(FakeObjects.newConfig());

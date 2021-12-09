@@ -55,11 +55,6 @@ public class RamTableTest {
         TaskManager.instance(4);
     }
 
-    @AfterClass
-    public static void clearTaskManager() {
-        HugeFactory.shutdown(30L);
-    }
-
     @Before
     public void setup() {
         this.graph = HugeFactory.open(FakeObjects.newConfig());
