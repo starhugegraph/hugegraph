@@ -43,6 +43,7 @@ import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.config.ServerOptions;
 import com.baidu.hugegraph.event.EventHub;
 import com.baidu.hugegraph.k8s.K8sDriverProxy;
+import com.baidu.hugegraph.task.TaskManager;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.version.ApiVersion;
@@ -84,6 +85,7 @@ public class RestServer {
                                      internalAlgorithm, algorithms);
         }
 
+        TaskManager.instance(this.conf.get(ServerOptions.TASK_THREADS));
         ResourceConfig rc = new ApplicationConfig(this.conf, this.eventHub);
 
         this.httpServer = this.configHttpServer(uri, rc);
