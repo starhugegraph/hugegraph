@@ -88,7 +88,6 @@ public class CoreTestSuite {
             }
             graph = null;
         }
-        TaskManager.instance().shutdown(30L);
     }
 
     protected static HugeGraph graph() {
