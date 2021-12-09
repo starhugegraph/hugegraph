@@ -279,7 +279,7 @@ public class StandardTaskScheduler implements TaskScheduler {
         E.checkArgument(this.tasks.containsKey(task.id()),
                         "Can't resubmit task '%s' not been submitted before",
                         task.id());
-        if (this.graph().mode().loading()) {
+        if (this.graph.mode().loading()) {
             LOG.info("Schedule task {} to backup for load task executor", task);
             return this.backupForLoadTaskExecutor.submit(task);
         }
