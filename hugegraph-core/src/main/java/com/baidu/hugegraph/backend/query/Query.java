@@ -490,7 +490,8 @@ public class Query implements Cloneable {
                this.limit == other.limit &&
                Objects.equals(this.page, other.page) &&
                this.ids().equals(other.ids()) &&
-               this.conditions().equals(other.conditions());
+               this.conditions().equals(other.conditions()) &&
+               this.withProperties == other.withProperties;
     }
 
     @Override
@@ -501,7 +502,8 @@ public class Query implements Cloneable {
                Long.hashCode(this.limit) ^
                Objects.hashCode(this.page) ^
                this.ids().hashCode() ^
-               this.conditions().hashCode();
+               this.conditions().hashCode() ^
+               Boolean.hashCode(this.withProperties);
     }
 
     @Override
