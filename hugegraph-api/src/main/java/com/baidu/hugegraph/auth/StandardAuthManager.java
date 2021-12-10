@@ -213,6 +213,7 @@ public class StandardAuthManager implements AuthManager {
 
         try {
             this.updateCreator(user);
+            user.create(user.update());
             this.metaManager.createUser(user);
         } catch (IOException e) {
             throw new HugeException("IOException occurs when " +
@@ -357,6 +358,7 @@ public class StandardAuthManager implements AuthManager {
                 verifyUserPermission(graphSpace, HugePermission.WRITE, group);
             }
             this.updateCreator(group);
+            group.create(group.update());
             Id result = this.metaManager.createGroup(graphSpace, group);
             this.invalidateUserCache();
             return result;
@@ -476,6 +478,7 @@ public class StandardAuthManager implements AuthManager {
                 verifyUserPermission(graphSpace, HugePermission.WRITE, target);
             }
             this.updateCreator(target);
+            target.create(target.update());
             Id result = this.metaManager.createTarget(graphSpace, target);
             this.invalidateUserCache();
             return result;
@@ -589,6 +592,7 @@ public class StandardAuthManager implements AuthManager {
                 verifyUserPermission(graphSpace, HugePermission.WRITE, belong);
             }
             this.updateCreator(belong);
+            belong.create(belong.update());
             this.invalidateUserCache();
             return this.metaManager.createBelong(graphSpace, belong);
         } catch (IOException e) {
@@ -740,6 +744,7 @@ public class StandardAuthManager implements AuthManager {
                 verifyUserPermission(graphSpace, HugePermission.WRITE, access);
             }
             this.updateCreator(access);
+            access.create(access.update());
             Id result = this.metaManager.createAccess(graphSpace, access);
             this.invalidateUserCache();
             return result;
