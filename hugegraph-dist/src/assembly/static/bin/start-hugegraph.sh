@@ -7,17 +7,6 @@ GC_OPTION=""
 USER_OPTION=""
 SERVER_STARTUP_TIMEOUT_S=30
 
-# $1: graphSpace
-# $2: serviceId
-# $3: nodeId
-# $4: nodeRole
-# $5: meta server list, like: 127.0.0.1:2389,127.0.0.1:2379
-# $6: cluster
-# $7: withCa, like: true or false
-# $8: caFilePath
-# $9: clientCaFile
-# $10: clientKeyFile
-
 GRAPH_SPACE="DEFAULT"
 SERVICE_ID="DEFAULT"
 NODE_ID="node-1"
@@ -29,13 +18,12 @@ CA_FILE=""
 CLIENT_CA=""
 CLIENT_KEY=""
 
-while getopts "g:m:s:j:v:G:S:N:R:M:E:W:C:A:K" arg; do
+while getopts "g:m:s:j:G:S:N:R:M:E:W:C:A:K:v" arg; do
     case ${arg} in
         g) GC_OPTION="$OPTARG" ;;
         m) OPEN_MONITOR="$OPTARG" ;;
         s) OPEN_SECURITY_CHECK="$OPTARG" ;;
         j) USER_OPTION="$OPTARG" ;;
-        v) VERBOSE="verbose" ;;
         G) GRAPH_SPACE="$OPTARG" ;;
         S) SERVICE_ID="$OPTARG" ;;
         N) NODE_ID="$OPTARG" ;;
@@ -46,6 +34,7 @@ while getopts "g:m:s:j:v:G:S:N:R:M:E:W:C:A:K" arg; do
         C) CA_FILE="$OPTARG" ;;
         A) CLIENT_CA="$OPTARG" ;;
         K) CLIENT_KEY="$OPTARG" ;;
+        v) VERBOSE="verbose" ;;
         ?) echo "USAGE: $0 [-g g1] [-m true|false] [-s true|false] [-j xxx] [-v] [-G graphspace] [-S serviceId] [-N nodeId] [-R nodeRole] [-M metaServer] [-E cluster] [-W true|false] [-C caFile] [-A clientCa] [-K clientKey]" && exit 1 ;;
     esac
 done
