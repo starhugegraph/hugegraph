@@ -30,7 +30,17 @@ export HUGEGRAPH_HOME="$TOP"
 
 GREMLIN_SERVER_CONF="$1"
 REST_SERVER_CONF="$2"
-OPEN_SECURITY_CHECK="$3"
+GRAPH_SPACE="$3"
+SERVICE_ID="$4"
+NODE_ID="$5"
+NODE_ROLE="$6"
+META_SERVERS="$7"
+CLUSTER="$8"
+WITH_CA="$9"
+CA_FILE="${10}"
+CLIENT_CA="${11}"
+CLIENT_KEY="${12}"
+OPEN_SECURITY_CHECK="${13}"
 
 if [[ $# -eq 3 ]]; then
     USER_OPTION=""
@@ -123,4 +133,5 @@ fi
 # Turn on security check
 exec ${JAVA} -Dname="HugeGraphServer" ${JVM_OPTIONS} ${JAVA_OPTIONS} \
      -cp ${CLASSPATH}: com.baidu.hugegraph.dist.HugeGraphServer ${GREMLIN_SERVER_CONF} ${REST_SERVER_CONF} \
-     >> ${OUTPUT} 2>&1
+     ${GRAPH_SPACE} ${SERVICE_ID} ${NODE_ID} ${NODE_ROLE} ${META_SERVERS} ${CLUSTER} ${WITH_CA} ${CA_FILE} \
+     ${CLIENT_CA} ${CLIENT_KEY} >> ${OUTPUT} 2>&1

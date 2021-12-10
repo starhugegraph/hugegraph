@@ -1036,6 +1036,27 @@ public class StandardAuthManager implements AuthManager {
     }
 
     @Override
+    public void processEvent(MetaManager.AuthEvent event) {
+        if (event.op().equals("DELETE") && event.type().equals("USER")) {
+
+        } else if (event.op().equals("DELETE") && event.type().equals("GROUP")) {
+
+        } else if (event.op().equals("UPDATE") && event.type().equals("TARGET")) {
+
+        } else if (event.op().equals("DELETE") && event.type().equals("TARGET")) {
+
+        } else if (event.op().equals("CREATE") && event.type().equals("BELONG")) {
+
+        } else if (event.op().equals("DELETE") && event.type().equals("BELONG")) {
+
+        } else if (event.op().equals("CREATE") && event.type().equals("ACCESS")) {
+
+        } else if (event.op().equals("DELETE") && event.type().equals("ACCESS")) {
+
+        }
+    }
+
+    @Override
     public UserWithRole validateUser(String username, String password) {
         HugeUser user = this.matchUser(username, password);
         if (user == null) {
@@ -1083,7 +1104,7 @@ public class StandardAuthManager implements AuthManager {
             this.metaManager.createUser(user);
             this.metaManager.initDefaultGraphSpace();
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.info(e.getMessage());
         }
     }
 
