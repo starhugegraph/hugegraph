@@ -85,7 +85,8 @@ public class InitStore {
             return;
         }
 
-        TaskManager.instance(restServerConfig.get(ServerOptions.TASK_THREADS));
+        TaskManager.instance(
+                restServerConfig.getInt(ServerOptions.TASK_THREADS.name()));
 
         RegisterUtil.registerBackends();
         RegisterUtil.registerPlugins();
