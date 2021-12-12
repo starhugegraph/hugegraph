@@ -10,7 +10,7 @@ abs_path() {
     echo "$(cd -P "$(dirname "$SOURCE")" && pwd)"
 }
 
-if [[ $# -lt 3 ]]; then
+if [[ $# -lt 13 ]]; then
     echo "USAGE: $0 GREMLIN_SERVER_CONF REST_SERVER_CONF OPEN_SECURITY_CHECK"
     echo " e.g.: $0 conf/gremlin-server.yaml conf/rest-server.properties true"
     exit 1;
@@ -42,15 +42,15 @@ CLIENT_CA="${11}"
 CLIENT_KEY="${12}"
 OPEN_SECURITY_CHECK="${13}"
 
-if [[ $# -eq 3 ]]; then
+if [[ $# -eq 13 ]]; then
     USER_OPTION=""
     GC_OPTION=""
-elif [[ $# -eq 4 ]]; then
-    USER_OPTION="$4"
+elif [[ $# -eq 14 ]]; then
+    USER_OPTION="${14}"
     GC_OPTION=""
-elif [[ $# -eq 5 ]]; then
-    USER_OPTION="$4"
-    GC_OPTION="$5"
+elif [[ $# -eq 15 ]]; then
+    USER_OPTION="${14}"
+    GC_OPTION="${15}"
 fi
 
 ensure_path_writable $LOGS
