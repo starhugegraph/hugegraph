@@ -56,7 +56,7 @@ import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-@Path("graphs/{graph}/traversers/customizedcrosspoints")
+@Path("graphspaces/{graphspace}/graphs/{graph}/traversers/customizedcrosspoints")
 @Singleton
 public class CustomizedCrosspointsAPI extends API {
 
@@ -67,6 +67,7 @@ public class CustomizedCrosspointsAPI extends API {
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String post(@Context GraphManager manager,
+                       @PathParam("graphspace") String graphSpace,
                        @PathParam("graph") String graph,
                        CrosspointsRequest request) {
         E.checkArgumentNotNull(request,
@@ -84,7 +85,7 @@ public class CustomizedCrosspointsAPI extends API {
                   request.pathPatterns, request.withPath, request.withVertex,
                   request.capacity, request.limit);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         Iterator<Vertex> sources = request.sources.vertices(g);
         List<CustomizedCrosspointsTraverser.PathPattern> patterns;
         patterns = pathPatterns(g, request);
@@ -96,7 +97,7 @@ public class CustomizedCrosspointsAPI extends API {
                                            request.limit);
         Iterator<Vertex> iter = QueryResults.emptyIterator();
         if (!request.withVertex) {
-            return manager.serializer(g).writeCrosspoints(paths, iter,
+            return manager.serializer().writeCrosspoints(paths, iter,
                                                           request.withPath);
         }
         Set<Id> ids = new HashSet<>();
@@ -110,7 +111,7 @@ public class CustomizedCrosspointsAPI extends API {
         if (!ids.isEmpty()) {
             iter = g.vertices(ids.toArray());
         }
-        return manager.serializer(g).writeCrosspoints(paths, iter,
+        return manager.serializer().writeCrosspoints(paths, iter,
                                                       request.withPath);
     }
 

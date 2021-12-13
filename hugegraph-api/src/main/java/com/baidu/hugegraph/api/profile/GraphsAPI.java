@@ -58,7 +58,7 @@ import com.baidu.hugegraph.util.Log;
 import com.codahale.metrics.annotation.Timed;
 import com.google.common.collect.ImmutableMap;
 
-@Path("graphs")
+@Path("graphspaces/{graphspace}/graphs")
 @Singleton
 public class GraphsAPI extends API {
 
@@ -77,15 +77,17 @@ public class GraphsAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @RolesAllowed({"admin", "$dynamic"})
     public Object list(@Context GraphManager manager,
+                       @PathParam("graphspace") String graphSpace,
                        @Context SecurityContext sc) {
-        Set<String> graphs = manager.graphs();
+        Set<String> graphs = manager.graphs(graphSpace);
         // Filter by user role
         Set<String> filterGraphs = new HashSet<>();
         for (String graph : graphs) {
-            String role = RequiredPerm.roleFor(graph, HugePermission.READ);
+            String role = RequiredPerm.roleFor(graphSpace, graph,
+                                               HugePermission.READ);
             if (sc.isUserInRole(role)) {
                 try {
-                    graph(manager, graph);
+                    graph(manager, graphSpace, graph);
                     filterGraphs.add(graph);
                 } catch (ForbiddenException ignored) {
                     // ignore
@@ -99,13 +101,15 @@ public class GraphsAPI extends API {
     @Timed
     @Path("{graph}")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph"})
     public Object get(@Context GraphManager manager,
+                      @PathParam("graphspace") String graphSpace,
                       @PathParam("graph") String graph) {
-        LOG.debug("Get graph by name '{}'", graph);
+        LOG.debug("Get graph by graph space {} and name '{}' ",
+                  graphSpace, graph);
 
-        HugeGraph g = graph(manager, graph);
-        return ImmutableMap.of("name", graph, "backend", g.backend());
+        HugeGraph g = graph(manager, graphSpace, graph);
+        return ImmutableMap.of("name", g.name(), "backend", g.backend());
     }
 
     @POST
@@ -114,12 +118,15 @@ public class GraphsAPI extends API {
     @Status(Status.CREATED)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin"})
+    @RolesAllowed({"admin", "$dynamic"})
     public Object create(@Context GraphManager manager,
+                         @PathParam("graphspace") String graphSpace,
                          @PathParam("name") String name,
-                         String configText) {
-        LOG.debug("Create graph {} with config options '{}'", name, configText);
-        HugeGraph graph = manager.createGraph(name, configText, true);
+                         Map<String, Object> configs) {
+        LOG.debug("Create graph {} with config options '{}' in graph space " +
+                  "'{}'", name, configs, graphSpace);
+        HugeGraph graph = manager.createGraph(graphSpace, name,
+                                              configs, true);
         graph.tx().close();
         return ImmutableMap.of("name", name, "backend", graph.backend());
     }
@@ -128,12 +135,14 @@ public class GraphsAPI extends API {
     @Timed
     @Path("{graph}/conf")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed("admin")
+    @RolesAllowed({"admin", "$dynamic"})
     public String getConf(@Context GraphManager manager,
+                          @PathParam("graphspace") String graphSpace,
                           @PathParam("graph") String graph) {
         LOG.debug("Get graph configuration by name '{}'", graph);
 
-        HugeGraph g = graph4admin(manager, graph);
+        // HugeGraph g = graph4admin(manager, graphSpace, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
 
         HugeConfig config = (HugeConfig) g.configuration();
         return ConfigUtil.writeConfigToString(config);
@@ -144,9 +153,10 @@ public class GraphsAPI extends API {
     @Path("{name}")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed("admin")
+    @RolesAllowed({"admin", "$dynamic"})
     public Map<String, String> manage(
                                @Context GraphManager manager,
+                               @PathParam("graphspace") String graphSpace,
                                @PathParam("name") String name,
                                Map<String, String> actionMap) {
         LOG.debug("Clear graph by name '{}'", name);
@@ -159,13 +169,13 @@ public class GraphsAPI extends API {
                 String message = actionMap.get(CONFIRM_MESSAGE);
                 E.checkArgument(CONFIRM_CLEAR.equals(message),
                                 "Please take the message: %s", CONFIRM_CLEAR);
-                HugeGraph g = graph(manager, name);
+                HugeGraph g = graph(manager, graphSpace, name);
                 g.truncateBackend();
                 // truncateBackend() will open tx, so must close here(commit)
                 g.tx().commit();
                 return ImmutableMap.of(name, "cleared");
             case GRAPH_ACTION_RELOAD:
-                manager.reload(name);
+                manager.reload(graphSpace, name);
                 return ImmutableMap.of(name, "reloaded");
             default:
                 throw new AssertionError(String.format(
@@ -178,14 +188,15 @@ public class GraphsAPI extends API {
     @Path("{name}")
     @Consumes(MediaType.TEXT_PLAIN)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin"})
+    @RolesAllowed({"admin", "$dynamic"})
     public void delete(@Context GraphManager manager,
                        @PathParam("name") String name,
+                       @PathParam("graphspace") String graphSpace,
                        @QueryParam("confirm_message") String message) {
         LOG.debug("Remove graph by name '{}'", name);
         E.checkArgument(CONFIRM_DROP.equals(message),
                         "Please take the message: %s", CONFIRM_DROP);
-        manager.dropGraph(name, true);
+        manager.dropGraph(graphSpace, name, true);
     }
 
     @PUT
@@ -214,12 +225,13 @@ public class GraphsAPI extends API {
     @Timed
     @Path("{graph}/snapshot_create")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph"})
     public Object createSnapshot(@Context GraphManager manager,
+                                 @PathParam("graphspace") String graphSpace,
                                  @PathParam("graph") String graph) {
         LOG.debug("Create snapshot for graph '{}'", graph);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         g.createSnapshot();
         return ImmutableMap.of(graph, "snapshot_created");
     }
@@ -228,12 +240,13 @@ public class GraphsAPI extends API {
     @Timed
     @Path("{graph}/snapshot_resume")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph"})
     public Object resumeSnapshot(@Context GraphManager manager,
+                                 @PathParam("graphspace") String graphSpace,
                                  @PathParam("graph") String graph) {
         LOG.debug("Resume snapshot for graph '{}'", graph);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         g.resumeSnapshot();
         return ImmutableMap.of(graph, "snapshot_resumed");
     }
@@ -245,10 +258,11 @@ public class GraphsAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @RolesAllowed({"admin"})
     public String compact(@Context GraphManager manager,
+                          @PathParam("graphspace") String graphSpace,
                           @PathParam("graph") String graph) {
         LOG.debug("Manually compact graph '{}'", graph);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         return JsonUtil.toJson(g.metadata(null, "compact"));
     }
 
@@ -257,14 +271,15 @@ public class GraphsAPI extends API {
     @Path("{graph}/mode")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph"})
     public Map<String, GraphMode> mode(@Context GraphManager manager,
+                                       @PathParam("graphspace") String graphSpace,
                                        @PathParam("graph") String graph,
                                        GraphMode mode) {
         LOG.debug("Set mode to: '{}' of graph '{}'", mode, graph);
 
         E.checkArgument(mode != null, "Graph mode can't be null");
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         g.mode(mode);
         // mode(m) might trigger tx open, must close(commit)
         g.tx().commit();
@@ -276,12 +291,13 @@ public class GraphsAPI extends API {
     @Path("{graph}/mode")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph"})
     public Map<String, GraphMode> mode(@Context GraphManager manager,
+                                       @PathParam("graphspace") String graphSpace,
                                        @PathParam("graph") String graph) {
         LOG.debug("Get mode of graph '{}'", graph);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         return ImmutableMap.of("mode", g.mode());
     }
 
@@ -293,6 +309,7 @@ public class GraphsAPI extends API {
     @RolesAllowed("admin")
     public Map<String, GraphReadMode> graphReadMode(
                                       @Context GraphManager manager,
+                                      @PathParam("graphspace") String graphSpace,
                                       @PathParam("graph") String graph,
                                       GraphReadMode readMode) {
         LOG.debug("Set graph-read-mode to: '{}' of graph '{}'",
@@ -300,7 +317,7 @@ public class GraphsAPI extends API {
 
         E.checkArgument(readMode != null,
                         "Graph-read-mode can't be null");
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         g.readMode(readMode);
         return ImmutableMap.of("graph_read_mode", readMode);
     }
@@ -310,13 +327,14 @@ public class GraphsAPI extends API {
     @Path("{graph}/graph_read_mode")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph"})
     public Map<String, GraphReadMode> graphReadMode(
                                       @Context GraphManager manager,
+                                      @PathParam("graphspace") String graphSpace,
                                       @PathParam("graph") String graph) {
         LOG.debug("Get graph-read-mode of graph '{}'", graph);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         return ImmutableMap.of("graph_read_mode", g.readMode());
     }
 }

@@ -95,7 +95,8 @@ public class MetricsAPI extends API {
     @Timed
     @Path("system")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner= $action=metrics_read"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner= " +
+                            "$action=metrics_read"})
     public String system() {
         return JsonUtil.toJson(this.systemMetrics.metrics());
     }
@@ -104,11 +105,11 @@ public class MetricsAPI extends API {
     @Timed
     @Path("backend")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner= $action=metrics_read"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner= " +
+                            "$action=metrics_read"})
     public String backend(@Context GraphManager manager) {
         Map<String, Map<String, Object>> results = InsertionOrderUtil.newMap();
-        for (String graph : manager.graphs()) {
-            HugeGraph g = manager.graph(graph);
+        for (HugeGraph g : manager.graphs()) {
             Map<String, Object> metrics = InsertionOrderUtil.newMap();
             metrics.put(BackendMetrics.BACKEND, g.backend());
             try {
@@ -117,7 +118,7 @@ public class MetricsAPI extends API {
                 metrics.put(BackendMetrics.EXCEPTION, e.toString());
                 LOG.debug("Failed to get backend metrics", e);
             }
-            results.put(graph, metrics);
+            results.put(g.name(), metrics);
         }
         return JsonUtil.toJson(results);
     }
@@ -187,9 +188,7 @@ public class MetricsAPI extends API {
                 .append(helpName)
                 .append(spaceStr+ unTyped + endlStr);
         promeMetrics.append(helpName)
-                .append("{version=\"")
-                .append(ApiVersion.VERSION.toString()).append("\",}")
-                .append(spaceStr + "1.0" + endlStr);
+                .append(spaceStr + ApiVersion.VERSION.toString() + endlStr);
 
         //gauges
         for (String key : reporter.gauges().keySet()) {

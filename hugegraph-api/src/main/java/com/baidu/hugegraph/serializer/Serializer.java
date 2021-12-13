@@ -34,6 +34,8 @@ import com.baidu.hugegraph.schema.IndexLabel;
 import com.baidu.hugegraph.schema.PropertyKey;
 import com.baidu.hugegraph.schema.SchemaElement;
 import com.baidu.hugegraph.schema.VertexLabel;
+import com.baidu.hugegraph.space.GraphSpace;
+import com.baidu.hugegraph.space.Service;
 import com.baidu.hugegraph.traversal.algorithm.CustomizedCrosspointsTraverser.CrosspointsPaths;
 import com.baidu.hugegraph.traversal.algorithm.FusiformSimilarityTraverser.SimilarsMap;
 import com.baidu.hugegraph.traversal.algorithm.HugeTraverser;
@@ -104,4 +106,7 @@ public interface Serializer {
                                      Collection<HugeTraverser.Path> paths,
                                      Iterator<Vertex> vertices,
                                      Iterator<Edge> edges, List<Integer> sizes);
+    public String writeGraphSpace(GraphSpace graphSpace);
+
+    public String writeService(Service service);
 }

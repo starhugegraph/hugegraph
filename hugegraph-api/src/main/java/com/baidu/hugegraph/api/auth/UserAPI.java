@@ -21,6 +21,7 @@ package com.baidu.hugegraph.api.auth;
 
 import java.util.List;
 
+import javax.annotation.security.RolesAllowed;
 import javax.inject.Singleton;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -34,10 +35,10 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
+import com.baidu.hugegraph.auth.AuthManager;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
-import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
 import com.baidu.hugegraph.auth.HugeUser;
@@ -54,7 +55,7 @@ import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-@Path("graphs/auth/users")
+@Path("auth/users")
 @Singleton
 public class UserAPI extends API {
 
@@ -65,15 +66,16 @@ public class UserAPI extends API {
     @Status(Status.CREATED)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"admin"})
     public String create(@Context GraphManager manager,
                          JsonUser jsonUser) {
-        LOG.debug("Graph [{}] create user: {}", SYSTEM_GRAPH, jsonUser);
+        LOG.debug("Create user: {}", jsonUser);
         checkCreatingBody(jsonUser);
 
-        HugeGraph g = graph(manager, SYSTEM_GRAPH);
         HugeUser user = jsonUser.build();
-        user.id(manager.authManager().createUser(user));
-        return manager.serializer(g).writeAuthElement(user);
+        AuthManager authManager = manager.authManager();
+        user.id(authManager.createUser(user, true));
+        return manager.serializer().writeAuthElement(user);
     }
 
     @PUT
@@ -84,19 +86,19 @@ public class UserAPI extends API {
     public String update(@Context GraphManager manager,
                          @PathParam("id") String id,
                          JsonUser jsonUser) {
-        LOG.debug("Graph [{}] update user: {}", SYSTEM_GRAPH, jsonUser);
+        LOG.debug("Update user: {}", jsonUser);
         checkUpdatingBody(jsonUser);
 
-        HugeGraph g = graph(manager, SYSTEM_GRAPH);
         HugeUser user;
+        AuthManager authManager = manager.authManager();
         try {
-            user = manager.authManager().getUser(UserAPI.parseId(id));
+            user = authManager.getUser(UserAPI.parseId(id), true);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid user id: " + id);
         }
         user = jsonUser.build(user);
-        manager.authManager().updateUser(user);
-        return manager.serializer(g).writeAuthElement(user);
+        user = authManager.updateUser(user, true);
+        return manager.serializer().writeAuthElement(user);
     }
 
     @GET
@@ -104,11 +106,11 @@ public class UserAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String list(@Context GraphManager manager,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
-        LOG.debug("Graph [{}] list users", SYSTEM_GRAPH);
+        LOG.debug("List users");
 
-        HugeGraph g = graph(manager, SYSTEM_GRAPH);
-        List<HugeUser> users = manager.authManager().listAllUsers(limit);
-        return manager.serializer(g).writeAuthElements("users", users);
+        AuthManager authManager = manager.authManager();
+        List<HugeUser> users = authManager.listAllUsers(limit, true);
+        return manager.serializer().writeAuthElements("users", users);
     }
 
     @GET
@@ -117,11 +119,11 @@ public class UserAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String get(@Context GraphManager manager,
                       @PathParam("id") String id) {
-        LOG.debug("Graph [{}] get user: {}", SYSTEM_GRAPH, id);
+        LOG.debug("Get user: {}", id);
 
-        HugeGraph g = graph(manager, SYSTEM_GRAPH);
-        HugeUser user = manager.authManager().getUser(IdGenerator.of(id));
-        return manager.serializer(g).writeAuthElement(user);
+        AuthManager authManager = manager.authManager();
+        HugeUser user = authManager.getUser(IdGenerator.of(id), true);
+        return manager.serializer().writeAuthElement(user);
     }
 
     @GET
@@ -130,11 +132,10 @@ public class UserAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String role(@Context GraphManager manager,
                        @PathParam("id") String id) {
-        LOG.debug("Graph [{}] get user role: {}", SYSTEM_GRAPH, id);
+        LOG.debug("Get user role: {}", id);
 
-        @SuppressWarnings("unused") // just check if the graph exists
-        HugeGraph g = graph(manager, SYSTEM_GRAPH);
-        HugeUser user = manager.authManager().getUser(IdGenerator.of(id));
+        AuthManager authManager = manager.authManager();
+        HugeUser user = authManager.getUser(IdGenerator.of(id), true);
         return manager.authManager().rolePermission(user).toJson();
     }
 
@@ -142,14 +143,14 @@ public class UserAPI extends API {
     @Timed
     @Path("{id}")
     @Consumes(APPLICATION_JSON)
+    @RolesAllowed({"admin"})
     public void delete(@Context GraphManager manager,
                        @PathParam("id") String id) {
-        LOG.debug("Graph [{}] delete user: {}", SYSTEM_GRAPH, id);
+        LOG.debug("Delete user: {}", id);
 
-        @SuppressWarnings("unused") // just check if the graph exists
-        HugeGraph g = graph(manager, SYSTEM_GRAPH);
         try {
-            manager.authManager().deleteUser(IdGenerator.of(id));
+            AuthManager authManager = manager.authManager();
+            authManager.deleteUser(IdGenerator.of(id), true);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid user id: " + id);
         }

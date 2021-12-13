@@ -42,7 +42,6 @@ import org.slf4j.Logger;
 import com.baidu.hugegraph.analyzer.Analyzer;
 import com.baidu.hugegraph.analyzer.AnalyzerFactory;
 import com.baidu.hugegraph.auth.AuthManager;
-import com.baidu.hugegraph.auth.StandardAuthManager;
 import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.backend.cache.Cache;
 import com.baidu.hugegraph.backend.cache.CacheNotifier;
@@ -74,8 +73,6 @@ import com.baidu.hugegraph.event.EventListener;
 import com.baidu.hugegraph.exception.NotAllowException;
 import com.baidu.hugegraph.io.HugeGraphIoRegistry;
 import com.baidu.hugegraph.perf.PerfUtil.Watched;
-import com.baidu.hugegraph.rpc.RpcServiceConfig4Client;
-import com.baidu.hugegraph.rpc.RpcServiceConfig4Server;
 import com.baidu.hugegraph.schema.EdgeLabel;
 import com.baidu.hugegraph.schema.IndexLabel;
 import com.baidu.hugegraph.schema.PropertyKey;
@@ -141,6 +138,7 @@ public class StandardHugeGraph implements HugeGraph {
     private volatile GraphReadMode readMode;
     private volatile HugeVariables variables;
 
+    private String graphSpace;
     private final String name;
 
     private final StandardHugeGraphParams params;
@@ -154,7 +152,6 @@ public class StandardHugeGraph implements HugeGraph {
     private final RateLimiter writeRateLimiter;
     private final RateLimiter readRateLimiter;
     private final TaskManager taskManager;
-    private AuthManager authManager;
 
     private final HugeFeatures features;
 
@@ -166,6 +163,7 @@ public class StandardHugeGraph implements HugeGraph {
     public StandardHugeGraph(HugeConfig config) {
         this.params = new StandardHugeGraphParams();
         this.configuration = config;
+        this.graphSpace = "";
 
         this.schemaEventHub = new EventHub("schema");
         this.graphEventHub = new EventHub("graph");
@@ -214,13 +212,22 @@ public class StandardHugeGraph implements HugeGraph {
             SnowflakeIdGenerator.init(this.params);
 
             this.taskManager.addScheduler(this.params);
-            this.authManager = new StandardAuthManager(this.params);
             this.variables = null;
         } catch (Exception e) {
             this.storeProvider.close();
             LockUtil.destroy(this.name);
             throw e;
         }
+    }
+
+    @Override
+    public String graphSpace() {
+        return this.graphSpace;
+    }
+
+    @Override
+    public void graphSpace(String graphSpace) {
+        this.graphSpace = graphSpace;
     }
 
     @Override
@@ -889,9 +896,6 @@ public class StandardHugeGraph implements HugeGraph {
         }
 
         LOG.info("Close graph {}", this);
-        if (StandardAuthManager.isLocal(this.authManager)) {
-            this.authManager.close();
-        }
         this.taskManager.closeScheduler(this.params);
         try {
             this.closeTx();
@@ -963,14 +967,11 @@ public class StandardHugeGraph implements HugeGraph {
 
     @Override
     public AuthManager authManager() {
-        // this.authManager.initSchemaIfNeeded();
-        return this.authManager;
+        throw new HugeException("Not support authManager");
     }
 
     @Override
-    public void switchAuthManager(AuthManager authManager) {
-        this.authManager = authManager;
-    }
+    public void switchAuthManager(AuthManager authManager) {}
 
     @Override
     public RaftGroupManager raftGroupManager(String group) {
@@ -1015,29 +1016,6 @@ public class StandardHugeGraph implements HugeGraph {
                                         option.name());
         }
         return config.get(option);
-    }
-
-    @Override
-    public void registerRpcServices(RpcServiceConfig4Server serverConfig,
-                                    RpcServiceConfig4Client clientConfig) {
-        /*
-         * Skip register cache-rpc service if it's non-shared storage,
-         * because we assume cache of non-shared storage is updated by raft.
-         */
-        if (!this.backendStoreFeatures().supportsSharedStorage()) {
-            return;
-        }
-
-        Class<GraphCacheNotifier> clazz1 = GraphCacheNotifier.class;
-        // The proxy is sometimes unavailable (issue #664)
-        CacheNotifier proxy = clientConfig.serviceProxy(this.name, clazz1);
-        serverConfig.addService(this.name, clazz1, new HugeGraphCacheNotifier(
-                                                   this.graphEventHub, proxy));
-
-        Class<SchemaCacheNotifier> clazz2 = SchemaCacheNotifier.class;
-        proxy = clientConfig.serviceProxy(this.name, clazz2);
-        serverConfig.addService(this.name, clazz2, new HugeSchemaCacheNotifier(
-                                                   this.schemaEventHub, proxy));
     }
 
     private void closeTx() {

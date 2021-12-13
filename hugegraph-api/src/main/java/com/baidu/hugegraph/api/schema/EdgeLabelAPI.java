@@ -56,7 +56,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
 
-@Path("graphs/{graph}/schema/edgelabels")
+@Path("graphspaces/{graphspace}/graphs/{graph}/schema/edgelabels")
 @Singleton
 public class EdgeLabelAPI extends API {
 
@@ -67,17 +67,19 @@ public class EdgeLabelAPI extends API {
     @Status(Status.CREATED)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph $action=edge_label_write"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
+                            "$action=edge_label_write"})
     public String create(@Context GraphManager manager,
+                         @PathParam("graphspace") String graphSpace,
                          @PathParam("graph") String graph,
                          JsonEdgeLabel jsonEdgeLabel) {
         LOG.debug("Graph [{}] create edge label: {}", graph, jsonEdgeLabel);
         checkCreatingBody(jsonEdgeLabel);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         EdgeLabel.Builder builder = jsonEdgeLabel.convert2Builder(g);
         EdgeLabel edgeLabel = builder.create();
-        return manager.serializer(g).writeEdgeLabel(edgeLabel);
+        return manager.serializer().writeEdgeLabel(edgeLabel);
     }
 
     @PUT
@@ -85,8 +87,10 @@ public class EdgeLabelAPI extends API {
     @Path("{name}")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph $action=edge_label_write"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
+                            "$action=edge_label_write"})
     public String update(@Context GraphManager manager,
+                         @PathParam("graphspace") String graphSpace,
                          @PathParam("graph") String graph,
                          @PathParam("name") String name,
                          @QueryParam("action") String action,
@@ -101,17 +105,19 @@ public class EdgeLabelAPI extends API {
         // Parse action param
         boolean append = checkAndParseAction(action);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         EdgeLabel.Builder builder = jsonEdgeLabel.convert2Builder(g);
         EdgeLabel edgeLabel = append ? builder.append() : builder.eliminate();
-        return manager.serializer(g).writeEdgeLabel(edgeLabel);
+        return manager.serializer().writeEdgeLabel(edgeLabel);
     }
 
     @GET
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph $action=edge_label_read"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
+                            "$action=edge_label_read"})
     public String list(@Context GraphManager manager,
+                       @PathParam("graphspace") String graphSpace,
                        @PathParam("graph") String graph,
                        @QueryParam("names") List<String> names) {
         boolean listAll = CollectionUtils.isEmpty(names);
@@ -121,7 +127,7 @@ public class EdgeLabelAPI extends API {
             LOG.debug("Graph [{}] get edge labels by names {}", graph, names);
         }
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         List<EdgeLabel> labels;
         if (listAll) {
             labels = g.schema().getEdgeLabels();
@@ -131,22 +137,24 @@ public class EdgeLabelAPI extends API {
                 labels.add(g.schema().getEdgeLabel(name));
             }
         }
-        return manager.serializer(g).writeEdgeLabels(labels);
+        return manager.serializer().writeEdgeLabels(labels);
     }
 
     @GET
     @Timed
     @Path("{name}")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph $action=edge_label_read"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
+                            "$action=edge_label_read"})
     public String get(@Context GraphManager manager,
+                      @PathParam("graphspace") String graphSpace,
                       @PathParam("graph") String graph,
                       @PathParam("name") String name) {
         LOG.debug("Graph [{}] get edge label by name '{}'", graph, name);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         EdgeLabel edgeLabel = g.schema().getEdgeLabel(name);
-        return manager.serializer(g).writeEdgeLabel(edgeLabel);
+        return manager.serializer().writeEdgeLabel(edgeLabel);
     }
 
     @DELETE
@@ -155,13 +163,15 @@ public class EdgeLabelAPI extends API {
     @Status(Status.ACCEPTED)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph $action=edge_label_delete"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
+                            "$action=edge_label_delete"})
     public Map<String, Id> delete(@Context GraphManager manager,
+                                  @PathParam("graphspace") String graphSpace,
                                   @PathParam("graph") String graph,
                                   @PathParam("name") String name) {
         LOG.debug("Graph [{}] remove edge label by name '{}'", graph, name);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         // Throw 404 if not exists
         g.schema().getEdgeLabel(name);
         return ImmutableMap.of("task_id",

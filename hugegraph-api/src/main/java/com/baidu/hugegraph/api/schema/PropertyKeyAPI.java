@@ -61,7 +61,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
 
-@Path("graphs/{graph}/schema/propertykeys")
+@Path("graphspaces/{graphspace}/graphs/{graph}/schema/propertykeys")
 @Singleton
 public class PropertyKeyAPI extends API {
 
@@ -72,18 +72,20 @@ public class PropertyKeyAPI extends API {
     @Status(Status.ACCEPTED)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph $action=property_key_write"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
+                            "$action=property_key_write"})
     public String create(@Context GraphManager manager,
+                         @PathParam("graphspace") String graphSpace,
                          @PathParam("graph") String graph,
                          JsonPropertyKey jsonPropertyKey) {
         LOG.debug("Graph [{}] create property key: {}",
                   graph, jsonPropertyKey);
         checkCreatingBody(jsonPropertyKey);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         PropertyKey.Builder builder = jsonPropertyKey.convert2Builder(g);
         SchemaElement.TaskWithSchema pk = builder.createWithTask();
-        return manager.serializer(g).writeTaskWithSchema(pk);
+        return manager.serializer().writeTaskWithSchema(pk);
     }
 
     @PUT
@@ -92,8 +94,10 @@ public class PropertyKeyAPI extends API {
     @Path("{name}")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph $action=property_key_write"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
+                            "$action=property_key_write"})
     public String update(@Context GraphManager manager,
+                         @PathParam("graphspace") String graphSpace,
                          @PathParam("graph") String graph,
                          @PathParam("name") String name,
                          @QueryParam("action") String action,
@@ -105,7 +109,7 @@ public class PropertyKeyAPI extends API {
                         "The name in url(%s) and body(%s) are different",
                         name, jsonPropertyKey.name);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         if (ACTION_CLEAR.equals(action)) {
             PropertyKey propertyKey = g.propertyKey(name);
             E.checkArgument(propertyKey.olap(),
@@ -114,7 +118,7 @@ public class PropertyKeyAPI extends API {
             Id id = g.clearPropertyKey(propertyKey);
             SchemaElement.TaskWithSchema pk =
                     new SchemaElement.TaskWithSchema(propertyKey, id);
-            return manager.serializer(g).writeTaskWithSchema(pk);
+            return manager.serializer().writeTaskWithSchema(pk);
         }
 
         // Parse action parameter
@@ -126,14 +130,16 @@ public class PropertyKeyAPI extends API {
                                   builder.eliminate();
         SchemaElement.TaskWithSchema pk =
                 new SchemaElement.TaskWithSchema(propertyKey, IdGenerator.ZERO);
-        return manager.serializer(g).writeTaskWithSchema(pk);
+        return manager.serializer().writeTaskWithSchema(pk);
     }
 
     @GET
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph $action=property_key_read"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
+                            "$action=property_key_read"})
     public String list(@Context GraphManager manager,
+                       @PathParam("graphspace") String graphSpace,
                        @PathParam("graph") String graph,
                        @QueryParam("names") List<String> names) {
         boolean listAll = CollectionUtils.isEmpty(names);
@@ -143,7 +149,7 @@ public class PropertyKeyAPI extends API {
             LOG.debug("Graph [{}] get property keys by names {}", graph, names);
         }
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         List<PropertyKey> propKeys;
         if (listAll) {
             propKeys = g.schema().getPropertyKeys();
@@ -153,22 +159,24 @@ public class PropertyKeyAPI extends API {
                 propKeys.add(g.schema().getPropertyKey(name));
             }
         }
-        return manager.serializer(g).writePropertyKeys(propKeys);
+        return manager.serializer().writePropertyKeys(propKeys);
     }
 
     @GET
     @Timed
     @Path("{name}")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph $action=property_key_read"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
+                            "$action=property_key_read"})
     public String get(@Context GraphManager manager,
+                      @PathParam("graphspace") String graphSpace,
                       @PathParam("graph") String graph,
                       @PathParam("name") String name) {
         LOG.debug("Graph [{}] get property key by name '{}'", graph, name);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         PropertyKey propertyKey = g.schema().getPropertyKey(name);
-        return manager.serializer(g).writePropertyKey(propertyKey);
+        return manager.serializer().writePropertyKey(propertyKey);
     }
 
     @DELETE
@@ -177,13 +185,15 @@ public class PropertyKeyAPI extends API {
     @Path("{name}")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$owner=$graph $action=property_key_delete"})
+    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
+                            "$action=property_key_delete"})
     public Map<String, Id> delete(@Context GraphManager manager,
+                                  @PathParam("graphspace") String graphSpace,
                                   @PathParam("graph") String graph,
                                   @PathParam("name") String name) {
         LOG.debug("Graph [{}] remove property key by name '{}'", graph, name);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         // Throw 404 if not exists
         g.schema().getPropertyKey(name);
         return ImmutableMap.of("task_id",

@@ -33,10 +33,10 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 
+import com.baidu.hugegraph.auth.AuthManager;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
-import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.AuthenticationFilter;
 import com.baidu.hugegraph.api.filter.StatusFilter;
@@ -52,7 +52,7 @@ import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
 
-@Path("graphs/auth")
+@Path("auth")
 @Singleton
 public class LoginAPI extends API {
 
@@ -66,15 +66,15 @@ public class LoginAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String login(@Context GraphManager manager,
                         JsonLogin jsonLogin) {
-        LOG.debug("Graph [{}] user login: {}", SYSTEM_GRAPH, jsonLogin);
+        LOG.debug("User login: {}", jsonLogin);
         checkCreatingBody(jsonLogin);
 
         try {
-            String token = manager.authManager().loginUser(jsonLogin.name,
-                                                           jsonLogin.password,
-                                                           jsonLogin.expire);
-            HugeGraph g = graph(manager, SYSTEM_GRAPH);
-            return manager.serializer(g)
+            AuthManager authManager = manager.authManager();
+            String token = authManager.loginUser(jsonLogin.name,
+                                                 jsonLogin.password,
+                                                 jsonLogin.expire);
+            return manager.serializer()
                           .writeMap(ImmutableMap.of("token", token));
         } catch (AuthenticationException e) {
             throw new NotAuthorizedException(e.getMessage(), e);
@@ -91,7 +91,7 @@ public class LoginAPI extends API {
                        @HeaderParam(HttpHeaders.AUTHORIZATION) String auth) {
         E.checkArgument(StringUtils.isNotEmpty(auth),
                         "Request header Authorization must not be null");
-        LOG.debug("Graph [{}] user logout: {}", SYSTEM_GRAPH, auth);
+        LOG.debug("User logout: {}", auth);
 
         if (!auth.startsWith(AuthenticationFilter.BEARER_TOKEN_PREFIX)) {
             throw new BadRequestException(
@@ -100,8 +100,8 @@ public class LoginAPI extends API {
 
         String token = auth.substring(AuthenticationFilter.BEARER_TOKEN_PREFIX
                                                           .length());
-
-        manager.authManager().logoutUser(token);
+        AuthManager authManager = manager.authManager();
+        authManager.logoutUser(token);
     }
 
     @GET
@@ -115,7 +115,7 @@ public class LoginAPI extends API {
                               String token) {
         E.checkArgument(StringUtils.isNotEmpty(token),
                         "Request header Authorization must not be null");
-        LOG.debug("Graph [{}] get user: {}", SYSTEM_GRAPH, token);
+        LOG.debug("verify token: {}", token);
 
         if (!token.startsWith(AuthenticationFilter.BEARER_TOKEN_PREFIX)) {
             throw new BadRequestException(
@@ -124,10 +124,10 @@ public class LoginAPI extends API {
 
         token = token.substring(AuthenticationFilter.BEARER_TOKEN_PREFIX
                                                     .length());
-        UserWithRole userWithRole = manager.authManager().validateUser(token);
+        AuthManager authManager = manager.authManager();
+        UserWithRole userWithRole = authManager.validateUser(token);
 
-        HugeGraph g = graph(manager, SYSTEM_GRAPH);
-        return manager.serializer(g)
+        return manager.serializer()
                       .writeMap(ImmutableMap.of(AuthConstant.TOKEN_USER_NAME,
                                                 userWithRole.username(),
                                                 AuthConstant.TOKEN_USER_ID,

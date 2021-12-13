@@ -50,7 +50,7 @@ import com.baidu.hugegraph.util.Log;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-@Path("graphs/{graph}/traversers/multinodeshortestpath")
+@Path("graphspaces/{graphspace}/graphs/{graph}/traversers/multinodeshortestpath")
 @Singleton
 public class MultiNodeShortestPathAPI extends TraverserAPI {
 
@@ -61,6 +61,7 @@ public class MultiNodeShortestPathAPI extends TraverserAPI {
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String post(@Context GraphManager manager,
+                       @PathParam("graphspace") String graphSpace,
                        @PathParam("graph") String graph,
                        Request request) {
         E.checkArgumentNotNull(request, "The request body can't be null");
@@ -75,7 +76,7 @@ public class MultiNodeShortestPathAPI extends TraverserAPI {
                   graph, request.vertices, request.step, request.maxDepth,
                   request.capacity, request.withVertex);
 
-        HugeGraph g = graph(manager, graph);
+        HugeGraph g = graph(manager, graphSpace, graph);
         Iterator<Vertex> vertices = request.vertices.vertices(g);
 
         EdgeStep step = step(g, request.step);
@@ -89,7 +90,7 @@ public class MultiNodeShortestPathAPI extends TraverserAPI {
         }
 
         if (!request.withVertex) {
-            return manager.serializer(g).writePaths("paths", paths, false);
+            return manager.serializer().writePaths("paths", paths, false);
         }
 
         Set<Id> ids = new HashSet<>();
@@ -100,7 +101,7 @@ public class MultiNodeShortestPathAPI extends TraverserAPI {
         if (!ids.isEmpty()) {
             iter = g.vertices(ids.toArray());
         }
-        return manager.serializer(g).writePaths("paths", paths, false, iter);
+        return manager.serializer().writePaths("paths", paths, false, iter);
     }
 
     private static class Request {

@@ -109,9 +109,12 @@ public class AuthenticationFilter implements ContainerRequestFilter {
         MultivaluedMap<String, String> pathParameters =
                                 context.getUriInfo().getPathParameters();
         if (pathParameters != null && pathParameters.size() > 0) {
-            List<String> parameters = pathParameters.get("graph");
-            if (parameters != null && parameters.size() > 0) {
-                HugeGraph target = manager.graph(parameters.get(0));
+            List<String> spaceParam = pathParameters.get("graphspace");
+            List<String> graphParam = pathParameters.get("graph");
+            if (spaceParam != null && spaceParam.size() > 0 &&
+                graphParam != null && graphParam.size() > 0) {
+                HugeGraph target = manager.graph(spaceParam.get(0),
+                                                 graphParam.get(0));
                 if (target != null && target instanceof StandardHugeGraph) {
                     // Return anonymous user if access standard hugeGraph
                     return User.ANONYMOUS;
@@ -229,17 +232,32 @@ public class AuthenticationFilter implements ContainerRequestFilter {
             boolean valid;
             RequiredPerm requiredPerm;
 
-            if (!required.startsWith(HugeAuthenticator.KEY_OWNER)) {
+            if (!required.startsWith(HugeAuthenticator.KEY_GRAPHSPACE)) {
                 // Permission format like: "admin"
                 requiredPerm = new RequiredPerm();
                 requiredPerm.owner(required);
             } else {
-                // The required like: $owner=graph1 $action=vertex_write
+                // The required like:
+                // $graphspace=graphspace $owner=graph1 $action=vertex_write
                 requiredPerm = RequiredPerm.fromPermission(required);
 
                 /*
+                 * Replace graphspace value (it may be a variable) if the
+                 * permission format like:
+                 * "$graphspace=$graphspace $owner=$graph $action=vertex_write"
+                 */
+                String graphSpace = requiredPerm.graphSpace();
+                if (graphSpace.startsWith(HugeAuthenticator.VAR_PREFIX)) {
+                    int prefixLen = HugeAuthenticator.VAR_PREFIX.length();
+                    assert graphSpace.length() > prefixLen;
+                    graphSpace = graphSpace.substring(prefixLen);
+                    graphSpace = this.getPathParameter(graphSpace);
+                    requiredPerm.graphSpace(graphSpace);
+                }
+
+                /*
                  * Replace owner value(it may be a variable) if the permission
-                 * format like: "$owner=$graph $action=vertex_write"
+                 * format like: "$graphspace=$graphspace $owner=$graph $action=vertex_write"
                  */
                 String owner = requiredPerm.owner();
                 if (owner.startsWith(HugeAuthenticator.VAR_PREFIX)) {

@@ -151,12 +151,124 @@ public class ServerOptions extends OptionHolder {
                     "http://127.0.0.1:2379"
             );
 
+    public static final ConfigOption<Boolean> META_USE_CA =
+            new ConfigOption<>(
+                    "meta.use_ca",
+                    "Whether to use ca to meta server.",
+                    disallowEmpty(),
+                    false
+            );
+
+    public static final ConfigOption<String> META_CA =
+            new ConfigOption<>(
+                    "meta.ca",
+                    "The ca file of meta server.",
+                    null,
+                    ""
+            );
+
+    public static final ConfigOption<String> META_CLIENT_CA =
+            new ConfigOption<>(
+                    "meta.client_ca",
+                    "The client ca file of meta server.",
+                    null,
+                    ""
+            );
+
+    public static final ConfigOption<String> META_CLIENT_KEY =
+            new ConfigOption<>(
+                    "meta.client_key",
+                    "The client key file of meta server.",
+                    null,
+                    ""
+            );
+
     public static final ConfigOption<String> CLUSTER =
             new ConfigOption<>(
                     "cluster",
                     "The cluster name.",
                     disallowEmpty(),
                     "hg-test"
+            );
+
+    public static final ConfigOption<Boolean> SERVER_USE_K8S =
+            new ConfigOption<>(
+                    "server.use_k8s",
+                    "Whether to use k8s to support multiple tenancy.",
+                    disallowEmpty(),
+                    false
+            );
+
+    public static final ConfigOption<String> SERVER_K8S_URL =
+            new ConfigOption<>(
+                    "server.k8s_url",
+                    "The url of k8s.",
+                    disallowEmpty(),
+                    "https://127.0.0.1:8888"
+            );
+
+    public static final ConfigOption<Boolean> SERVER_K8S_USE_CA =
+            new ConfigOption<>(
+                    "server.k8s_use_ca",
+                    "Whether to use ca to k8s api server.",
+                    disallowEmpty(),
+                    false
+            );
+
+    public static final ConfigOption<String> SERVER_K8S_CA =
+            new ConfigOption<>(
+                    "server.k8s_ca",
+                    "The ca file of ks8 api server.",
+                    null,
+                    ""
+            );
+
+    public static final ConfigOption<String> SERVER_K8S_CLIENT_CA =
+            new ConfigOption<>(
+                    "server.k8s_client_ca",
+                    "The client ca file of k8s api server.",
+                    null,
+                    ""
+            );
+
+    public static final ConfigOption<String> SERVER_K8S_CLIENT_KEY =
+            new ConfigOption<>(
+                    "server.k8s_client_key",
+                    "The client key file of k8s api server.",
+                    null,
+                    ""
+            );
+
+    public static final ConfigOption<String> SERVER_K8S_OLTP_IMAGE =
+            new ConfigOption<>(
+                    "server.k8s_oltp_image",
+                    "The oltp server image of k8s.",
+                    disallowEmpty(),
+                    "hugegraph/hugegraph-server:v1"
+            );
+
+    public static final ConfigOption<String> SERVER_K8S_OLAP_IMAGE =
+            new ConfigOption<>(
+                    "server.k8s_olap_image",
+                    "The olap server image of k8s.",
+                    disallowEmpty(),
+                    "hugegraph/hugegraph-server:v1"
+            );
+
+    public static final ConfigOption<String> SERVER_K8S_STORAGE_IMAGE =
+            new ConfigOption<>(
+                    "server.k8s_storage_image",
+                    "The storage server image of k8s.",
+                    disallowEmpty(),
+                    "hugegraph/hugegraph-server:v1"
+            );
+
+    public static final ConfigOption<String> SERVER_DEFAULT_K8S_NAMESPACE =
+            new ConfigOption<>(
+                    "server.default_k8s_namespace",
+                    "The default namespace for HugeGraph default graph space.",
+                    disallowEmpty(),
+                    "hugegraph-server"
             );
 
     public static final ConfigOption<Boolean> GRAPH_LOAD_FROM_LOCAL_CONFIG =
@@ -235,23 +347,6 @@ public class ServerOptions extends OptionHolder {
                     ""
             );
 
-    public static final ConfigOption<Boolean> AUTH_SERVER =
-            new ConfigOption<>(
-                    "auth_server",
-                    "Whether is auth server.",
-                    disallowEmpty(),
-                    false
-            );
-
-    public static final ConfigOption<String> AUTH_GRAPH_STORE =
-            new ConfigOption<>(
-                    "auth.graph_store",
-                    "The name of graph used to store authentication information, " +
-                    "like users, only for com.baidu.hugegraph.auth.StandardAuthenticator.",
-                    disallowEmpty(),
-                    "system"
-            );
-
     public static final ConfigOption<String> AUTH_ADMIN_TOKEN =
             new ConfigOption<>(
                     "auth.admin_token",
@@ -268,17 +363,6 @@ public class ServerOptions extends OptionHolder {
                     "only for com.baidu.hugegraph.auth.ConfigAuthenticator.",
                     disallowEmpty(),
                     "hugegraph:9fd95c9c-711b-415b-b85f-d4df46ba5c31"
-            );
-
-    public static final ConfigOption<String> AUTH_REMOTE_URL =
-            new ConfigOption<>(
-                    "auth.remote_url",
-                    "If the address is empty, it provide auth service, " +
-                    "otherwise it is auth client and also provide auth service " +
-                    "through rpc forwarding. The remote url can be set to " +
-                    "multiple addresses, which are concat by ','.",
-                    null,
-                    ""
             );
 
     public static final ConfigOption<String> SSL_KEYSTORE_FILE =

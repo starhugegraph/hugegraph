@@ -51,6 +51,8 @@ public final class JsonUtil {
         HugeGraphSONModule.registerIdSerializers(module);
         HugeGraphSONModule.registerSchemaSerializers(module);
         HugeGraphSONModule.registerGraphSerializers(module);
+        HugeGraphSONModule.registerGraphSpaceSerializers(module);
+        HugeGraphSONModule.registerServiceSerializers(module);
 
         MAPPER.registerModule(module);
     }
