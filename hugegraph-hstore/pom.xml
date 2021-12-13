@@ -5,7 +5,7 @@
     <parent>
         <artifactId>hugegraph</artifactId>
         <groupId>com.baidu.hugegraph</groupId>
-        <version>0.12.0</version>
+        <version>0.13.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -21,22 +21,12 @@
             <groupId>com.baidu.hugegraph</groupId>
             <artifactId>hg-store-client</artifactId>
             <version>1.0-SNAPSHOT</version>
-            <scope>compile</scope>
-<!--            <exclusions>-->
-<!--                <exclusion>-->
-<!--                    <groupId>io.grpc</groupId>-->
-<!--                    <artifactId>grpc-core</artifactId>-->
-<!--                </exclusion>-->
-<!--                <exclusion>-->
-<!--                    <groupId>io.grpc</groupId>-->
-<!--                    <artifactId>grpc-api</artifactId>-->
-<!--                </exclusion>-->
-<!--            </exclusions>-->
         </dependency>
         <dependency>
             <groupId>com.baidu.hugegraph</groupId>
             <artifactId>hg-pd-client</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
+
     </dependencies>
 </project>
