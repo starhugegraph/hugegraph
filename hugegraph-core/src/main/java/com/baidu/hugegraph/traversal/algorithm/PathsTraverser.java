@@ -119,7 +119,7 @@ public class PathsTraverser extends HugeTraverser {
                     break;
                 }
 
-                edges = edgesOfVertex(vid, direction, this.label, this.degree);
+                edges = edgesOfVertex(vid, direction, this.label, this.degree, false);
 
                 while (edges.hasNext()) {
                     HugeEdge edge = (HugeEdge) edges.next();
@@ -158,7 +158,7 @@ public class PathsTraverser extends HugeTraverser {
                     break;
                 }
 
-                edges = edgesOfVertex(vid, direction, this.label, this.degree);
+                edges = edgesOfVertex(vid, direction, this.label, this.degree, false);
 
                 while (edges.hasNext()) {
                     HugeEdge edge = (HugeEdge) edges.next();

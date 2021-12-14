@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -47,6 +48,7 @@ import com.baidu.hugegraph.job.GremlinJob;
 import com.baidu.hugegraph.job.JobBuilder;
 import com.baidu.hugegraph.security.HugeSecurityManager;
 import com.baidu.hugegraph.task.HugeTask;
+import com.baidu.hugegraph.task.TaskManager;
 import com.baidu.hugegraph.testutil.Assert;
 import com.baidu.hugegraph.type.define.NodeRole;
 import com.baidu.hugegraph.unit.FakeObjects;
@@ -60,6 +62,7 @@ public class SecurityManagerTest {
 
     @BeforeClass
     public static void init() {
+        TaskManager.instance(4);
         graph = loadGraph(false);
         runGremlinJob("1 + 1");
         System.setSecurityManager(new HugeSecurityManager());
@@ -313,7 +316,7 @@ public class SecurityManagerTest {
                .job(new GremlinJob());
         HugeTask<?> task = builder.schedule();
         try {
-            task = graph.taskScheduler().waitUntilTaskCompleted(task.id(), 10);
+            task = graph.taskScheduler().waitUntilTaskCompleted(task.id(), 15);
         } catch (TimeoutException e) {
             throw new HugeException("Wait for task timeout: %s", e, task);
         }
