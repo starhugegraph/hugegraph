@@ -190,9 +190,9 @@ public abstract class Condition {
             }
             Character sourceChar = null;
             Character targetChar = null;
-            for(int i = 1; i < sourceLen + 1 ; i++){
+            for(int i = 1; i < sourceLen + 1; i++){
                 sourceChar = source.charAt(i - 1);
-                for(int j = 1; j < targetLen + 1 ; j++){
+                for(int j = 1; j < targetLen + 1; j++){
                     targetChar = target.charAt(j - 1);
                     if(sourceChar.equals(targetChar)){
                         arr[i][j] = arr[i - 1][j - 1];
