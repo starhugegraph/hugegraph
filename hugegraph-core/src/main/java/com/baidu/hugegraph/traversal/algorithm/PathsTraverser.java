@@ -125,16 +125,19 @@ public class PathsTraverser extends HugeTraverser {
                     HugeEdge edge = (HugeEdge) edges.next();
                     Id target = edge.id().otherVertexId();
 
-                    LOG.trace("Go forward, vid {}, edge {}, targetId {}",
+                    LOG.debug("Go forward, vid {}, edge {}, targetId {}",
                               vid, edge, target);
                     PathSet results = this.record.findPath(target, null,
                                                            true, false);
+                    LOG.debug("current depth's path size= {}", results.size());
                     for (Path path : results) {
-                        this.paths.add(path);
-                        if (this.reachLimit() ||
-                            Objects.equals(target, targetV)) {
+                        if (Objects.equals(target, targetV)) {
                             LOG.debug("Find cycle, cur vid is {}, target is {}",
                                       target, targetV);
+                            continue;
+                        }
+                        this.paths.add(path);
+                        if (this.reachLimit()) {
                             return;
                         }
                     }
@@ -164,16 +167,18 @@ public class PathsTraverser extends HugeTraverser {
                     HugeEdge edge = (HugeEdge) edges.next();
                     Id target = edge.id().otherVertexId();
 
-                    LOG.trace("Go back, vid {}, edge {}, targetId {}",
+                    LOG.debug("Go back, vid {}, edge {}, targetId {}",
                               vid, edge, target);
                     PathSet results = this.record.findPath(target, null,
                                                            true, false);
                     for (Path path : results) {
-                        this.paths.add(path);
-                        if (this.reachLimit() ||
-                            Objects.equals(target, sourceV)) {
+                        if (Objects.equals(target, sourceV)) {
                             LOG.debug("Find cycle, cur vid is {}, source is {}",
                                       target, sourceV);
+                            continue;
+                        }
+                        this.paths.add(path);
+                        if (this.reachLimit()) {
                             return;
                         }
                     }
