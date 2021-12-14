@@ -116,7 +116,7 @@ public class PathsTraverser extends HugeTraverser {
                 Id vid = this.record.nextKey();
                 if (vid.equals(targetV)) {
                     LOG.debug("out of index, cur {}. targetV {}", vid, targetV);
-                    break;
+                    continue;
                 }
 
                 edges = edgesOfVertex(vid, direction, this.label, this.degree, false);
@@ -155,7 +155,7 @@ public class PathsTraverser extends HugeTraverser {
                 Id vid = this.record.nextKey();
                 if (vid.equals(sourceV)) {
                     LOG.debug("out of index, cur {}. source {}", vid, sourceV);
-                    break;
+                    continue;
                 }
 
                 edges = edgesOfVertex(vid, direction, this.label, this.degree, false);
