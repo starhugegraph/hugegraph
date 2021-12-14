@@ -31,6 +31,7 @@ import com.baidu.hugegraph.backend.store.hstore.HstoreSessions.Session;
 import com.baidu.hugegraph.pd.client.PDClient;
 import com.baidu.hugegraph.pd.client.PDConfig;
 import com.baidu.hugegraph.pd.grpc.*;
+import com.baidu.hugegraph.store.term.*;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.define.HugeKeys;
 import com.baidu.hugegraph.util.E;
@@ -47,10 +48,10 @@ public class HstoreTables {
     public static class Counters extends HstoreTable {
 
         private static final String TABLE = HugeType.COUNTER.string();
-        private static final int DELTA = 1000;
+        private static final int DELTA = 10000;
         private static final int times = 10000;
         private static final String DELIMITER="/";
-        private static ConcurrentHashMap<String, Pair> ids = new ConcurrentHashMap<>();
+        private static ConcurrentHashMap<String, HgPair> ids = new ConcurrentHashMap<>();
 
 
         public Counters(String namespace) {
@@ -62,7 +63,7 @@ public class HstoreTables {
         public long getCounterFromPd(Session session, HugeType type) {
             AtomicLong currentId,maxId;
             PDClient pdClient = null;
-            Pair<AtomicLong, AtomicLong> idPair;
+            HgPair<AtomicLong, AtomicLong> idPair;
             String key = toKey(this.getDatabase(),session.getGraphName(),type);
             if ((idPair = ids.get(key)) == null) {
                 synchronized (ids) {
@@ -70,7 +71,7 @@ public class HstoreTables {
                         try {
                             currentId = new AtomicLong(0);
                             maxId = new AtomicLong(0);
-                            idPair = new Pair(currentId, maxId);
+                            idPair = new HgPair(currentId, maxId);
                             ids.put(key, idPair);
                         } catch (Exception e) {
                             throw new BackendException(String.format(
