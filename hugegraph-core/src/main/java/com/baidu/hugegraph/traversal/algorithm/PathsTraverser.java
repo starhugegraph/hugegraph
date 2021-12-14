@@ -62,21 +62,21 @@ public class PathsTraverser extends HugeTraverser {
             return paths;
         }
 
-        boolean findCycle = false;
         Id labelId = this.getEdgeLabelId(label);
         Traverser traverser = new Traverser(sourceV, targetV, labelId,
                                             degree, capacity, limit);
         // We should stop early if find cycle or reach limit
         while (true) {
-            if (--depth < 0 || findCycle ||traverser.reachLimit()) {
+            if (--depth < 0 || traverser.reachLimit()) {
                 break;
             }
-            findCycle = traverser.forward(targetV, sourceDir);
+            traverser.forward(targetV, sourceDir);
 
-            if (--depth < 0 || findCycle || traverser.reachLimit()) {
+            if (--depth < 0 || traverser.reachLimit()) {
                 break;
             }
-            findCycle = traverser.backward(sourceV, targetDir);
+
+            traverser.backward(sourceV, targetDir);
         }
         paths.addAll(traverser.paths());
         return paths;
@@ -106,15 +106,18 @@ public class PathsTraverser extends HugeTraverser {
 
         /**
          * Search forward from source
-         * @return if we find cycle
          */
         @Watched
-        public boolean forward(Id targetV, Directions direction) {
+        public void forward(Id targetV, Directions direction) {
             Iterator<Edge> edges;
 
             this.record.startOneLayer(true);
             while (this.record.hasNextKey()) {
                 Id vid = this.record.nextKey();
+                if (vid.equals(targetV)) {
+                    LOG.debug("out of index, cur {}. targetV {}", vid, targetV);
+                    break;
+                }
 
                 edges = edgesOfVertex(vid, direction, this.label, this.degree);
 
@@ -122,7 +125,7 @@ public class PathsTraverser extends HugeTraverser {
                     HugeEdge edge = (HugeEdge) edges.next();
                     Id target = edge.id().otherVertexId();
 
-                    LOG.debug("Go forward, vid {}, edge {}, targetId {}",
+                    LOG.trace("Go forward, vid {}, edge {}, targetId {}",
                               vid, edge, target);
                     PathSet results = this.record.findPath(target, null,
                                                            true, false);
@@ -132,33 +135,36 @@ public class PathsTraverser extends HugeTraverser {
                             Objects.equals(target, targetV)) {
                             LOG.debug("Find cycle, cur vid is {}, target is {}",
                                       target, targetV);
-                            return true;
+                            return;
                         }
                     }
                 }
             }
             this.record.finishOneLayer();
-            return false;
         }
 
         /**
          * Search backward from target
-         * @return if we find cycle
          */
         @Watched
-        public boolean backward(Id sourceV, Directions direction) {
+        public void backward(Id sourceV, Directions direction) {
             Iterator<Edge> edges;
 
             this.record.startOneLayer(false);
             while (this.record.hasNextKey()) {
                 Id vid = this.record.nextKey();
+                if (vid.equals(sourceV)) {
+                    LOG.debug("out of index, cur {}. source {}", vid, sourceV);
+                    break;
+                }
+
                 edges = edgesOfVertex(vid, direction, this.label, this.degree);
 
                 while (edges.hasNext()) {
                     HugeEdge edge = (HugeEdge) edges.next();
                     Id target = edge.id().otherVertexId();
 
-                    LOG.debug("Go back, vid {}, edge {}, targetId {}",
+                    LOG.trace("Go back, vid {}, edge {}, targetId {}",
                               vid, edge, target);
                     PathSet results = this.record.findPath(target, null,
                                                            true, false);
@@ -168,14 +174,13 @@ public class PathsTraverser extends HugeTraverser {
                             Objects.equals(target, sourceV)) {
                             LOG.debug("Find cycle, cur vid is {}, source is {}",
                                       target, sourceV);
-                            return true;
+                            return;
                         }
                     }
                 }
             }
 
             this.record.finishOneLayer();
-            return false;
         }
 
         public PathSet paths() {
