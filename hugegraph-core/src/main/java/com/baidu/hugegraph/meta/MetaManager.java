@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.auth.HugeAccess;
 import com.baidu.hugegraph.auth.HugeBelong;
 import com.baidu.hugegraph.auth.HugeGroup;
@@ -36,6 +37,7 @@ import com.baidu.hugegraph.auth.HugeUser;
 import com.baidu.hugegraph.auth.SchemaDefine;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
+import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.space.GraphSpace;
 import com.baidu.hugegraph.space.Service;
 import com.baidu.hugegraph.util.JsonUtil;
@@ -79,7 +81,7 @@ public class MetaManager {
     public static final String META_PATH_REMOVE = "REMOVE";
     public static final String META_PATH_UPDATE = "UPDATE";
 
-    public static final String DEFAULT_NAMESPACE = "default_ns";
+    public static final long LOCK_DEFAULT_LEASE = 30L;
 
     private MetaDriver metaDriver;
     private String cluster;
@@ -205,7 +207,7 @@ public class MetaManager {
         return configs;
     }
 
-    public Map<String, Service> services(String graphSpace) {
+    public Map<String, Service> serviceConfigs(String graphSpace) {
         Map<String, Service> serviceMap =  new HashMap<>();
         Map<String, String> keyValues = this.metaDriver.scanWithPrefix(
                             this.serviceConfPrefix(graphSpace));
@@ -288,30 +290,30 @@ public class MetaManager {
                             JsonUtil.toJson(space));
     }
 
-    public void addGraphSpace(String graphSpace) {
+    public void notifyGraphSpaceAdd(String graphSpace) {
         this.metaDriver.put(this.graphSpaceAddKey(), graphSpace);
     }
 
-    public void addService(String graphSpace, String name) {
+    public void notifyServiceAdd(String graphSpace, String name) {
         this.metaDriver.put(this.serviceAddKey(),
                             this.serviceName(graphSpace, name));
     }
 
-    public void removeService(String graphSpace, String name) {
+    public void notifyServiceRemove(String graphSpace, String name) {
         this.metaDriver.put(this.serviceRemoveKey(),
                             this.serviceName(graphSpace, name));
     }
 
-    public void updateService(String graphSpace, String name) {
+    public void notifyServiceUpdate(String graphSpace, String name) {
         this.metaDriver.put(this.serviceUpdateKey(),
                             this.serviceName(graphSpace, name));
     }
 
-    public void removeGraphSpace(String graphSpace) {
+    public void notifyGraphSpaceRemove(String graphSpace) {
         this.metaDriver.put(this.graphSpaceRemoveKey(), graphSpace);
     }
 
-    public void updateGraphSpace(String graphSpace) {
+    public void notifyGraphSpaceUpdate(String graphSpace) {
         this.metaDriver.put(this.graphSpaceUpdateKey(), graphSpace);
     }
 
@@ -341,14 +343,44 @@ public class MetaManager {
         this.metaDriver.delete(this.graphConfKey(graphSpace, graph));
     }
 
-    public void addGraph(String graphSpace, String graph) {
+    public void notifyGraphAdd(String graphSpace, String graph) {
         this.metaDriver.put(this.graphAddKey(),
                             this.graphName(graphSpace, graph));
     }
 
-    public void removeGraph(String graphSpace, String graph) {
+    public void notifyGraphRemove(String graphSpace, String graph) {
         this.metaDriver.put(this.graphRemoveKey(),
                             this.graphName(graphSpace, graph));
+    }
+
+    public LockResult lock(String... keys) {
+        return this.lock(LOCK_DEFAULT_LEASE, keys);
+    }
+
+    public LockResult lock(long ttl, String... keys) {
+        String key = String.join(META_PATH_DELIMETER, keys);
+        return this.lock(key, ttl);
+    }
+
+    public LockResult lock(String key, long ttl) {
+        LockResult lockResult = this.metaDriver.lock(key, ttl);
+        if (!lockResult.lockSuccess()) {
+            throw new HugeException("Failed to lock '%s'", key);
+        }
+        return lockResult;
+    }
+
+    public LockResult lock(String key) {
+        return this.metaDriver.lock(key, LOCK_DEFAULT_LEASE);
+    }
+
+    public void unlock(LockResult lockResult, String... keys) {
+        String key = String.join(META_PATH_DELIMETER, keys);
+        this.unlock(key, lockResult);
+    }
+
+    public void unlock(String key, LockResult lockResult) {
+        this.metaDriver.unlock(key, lockResult);
     }
 
     private String graphSpaceAddKey() {
