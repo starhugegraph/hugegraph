@@ -131,15 +131,25 @@ public class HstoreTables {
         //for Counter to use the specific key
         public  static  final byte[] COUNTER_OWNER = new byte[] { 'c' };
 
-        public void increaseCounter(Session session, HugeType type, long increment) {
-            PDClient pdClient;
-            synchronized (this){
+        public synchronized void increaseCounter(Session session, HugeType type, long lowest) {
+            String key = toKey(this.getDatabase(),session.getGraphName(),type);
+            getCounterFromPd(session,type);
+            HgPair<AtomicLong,AtomicLong> idPair = ids.get(key);
+            AtomicLong currentId = idPair.getKey();
+            AtomicLong maxId = idPair.getValue();
+            if (currentId.longValue() >= lowest) return;
+            if (maxId.longValue() >= lowest) {
+                currentId.set(lowest);
+                return;
+            }
+            synchronized (ids){
                 try{
+                    PDClient pdClient;
                     String conf = session.getConf()
                                          .get(HstoreOptions.PD_PEERS);
                     pdClient = PDClient.create(PDConfig.of(conf));
-                    String key = toKey(this.getDatabase(),session.getGraphName(),type);
-                    pdClient.getIdByKey(key, (int)increment);
+                    pdClient.getIdByKey(key, (int)(lowest - maxId.longValue()));
+                    ids.remove(key);
                 } catch (Exception e) {
                     throw new BackendException("");
                 } finally {

@@ -310,14 +310,7 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
     }
     @Override
     public void setCounterLowest(HugeType type, long lowest) {
-        long current = this.getCounter(type);
-        if (current >= lowest) {
-            return;
-        }
-        synchronized (this){
-            long increment = lowest - current;
-            this.increaseCounter(type, increment);
-        }
+        this.increaseCounter(type, lowest);
     }
 
     /***************************** Store defines *****************************/
@@ -352,10 +345,10 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         }
 
         @Override
-        public void increaseCounter(HugeType type, long increment) {
+        public void increaseCounter(HugeType type, long lowest) {
             super.checkOpened();
             this.counters.increaseCounter(super.sessions.session(),
-                    type, increment);
+                    type, lowest);
         }
 
         @Override
