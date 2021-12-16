@@ -21,6 +21,7 @@ package com.baidu.hugegraph.backend.store.hstore;
 
 import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.backend.id.Id;
+import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.backend.query.Query;
 import com.baidu.hugegraph.backend.store.AbstractBackendStore;
 import com.baidu.hugegraph.backend.store.BackendAction;
@@ -34,10 +35,12 @@ import com.baidu.hugegraph.pd.client.PDClient;
 import com.baidu.hugegraph.pd.client.PDConfig;
 import com.baidu.hugegraph.pd.common.PDException;
 import com.baidu.hugegraph.pd.grpc.Metapb;
+import com.baidu.hugegraph.space.GraphSpace;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
@@ -77,7 +80,7 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
             HstoreMetrics metrics = new HstoreMetrics(this.sessions);
             return metrics.metrics();
         });
-        this.registerMetaHandler("pdGraph", (session, meta, args) -> {
+        this.registerMetaHandler("mode", (session, meta, args) -> {
             E.checkArgument(args.length == 4,
                             "The args count of %s must be 4", meta);
             HugeConfig config = (HugeConfig) args[0];
@@ -91,8 +94,10 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
                                             Metapb.GraphWorkMode.Batch_Import :
                                             Metapb.GraphWorkMode.Normal;
             try {
-                pdClient.setGraph(Metapb.Graph.newBuilder().setNamespace(graphSpace)
-                                              .setGraphName(graph)
+                graphSpace = StringUtils.isEmpty(graphSpace) ?
+                             GraphSpace.DEFAULT_GRAPH_SPACE_NAME :graphSpace;
+                             pdClient.setGraph(Metapb.Graph.newBuilder().setNamespace(graphSpace)
+                                              .setGraphName(graphSpace+"/"+graph)
                                               .setWorkMode(workMode).build());
             } catch (PDException e) {
                 throw new BackendException("Error while calling pd method, cause:",
@@ -293,6 +298,26 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
     }
 
     private final void checkConnectionOpened() {
+    }
+
+    @Override
+    public Id nextId(HugeType type) {
+        long counter = 0L;
+        counter = this.getCounter(type);
+        E.checkState(counter != 0L, "Please check whether '%s' is OK",
+                     this.provider().type());
+        return IdGenerator.of(counter);
+    }
+    @Override
+    public void setCounterLowest(HugeType type, long lowest) {
+        long current = this.getCounter(type);
+        if (current >= lowest) {
+            return;
+        }
+        synchronized (this){
+            long increment = lowest - current;
+            this.increaseCounter(type, increment);
+        }
     }
 
     /***************************** Store defines *****************************/

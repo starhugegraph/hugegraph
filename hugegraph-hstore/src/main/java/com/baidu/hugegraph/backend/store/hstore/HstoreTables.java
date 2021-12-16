@@ -132,9 +132,20 @@ public class HstoreTables {
         public  static  final byte[] COUNTER_OWNER = new byte[] { 'c' };
 
         public void increaseCounter(Session session, HugeType type, long increment) {
-//            byte[] key = new byte[]{type.code()};
-//            session.increase(this.table(), COUNTER_OWNER,
-//                             key, b(increment));
+            PDClient pdClient;
+            synchronized (this){
+                try{
+                    String conf = session.getConf()
+                                         .get(HstoreOptions.PD_PEERS);
+                    pdClient = PDClient.create(PDConfig.of(conf));
+                    String key = toKey(this.getDatabase(),session.getGraphName(),type);
+                    pdClient.getIdByKey(key, (int)increment);
+                } catch (Exception e) {
+                    throw new BackendException("");
+                } finally {
+
+                }
+            }
         }
 
         private static byte[] b(long value) {
