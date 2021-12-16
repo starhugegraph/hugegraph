@@ -19,19 +19,28 @@
 
 package com.baidu.hugegraph.backend.store.hstore;
 
+import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.backend.store.BackendEntry;
 import com.baidu.hugegraph.backend.store.BackendEntry.BackendColumnIterator;
 import com.baidu.hugegraph.backend.store.BackendEntryIterator;
 import com.baidu.hugegraph.config.HugeConfig;
+import com.baidu.hugegraph.pd.client.PDClient;
+import com.baidu.hugegraph.pd.client.PDConfig;
+import com.baidu.hugegraph.pd.common.PDException;
+import com.baidu.hugegraph.pd.grpc.Metapb;
+import com.baidu.hugegraph.space.GraphSpace;
 import com.baidu.hugegraph.store.HgKvIterator;
 import com.baidu.hugegraph.store.HgOwnerKey;
 import com.baidu.hugegraph.store.HgSessionManager;
 import com.baidu.hugegraph.store.HgStoreSession;
 import com.baidu.hugegraph.store.client.HgStoreNodeManager;
+import com.baidu.hugegraph.store.client.HgStoreNodePartitioner;
 import com.baidu.hugegraph.store.client.util.HgStoreClientConst;
+import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.util.Bytes;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.StringEncoding;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -73,8 +82,8 @@ public class HstoreSessionsImpl extends HstoreSessions {
         if (!INITIALIZED_NODE) {
             synchronized (INITIALIZED_NODE) {
                 if (!INITIALIZED_NODE) {
-                    HgStoreNodeManager nodeManager = HgStoreNodeManager.getInstance();
                     HstoreNodePartitionerImpl nodePartitioner = null;
+                    HgStoreNodeManager nodeManager = HgStoreNodeManager.getInstance();
                     if ( config.get(HstoreOptions.PD_FAKE) ) // 无PD模式
                         nodePartitioner = new FakeHstoreNodePartitionerImpl(
                                 nodeManager, config.get(HstoreOptions.HSTORE_PEERS)
@@ -401,6 +410,16 @@ public class HstoreSessionsImpl extends HstoreSessions {
         @Override
         public void merge(String table, byte[] ownerKey, byte[] key, byte[] value) {
             this.graph.merge(table,new HgOwnerKey(ownerKey,key),value);
+        }
+
+        @Override
+        public void setMode(GraphMode mode) {
+            HgStoreNodePartitioner partitioner = HgStoreNodeManager.getInstance().getNodePartitioner();
+            if (partitioner instanceof HgStoreNodePartitioner) {
+                ((HstoreNodePartitionerImpl) partitioner).setWorkMode(this.getGraphName(), mode.equals(GraphMode.LOADING) ?
+                        Metapb.GraphWorkMode.Batch_Import :
+                        Metapb.GraphWorkMode.Normal);
+            }
         }
 
         @Override

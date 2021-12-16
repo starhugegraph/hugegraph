@@ -288,8 +288,7 @@ public class GraphsAPI extends API {
         g.tx().commit();
         HugeConfig config = (HugeConfig) g.configuration();
         if (config.get(CoreOptions.BACKEND).equals("hstore")) {
-            g.metadata(null, "mode",new Object[]{ config, mode,
-                                                                graphSpace, graph});
+            g.metadata(null, "mode",new Object[]{mode});
         }
         return ImmutableMap.of("mode", mode);
     }

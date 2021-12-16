@@ -23,24 +23,13 @@ import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.backend.query.Query;
-import com.baidu.hugegraph.backend.store.AbstractBackendStore;
-import com.baidu.hugegraph.backend.store.BackendAction;
-import com.baidu.hugegraph.backend.store.BackendEntry;
-import com.baidu.hugegraph.backend.store.BackendFeatures;
-import com.baidu.hugegraph.backend.store.BackendMutation;
-import com.baidu.hugegraph.backend.store.BackendStoreProvider;
+import com.baidu.hugegraph.backend.store.*;
 import com.baidu.hugegraph.backend.store.hstore.HstoreSessions.Session;
 import com.baidu.hugegraph.config.HugeConfig;
-import com.baidu.hugegraph.pd.client.PDClient;
-import com.baidu.hugegraph.pd.client.PDConfig;
-import com.baidu.hugegraph.pd.common.PDException;
-import com.baidu.hugegraph.pd.grpc.Metapb;
-import com.baidu.hugegraph.space.GraphSpace;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
@@ -81,28 +70,9 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
             return metrics.metrics();
         });
         this.registerMetaHandler("mode", (session, meta, args) -> {
-            E.checkArgument(args.length == 4,
-                            "The args count of %s must be 4", meta);
-            HugeConfig config = (HugeConfig) args[0];
-            GraphMode mode= (GraphMode) args[1];
-            String graphSpace = (String) args[2];
-            String graph = (String) args[3];
-            // give the GraphMode to PD
-            PDClient pdClient = PDClient.create(
-                    PDConfig.of(config.get(HstoreOptions.PD_PEERS)));
-            Metapb.GraphWorkMode workMode = mode.equals(GraphMode.LOADING) ?
-                                            Metapb.GraphWorkMode.Batch_Import :
-                                            Metapb.GraphWorkMode.Normal;
-            try {
-                graphSpace = StringUtils.isEmpty(graphSpace) ?
-                             GraphSpace.DEFAULT_GRAPH_SPACE_NAME :graphSpace;
-                             pdClient.setGraph(Metapb.Graph.newBuilder().setNamespace(graphSpace)
-                                              .setGraphName(graphSpace+"/"+graph)
-                                              .setWorkMode(workMode).build());
-            } catch (PDException e) {
-                throw new BackendException("Error while calling pd method, cause:",
-                                           e.getMessage());
-            }
+            E.checkArgument(args.length == 1,
+                            "The args count of %s must be 1", meta);
+            session.setMode((GraphMode) args[0]);
             return null;
         });
     }

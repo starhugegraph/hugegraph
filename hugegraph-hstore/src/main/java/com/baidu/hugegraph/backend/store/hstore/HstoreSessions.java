@@ -21,6 +21,7 @@ package com.baidu.hugegraph.backend.store.hstore;
 
 import java.util.Set;
 
+import com.baidu.hugegraph.type.define.GraphMode;
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.baidu.hugegraph.backend.store.BackendEntry.BackendColumnIterator;
@@ -103,6 +104,7 @@ public abstract class HstoreSessions extends BackendSessionPool {
             return (expected & actual) == expected;
         }
         public abstract void merge(String table, byte[] ownerKey, byte[] key, byte[] value);
+        public abstract void setMode(GraphMode mode);
         public abstract void truncate();
         public abstract BackendColumnIterator scan(String table, byte[] conditionQueryToByte);
 
