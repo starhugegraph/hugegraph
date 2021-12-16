@@ -41,11 +41,7 @@ import javax.ws.rs.core.SecurityContext;
 
 import com.baidu.hugegraph.config.*;
 import static com.baidu.hugegraph.config.OptionChecker.disallowEmpty;
-import com.baidu.hugegraph.pd.client.*;
-import com.baidu.hugegraph.pd.common.*;
-import com.baidu.hugegraph.pd.grpc.*;
 import org.slf4j.Logger;
-
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
@@ -282,24 +278,18 @@ public class GraphsAPI extends API {
     public Map<String, GraphMode> mode(@Context GraphManager manager,
                                        @PathParam("graphspace") String graphSpace,
                                        @PathParam("graph") String graph,
-                                       GraphMode mode) throws PDException {
+                                       GraphMode mode) {
         LOG.debug("Set mode to: '{}' of graph '{}'", mode, graph);
 
         E.checkArgument(mode != null, "Graph mode can't be null");
         HugeGraph g = graph(manager, graphSpace, graph);
         g.mode(mode);
-        HugeConfig config = (HugeConfig) g.configuration();
         // mode(m) might trigger tx open, must close(commit)
         g.tx().commit();
-        // give the GraphMode to PD
-        if (config.get(CoreOptions.BACKEND).equals("hstore")){
-            PDClient pdClient = PDClient.create(PDConfig.of(config.get(PD_PEERS)));
-            Metapb.GraphWorkMode workMode = mode.equals(GraphMode.LOADING)?
-                                            Metapb.GraphWorkMode.Batch_Import:
-                                            Metapb.GraphWorkMode.Normal;
-            pdClient.setGraph(Metapb.Graph.newBuilder().setNamespace(graphSpace)
-                                      .setGraphName(graph)
-                                          .setWorkMode(workMode).build());
+        HugeConfig config = (HugeConfig) g.configuration();
+        if (config.get(CoreOptions.BACKEND).equals("hstore")) {
+            g.metadata(null, "pdGraph",new Object[]{ config, mode,
+                                                                graphSpace, graph});
         }
         return ImmutableMap.of("mode", mode);
     }

@@ -55,7 +55,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
     private static int tableCode = 0;
     private String graphName;
     private String database;
-    private static volatile Boolean nodeManagerInitilized = Boolean.FALSE;
+    private static volatile Boolean INITIALIZED_NODE = Boolean.FALSE;
     private static volatile Set<String> INITIALIZED_GRAPH = new HashSet<String>();
 
     public HstoreSessionsImpl(HugeConfig config, String database, String store) {
@@ -70,9 +70,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
     }
 
     private void initStoreNode(HugeConfig config) {
-        if (!nodeManagerInitilized) {
-            synchronized (nodeManagerInitilized) {
-                if (!nodeManagerInitilized) {
+        if (!INITIALIZED_NODE) {
+            synchronized (INITIALIZED_NODE) {
+                if (!INITIALIZED_NODE) {
                     HgStoreNodeManager nodeManager = HgStoreNodeManager.getInstance();
                     HstoreNodePartitionerImpl nodePartitioner = null;
                     if ( config.get(HstoreOptions.PD_FAKE) ) // 无PD模式
@@ -86,7 +86,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
                     nodeManager.setNodeProvider(nodePartitioner);
                     nodeManager.setNodePartitioner(nodePartitioner);
                     nodeManager.setNodeNotifier(nodePartitioner);
-                    nodeManagerInitilized = Boolean.TRUE;
+                    INITIALIZED_NODE = Boolean.TRUE;
                 }
             }
         }

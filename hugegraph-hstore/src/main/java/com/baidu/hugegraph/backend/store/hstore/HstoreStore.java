@@ -30,7 +30,12 @@ import com.baidu.hugegraph.backend.store.BackendMutation;
 import com.baidu.hugegraph.backend.store.BackendStoreProvider;
 import com.baidu.hugegraph.backend.store.hstore.HstoreSessions.Session;
 import com.baidu.hugegraph.config.HugeConfig;
+import com.baidu.hugegraph.pd.client.PDClient;
+import com.baidu.hugegraph.pd.client.PDConfig;
+import com.baidu.hugegraph.pd.common.PDException;
+import com.baidu.hugegraph.pd.grpc.Metapb;
 import com.baidu.hugegraph.type.HugeType;
+import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import org.slf4j.Logger;
@@ -71,6 +76,29 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         this.registerMetaHandler("metrics", (session, meta, args) -> {
             HstoreMetrics metrics = new HstoreMetrics(this.sessions);
             return metrics.metrics();
+        });
+        this.registerMetaHandler("pdGraph", (session, meta, args) -> {
+            E.checkArgument(args.length == 4,
+                            "The args count of %s must be 4", meta);
+            HugeConfig config = (HugeConfig) args[0];
+            GraphMode mode= (GraphMode) args[1];
+            String graphSpace = (String) args[2];
+            String graph = (String) args[3];
+            // give the GraphMode to PD
+            PDClient pdClient = PDClient.create(
+                    PDConfig.of(config.get(HstoreOptions.PD_PEERS)));
+            Metapb.GraphWorkMode workMode = mode.equals(GraphMode.LOADING) ?
+                                            Metapb.GraphWorkMode.Batch_Import :
+                                            Metapb.GraphWorkMode.Normal;
+            try {
+                pdClient.setGraph(Metapb.Graph.newBuilder().setNamespace(graphSpace)
+                                              .setGraphName(graph)
+                                              .setWorkMode(workMode).build());
+            } catch (PDException e) {
+                throw new BackendException("Error while calling pd method, cause:",
+                                           e.getMessage());
+            }
+            return null;
         });
     }
 
