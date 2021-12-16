@@ -83,10 +83,9 @@ public class HstoreTables {
             currentId = idPair.getKey();
             maxId = idPair.getValue();
             for (int i = 0; i < times; i++) {
-                long id;
-                if ((id = currentId.incrementAndGet()) <= maxId.longValue())
-                    return id;
                 synchronized (currentId) {
+                    if ((currentId.incrementAndGet()) <= maxId.longValue())
+                        return currentId.longValue();
                     if (currentId.longValue() > maxId.longValue()) {
                         try {
                             if (pdClient == null) {

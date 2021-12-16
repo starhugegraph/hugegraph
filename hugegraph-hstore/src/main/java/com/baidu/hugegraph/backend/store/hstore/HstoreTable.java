@@ -146,8 +146,9 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
      * @return
      */
     protected byte[] getOwnerId(HugeType type,Id id) {
-        if (HugeType.COUNTER.code()<type.code()&&
-            type.code()<HugeType.SECONDARY_INDEX.code()) {
+        if (type.equals(HugeType.VERTEX) || type.equals(HugeType.EDGE)
+        || type.equals(HugeType.EDGE_OUT) || type.equals(HugeType.EDGE_IN)
+        || type.equals(HugeType.COUNTER)) {
             return getOwnerId(id);
         } else{
         return  HgStoreClientConst.ALL_PARTITION_OWNER;
