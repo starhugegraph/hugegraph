@@ -66,6 +66,14 @@ public class ServerOptions extends OptionHolder {
                     "master"
             );
 
+    public static final ConfigOption<Integer> SERVER_EVENT_HUB_THREADS =
+            new ConfigOption<>(
+                    "server.event_hub_threads",
+                    "The event hub threads of server.",
+                    rangeInt(1, 2 * CoreOptions.CPUS),
+                    1
+            );
+
     public static final ConfigOption<Integer> MAX_WORKER_THREADS =
             new ConfigOption<>(
                     "restserver.max_worker_threads",
@@ -82,6 +90,14 @@ public class ServerOptions extends OptionHolder {
                     "is lower than this value.",
                     nonNegativeInt(),
                     64
+            );
+
+    public static final ConfigOption<Integer> TASK_THREADS =
+            new ConfigOption<>(
+                    "restserver.task_threads",
+                    "The task threads of rest server.",
+                    rangeInt(1, Math.max(4, CoreOptions.CPUS * 2)),
+                    Math.max(4, CoreOptions.CPUS / 2)
             );
 
     public static final ConfigOption<Integer> REQUEST_TIMEOUT =

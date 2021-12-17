@@ -19,24 +19,31 @@
 
 package com.baidu.hugegraph.traversal.algorithm.records;
 
+import org.slf4j.Logger;
+
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.perf.PerfUtil.Watched;
 import com.baidu.hugegraph.traversal.algorithm.records.record.Record;
 import com.baidu.hugegraph.traversal.algorithm.records.record.RecordFactory;
 import com.baidu.hugegraph.traversal.algorithm.records.record.RecordType;
+import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.util.collection.ObjectIntMapping;
 import com.baidu.hugegraph.util.collection.MappingFactory;
 
 public abstract class AbstractRecords implements Records {
 
+    public static final Logger LOG = Log.logger(AbstractRecords.class);
+
     private final ObjectIntMapping<Id> idMapping;
     private final RecordType type;
     private final boolean concurrent;
     private Record currentRecord;
+    private Record parentRecord;
 
     public AbstractRecords(RecordType type, boolean concurrent) {
         this.type = type;
         this.concurrent = concurrent;
+        this.parentRecord = null;
         this.idMapping = MappingFactory.newObjectIntMapping(this.concurrent);
     }
 
@@ -58,7 +65,12 @@ public abstract class AbstractRecords implements Records {
         return this.currentRecord;
     }
 
-    protected void currentRecord(Record record) {
-        this.currentRecord = record;
+    protected void currentRecord(Record currentRecord, Record parentRecord) {
+        this.parentRecord = parentRecord;
+        this.currentRecord = currentRecord;
+    }
+
+    protected Record parentRecord() {
+        return this.parentRecord;
     }
 }

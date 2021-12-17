@@ -60,7 +60,8 @@ public class CrosspointsAPI extends API {
                       @PathParam("graph") String graph,
                       @QueryParam("source") String source,
                       @QueryParam("target") String target,
-                      @QueryParam("direction") String direction,
+                      @QueryParam("direction")
+                      @DefaultValue("OUT") String direction,
                       @QueryParam("label") String edgeLabel,
                       @QueryParam("max_depth") int depth,
                       @QueryParam("max_degree")
@@ -83,7 +84,8 @@ public class CrosspointsAPI extends API {
         PathsTraverser traverser = new PathsTraverser(g);
         HugeTraverser.PathSet paths = traverser.paths(sourceId, dir, targetId,
                                                       dir, edgeLabel, depth,
-                                                      maxDegree, capacity, limit);
+                                                      maxDegree, capacity,
+                                                      limit);
         return manager.serializer(g).writePaths("crosspoints", paths, true);
     }
 }

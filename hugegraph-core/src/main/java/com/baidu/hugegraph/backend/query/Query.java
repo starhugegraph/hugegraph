@@ -65,6 +65,7 @@ public class Query implements Cloneable {
     private boolean showDeleting;
     private boolean showExpired;
     private boolean olap;
+    private boolean withProperties;
     private Set<Id> olapPks;
 
     private Aggregate aggregate;
@@ -92,6 +93,8 @@ public class Query implements Cloneable {
         this.showHidden = false;
         this.showDeleting = false;
 
+        this.withProperties = true;
+
         this.aggregate = null;
         this.showExpired = false;
         this.olap = false;
@@ -106,6 +109,8 @@ public class Query implements Cloneable {
         this.capacity = query.capacity();
         this.showHidden = query.showHidden();
         this.showDeleting = query.showDeleting();
+        this.withProperties = query.withProperties();
+
         this.aggregate = query.aggregate();
         this.showExpired = query.showExpired();
         this.olap = query.olap();
@@ -429,6 +434,14 @@ public class Query implements Cloneable {
         return this.showDeleting;
     }
 
+    public void withProperties(boolean withProperties) {
+        this.withProperties = withProperties;
+    }
+
+    public boolean withProperties() {
+        return this.withProperties;
+    }
+
     public void showDeleting(boolean showDeleting) {
         this.showDeleting = showDeleting;
     }
@@ -477,7 +490,8 @@ public class Query implements Cloneable {
                this.limit == other.limit &&
                Objects.equals(this.page, other.page) &&
                this.ids().equals(other.ids()) &&
-               this.conditions().equals(other.conditions());
+               this.conditions().equals(other.conditions()) &&
+               this.withProperties == other.withProperties;
     }
 
     @Override
@@ -488,7 +502,8 @@ public class Query implements Cloneable {
                Long.hashCode(this.limit) ^
                Objects.hashCode(this.page) ^
                this.ids().hashCode() ^
-               this.conditions().hashCode();
+               this.conditions().hashCode() ^
+               Boolean.hashCode(this.withProperties);
     }
 
     @Override

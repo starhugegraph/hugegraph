@@ -79,6 +79,7 @@ public class StandardTaskScheduler implements TaskScheduler {
     private final ServerInfoManager serverManager;
 
     private final ExecutorService taskExecutor;
+    private final ExecutorService backupForLoadTaskExecutor;
     private final ExecutorService taskDbExecutor;
 
     private final EventListener eventListener;
@@ -93,6 +94,7 @@ public class StandardTaskScheduler implements TaskScheduler {
 
     public StandardTaskScheduler(HugeGraphParams graph,
                                  ExecutorService taskExecutor,
+                                 ExecutorService backupForLoadTaskExecutor,
                                  ExecutorService taskDbExecutor,
                                  ExecutorService serverInfoDbExecutor) {
         E.checkNotNull(graph, "graph");
@@ -101,6 +103,7 @@ public class StandardTaskScheduler implements TaskScheduler {
 
         this.graph = graph;
         this.taskExecutor = taskExecutor;
+        this.backupForLoadTaskExecutor = backupForLoadTaskExecutor;
         this.taskDbExecutor = taskDbExecutor;
 
         this.serverManager = new ServerInfoManager(graph, serverInfoDbExecutor);
@@ -114,6 +117,10 @@ public class StandardTaskScheduler implements TaskScheduler {
     @Override
     public HugeGraph graph() {
         return this.graph.graph();
+    }
+
+    public boolean started() {
+        return this.graph.started();
     }
 
     public String graphName() {
@@ -258,6 +265,10 @@ public class StandardTaskScheduler implements TaskScheduler {
         this.initTaskCallable(task);
         assert !this.tasks.containsKey(task.id()) : task;
         this.tasks.put(task.id(), task);
+        if (this.graph.mode().loading()) {
+            LOG.info("Schedule task {} to backup for load task executor", task);
+            return this.backupForLoadTaskExecutor.submit(task);
+        }
         return this.taskExecutor.submit(task);
     }
 
@@ -268,6 +279,10 @@ public class StandardTaskScheduler implements TaskScheduler {
         E.checkArgument(this.tasks.containsKey(task.id()),
                         "Can't resubmit task '%s' not been submitted before",
                         task.id());
+        if (this.graph.mode().loading()) {
+            LOG.info("Schedule task {} to backup for load task executor", task);
+            return this.backupForLoadTaskExecutor.submit(task);
+        }
         return this.taskExecutor.submit(task);
     }
 
