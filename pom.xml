@@ -485,4 +485,29 @@
             </build>
         </profile>
     </profiles>
+
+    <!-- Just for Hg-Store developing start -->
+    <repositories>
+        <repository>
+            <id>star</id>
+            <url>http://10.14.139.8:8082/artifactory/star</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
+        </repository>
+    </repositories>
+    <distributionManagement>
+        <repository>
+            <id>star-local</id>
+            <name>star-releases</name>
+            <url>http://10.14.139.8:8081/artifactory/star-local</url>
+        </repository>
+    </distributionManagement>
+    <!-- Just for Hg-Store developing end -->
+
 </project>

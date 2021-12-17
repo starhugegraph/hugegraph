@@ -30,12 +30,11 @@ import com.baidu.hugegraph.backend.store.BackendEntry.BackendColumnIterator;
 import com.baidu.hugegraph.backend.store.hstore.HstoreSessions.Session;
 import com.baidu.hugegraph.pd.client.PDClient;
 import com.baidu.hugegraph.pd.client.PDConfig;
-import com.baidu.hugegraph.pd.grpc.*;
-import com.baidu.hugegraph.store.term.*;
+import com.baidu.hugegraph.pd.grpc.Pdpb;
+import com.baidu.hugegraph.store.term.HgPair;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.define.HugeKeys;
 import com.baidu.hugegraph.util.E;
-import javafx.util.Pair;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
