@@ -24,6 +24,8 @@ EXT="$TOP/ext"
 PLUGINS="$TOP/plugins"
 LOGS="$TOP/logs"
 OUTPUT=${LOGS}/hugegraph-server.log
+## set jmx_export port for prometheus, 0 or unset represents not start jmx_export
+JMX_EXPORT_PORT=8001
 
 export HUGEGRAPH_HOME="$TOP"
 . ${BIN}/util.sh
@@ -45,8 +47,6 @@ fi
 
 ensure_path_writable $LOGS
 ensure_path_writable $PLUGINS
-
-mv ${CONF}/jmx_exporter.yml ${PLUGINS}/jmx_exporter.yml
 
 # The maximum and minium heap memory that service can use
 MAX_MEM=$((32 * 1024))
@@ -118,9 +118,8 @@ case "$GC_OPTION" in
 esac
 
 JVM_OPTIONS="-Dlog4j.configurationFile=${CONF}/log4j2.xml"
-if [ $(cat ${CONF}/rest-server.properties|grep -cE '^prometheus.jmx_export_port=[^0]') -eq 1 ]; then
-  EXPORT_PORT=$(cat ${CONF}/rest-server.properties|grep -E '^prometheus.jmx_export_port'|cut -d '=' -f 2)
-  JAVA_OPTIONS="${JAVA_OPTIONS} -javaagent:${PLUGINS}/jmx_prometheus_javaagent-0.16.1.jar=${EXPORT_PORT}:${PLUGINS}/jmx_exporter.yml"
+if [ "${JMX_EXPORT_PORT}" != "" ] && [ ${JMX_EXPORT_PORT} -ne 0 ] ; then
+  JAVA_OPTIONS="${JAVA_OPTIONS} -javaagent:${LIB}/jmx_prometheus_javaagent-0.16.1.jar=${JMX_EXPORT_PORT}:${CONF}/jmx_exporter.yml"
 fi
 if [[ ${OPEN_SECURITY_CHECK} == "true" ]]; then
     JVM_OPTIONS="${JVM_OPTIONS} -Djava.security.manager=com.baidu.hugegraph.security.HugeSecurityManager"
