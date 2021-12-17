@@ -487,6 +487,7 @@
     </profiles>
 
     <!-- Just for Hg-Store developing start -->
+
     <repositories>
         <repository>
             <id>star</id>
