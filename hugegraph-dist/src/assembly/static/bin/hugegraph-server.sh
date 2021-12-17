@@ -116,6 +116,10 @@ case "$GC_OPTION" in
 esac
 
 JVM_OPTIONS="-Dlog4j.configurationFile=${CONF}/log4j2.xml"
+if [ $(cat ${CONF}/rest-server.properties|grep -cE '^prometheus.jmx_export_port=[^0]') -eq 1 ]; then
+  EXPORT_PORT=$(cat ${CONF}/rest-server.properties|grep -E '^prometheus.jmx_export_port'|cut -d '=' -f 2)
+  JAVA_OPTIONS="${JAVA_OPTIONS} -javaagent:${PLUGINS}/jmx_prometheus_javaagent-0.16.1.jar=${EXPORT_PORT}:${PLUGINS}/jmx_exporter.yml"
+fi
 if [[ ${OPEN_SECURITY_CHECK} == "true" ]]; then
     JVM_OPTIONS="${JVM_OPTIONS} -Djava.security.manager=com.baidu.hugegraph.security.HugeSecurityManager"
 fi
