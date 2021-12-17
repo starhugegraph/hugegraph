@@ -21,16 +21,13 @@ package com.baidu.hugegraph.backend.store.hstore;
 
 import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.backend.id.Id;
+import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.backend.query.Query;
-import com.baidu.hugegraph.backend.store.AbstractBackendStore;
-import com.baidu.hugegraph.backend.store.BackendAction;
-import com.baidu.hugegraph.backend.store.BackendEntry;
-import com.baidu.hugegraph.backend.store.BackendFeatures;
-import com.baidu.hugegraph.backend.store.BackendMutation;
-import com.baidu.hugegraph.backend.store.BackendStoreProvider;
+import com.baidu.hugegraph.backend.store.*;
 import com.baidu.hugegraph.backend.store.hstore.HstoreSessions.Session;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.type.HugeType;
+import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import org.slf4j.Logger;
@@ -71,6 +68,12 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         this.registerMetaHandler("metrics", (session, meta, args) -> {
             HstoreMetrics metrics = new HstoreMetrics(this.sessions);
             return metrics.metrics();
+        });
+        this.registerMetaHandler("mode", (session, meta, args) -> {
+            E.checkArgument(args.length == 1,
+                            "The args count of %s must be 1", meta);
+            session.setMode((GraphMode) args[0]);
+            return null;
         });
     }
 
@@ -267,6 +270,19 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
     private final void checkConnectionOpened() {
     }
 
+    @Override
+    public Id nextId(HugeType type) {
+        long counter = 0L;
+        counter = this.getCounter(type);
+        E.checkState(counter != 0L, "Please check whether '%s' is OK",
+                     this.provider().type());
+        return IdGenerator.of(counter);
+    }
+    @Override
+    public void setCounterLowest(HugeType type, long lowest) {
+        this.increaseCounter(type, lowest);
+    }
+
     /***************************** Store defines *****************************/
 
     public static class HstoreSchemaStore extends HstoreStore {
@@ -299,10 +315,10 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         }
 
         @Override
-        public void increaseCounter(HugeType type, long increment) {
+        public void increaseCounter(HugeType type, long lowest) {
             super.checkOpened();
             this.counters.increaseCounter(super.sessions.session(),
-                    type, increment);
+                    type, lowest);
         }
 
         @Override

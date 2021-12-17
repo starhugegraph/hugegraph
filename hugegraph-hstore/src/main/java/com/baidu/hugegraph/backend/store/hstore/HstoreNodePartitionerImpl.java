@@ -1,5 +1,6 @@
 package com.baidu.hugegraph.backend.store.hstore;
 
+import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.pd.client.PDClient;
 import com.baidu.hugegraph.pd.client.PDConfig;
 import com.baidu.hugegraph.pd.common.PDException;
@@ -86,6 +87,18 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
             });
         }
         return 0;
+    }
+
+    public Metapb.GraphWorkMode setWorkMode(String graphName, Metapb.GraphWorkMode mode) {
+        try {
+            Metapb.Graph graph = pdClient.setGraph(Metapb.Graph.newBuilder()
+                    .setGraphName(graphName)
+                    .setWorkMode(mode).build());
+            return graph.getWorkMode();
+        } catch (PDException e) {
+            throw new BackendException("Error while calling pd method, cause:",
+                    e.getMessage());
+        }
     }
 }
 
