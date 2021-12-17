@@ -46,6 +46,8 @@ fi
 ensure_path_writable $LOGS
 ensure_path_writable $PLUGINS
 
+mv ${CONF}/jmx_exporter.yml ${PLUGINS}/jmx_exporter.yml
+
 # The maximum and minium heap memory that service can use
 MAX_MEM=$((32 * 1024))
 MIN_MEM=$((1 * 512))
