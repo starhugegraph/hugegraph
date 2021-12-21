@@ -61,7 +61,6 @@ public class HstoreTables {
         // which you can consider persisting to if something unexpected happens
         public long getCounterFromPd(Session session, HugeType type) {
             AtomicLong currentId,maxId;
-            PDClient pdClient = null;
             HgPair<AtomicLong, AtomicLong> idPair;
             String key = toKey(this.getDatabase(),session.getGraphName(),type);
             if ((idPair = ids.get(key)) == null) {
@@ -87,11 +86,7 @@ public class HstoreTables {
                         return currentId.longValue();
                     if (currentId.longValue() > maxId.longValue()) {
                         try {
-                            if (pdClient == null) {
-                                String conf = session.getConf()
-                                                     .get(HstoreOptions.PD_PEERS);
-                                pdClient = PDClient.create(PDConfig.of(conf));
-                            }
+                            PDClient pdClient = HstoreSessionsImpl.getDefaultPdClient();
                             Pdpb.GetIdResponse idByKey = pdClient.getIdByKey(
                                                                   key, DELTA);
                             idPair.getValue().getAndSet(idByKey.getId() +

@@ -1,8 +1,8 @@
 package com.baidu.hugegraph.backend.store.hstore;
 
 import com.baidu.hugegraph.backend.BackendException;
+import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.pd.client.PDClient;
-import com.baidu.hugegraph.pd.client.PDConfig;
 import com.baidu.hugegraph.pd.common.PDException;
 import com.baidu.hugegraph.pd.grpc.Metapb;
 import com.baidu.hugegraph.store.client.*;
@@ -24,10 +24,13 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
     protected  HstoreNodePartitionerImpl(){
 
     }
+    public HstoreNodePartitionerImpl(String pdPeers) {
+        pdClient = HstoreSessionsImpl.getDefaultPdClient();
+    }
 
     public HstoreNodePartitionerImpl(HgStoreNodeManager nodeManager, String pdPeers) {
+        this(pdPeers);
         this.nodeManager = nodeManager;
-        pdClient = PDClient.create(PDConfig.of(pdPeers));
     }
 
     /**
@@ -100,6 +103,9 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
                     e.getMessage());
         }
     }
+    public void setNodeManager(HgStoreNodeManager nodeManager) {
+        this.nodeManager = nodeManager;
+    }
 }
 
 
@@ -111,11 +117,8 @@ class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl {
     private static Map<Integer, Long> leaderMap = new ConcurrentHashMap<>();
     private static Map<Long, String> storeMap = new ConcurrentHashMap<>();
 
-    public FakeHstoreNodePartitionerImpl(HgStoreNodeManager nodeManager, String peers) {
-
-        this.hstorePeers = peers;
-        this.nodeManager = nodeManager;
-
+    public FakeHstoreNodePartitionerImpl(String pdPeers) {
+        this.hstorePeers = pdPeers;
         // store列表
         for (String address : hstorePeers.split(",")) {
             storeMap.put((long) address.hashCode(), address);
@@ -123,6 +126,12 @@ class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl {
         // 分区列表
         for (int i = 0; i < partitionCount; i++)
             leaderMap.put(i, (long) storeMap.keySet().iterator().next());
+    }
+
+    public FakeHstoreNodePartitionerImpl(HgStoreNodeManager nodeManager, String peers) {
+
+        this(peers);
+        this.nodeManager = nodeManager;
 
     }
 
@@ -157,4 +166,16 @@ class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl {
         }
         return 0;
     }
+    public static class NodePartitionerFactory {
+      public static HstoreNodePartitionerImpl getNodePartitioner(HugeConfig config, HgStoreNodeManager nodeManager){
+          if ( config.get(HstoreOptions.PD_FAKE) ) // 无PD模式
+              return new FakeHstoreNodePartitionerImpl(nodeManager,
+                      config.get(HstoreOptions.HSTORE_PEERS));
+          else
+              return new HstoreNodePartitionerImpl(nodeManager,
+                                                   config.get(HstoreOptions.PD_PEERS)
+              );
+        }
+    }
+
 }

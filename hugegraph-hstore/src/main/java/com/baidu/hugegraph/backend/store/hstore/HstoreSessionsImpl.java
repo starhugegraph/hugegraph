@@ -19,16 +19,13 @@
 
 package com.baidu.hugegraph.backend.store.hstore;
 
-import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.backend.store.BackendEntry;
 import com.baidu.hugegraph.backend.store.BackendEntry.BackendColumnIterator;
 import com.baidu.hugegraph.backend.store.BackendEntryIterator;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.pd.client.PDClient;
 import com.baidu.hugegraph.pd.client.PDConfig;
-import com.baidu.hugegraph.pd.common.PDException;
 import com.baidu.hugegraph.pd.grpc.Metapb;
-import com.baidu.hugegraph.space.GraphSpace;
 import com.baidu.hugegraph.store.HgKvIterator;
 import com.baidu.hugegraph.store.HgOwnerKey;
 import com.baidu.hugegraph.store.HgSessionManager;
@@ -40,7 +37,6 @@ import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.util.Bytes;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.StringEncoding;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -66,6 +62,8 @@ public class HstoreSessionsImpl extends HstoreSessions {
     private String database;
     private static volatile Boolean INITIALIZED_NODE = Boolean.FALSE;
     private static volatile Set<String> INITIALIZED_GRAPH = new HashSet<String>();
+    private static volatile PDClient defaultPdClient;
+    private static volatile HstoreNodePartitionerImpl nodePartitioner = null;
 
     public HstoreSessionsImpl(HugeConfig config, String database, String store) {
         super(config, database, store);
@@ -77,28 +75,28 @@ public class HstoreSessionsImpl extends HstoreSessions {
         this.tables = new ConcurrentHashMap<>();
         this.refCount = new AtomicInteger(1);
     }
-
     private void initStoreNode(HugeConfig config) {
         if (!INITIALIZED_NODE) {
             synchronized (INITIALIZED_NODE) {
                 if (!INITIALIZED_NODE) {
-                    HstoreNodePartitionerImpl nodePartitioner = null;
                     HgStoreNodeManager nodeManager = HgStoreNodeManager.getInstance();
-                    if ( config.get(HstoreOptions.PD_FAKE) ) // 无PD模式
-                        nodePartitioner = new FakeHstoreNodePartitionerImpl(
-                                nodeManager, config.get(HstoreOptions.HSTORE_PEERS)
-                        );
-                    else
-                        nodePartitioner = new HstoreNodePartitionerImpl(
-                                nodeManager, config.get(HstoreOptions.PD_PEERS)
-                        );
+                    defaultPdClient = PDClient.create(PDConfig.of(config.get(HstoreOptions.PD_PEERS)));
+                    nodePartitioner = FakeHstoreNodePartitionerImpl.
+                            NodePartitionerFactory.getNodePartitioner(config,nodeManager);
                     nodeManager.setNodeProvider(nodePartitioner);
                     nodeManager.setNodePartitioner(nodePartitioner);
                     nodeManager.setNodeNotifier(nodePartitioner);
                     INITIALIZED_NODE = Boolean.TRUE;
+
                 }
             }
         }
+    }
+    public static HstoreNodePartitionerImpl getNodePartitioner() {
+        return nodePartitioner;
+    }
+    public static PDClient getDefaultPdClient() {
+        return defaultPdClient;
     }
 
     @Override
@@ -425,6 +423,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         @Override
         public void truncate() {
             this.graph.truncate();
+
         }
 
         private int size() {
