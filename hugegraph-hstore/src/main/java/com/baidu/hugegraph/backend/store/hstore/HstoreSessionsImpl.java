@@ -412,12 +412,14 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public void setMode(GraphMode mode) {
+            /*
             HgStoreNodePartitioner partitioner = HgStoreNodeManager.getInstance().getNodePartitioner();
             if (partitioner instanceof HgStoreNodePartitioner) {
                 ((HstoreNodePartitionerImpl) partitioner).setWorkMode(this.getGraphName(), mode.equals(GraphMode.LOADING) ?
                         Metapb.GraphWorkMode.Batch_Import :
                         Metapb.GraphWorkMode.Normal);
             }
+            */
         }
 
         @Override
