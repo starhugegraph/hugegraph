@@ -21,9 +21,13 @@
 package com.baidu.hugegraph.api.filter;
 
 import com.baidu.hugegraph.auth.HugePermission;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
+import com.baidu.hugegraph.logger.LogTemplate;
+import com.baidu.hugegraph.logger.MethodLogger;
 import com.baidu.hugegraph.util.DateUtil;
 import com.baidu.hugegraph.util.Log;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Singleton;
 import javax.ws.rs.container.ContainerRequestContext;
@@ -44,8 +48,13 @@ import java.util.Optional;
 @Singleton
 public class AccessLogFilter implements ContainerResponseFilter {
 
-    private static final Logger LOG = Log.logger(AccessLogFilter.class);
+    private static final HugeGraphLogger TEMPLATE_LOGGER
+            = Log.formattedLogger(AccessLogFilter.class);
 
+    private static final MethodLogger<?> LOGGER
+            = Log.getMethodLogger(AccessLogFilter.class, MethodLogger.LevelInfo.class);
+
+    private static final Logger LOG_4J_LOGGER = LoggerFactory.getLogger(AccessLogFilter.class);
     /**
      * Use filter to log request info
      * @param requestContext requestContext
@@ -73,13 +82,14 @@ public class AccessLogFilter implements ContainerResponseFilter {
         SecurityContext securityContext = requestContext.getSecurityContext();
         if (securityContext instanceof AuthenticationFilter.Authorizer) {
             AuthenticationFilter.Authorizer authorizer = (AuthenticationFilter.Authorizer)securityContext;
-            userName = authorizer.username();
-            userId = authorizer.userId();
+            userName = authorizer.username();            userId = authorizer.userId();
             roles = authorizer.role().toString();
         }
 
         // build log string
         // TODO by Scorpiour: Use Formatted log template to replace hard-written string when logging
-        LOG.info("{} /{} Status: {} - user: {} {} - roles: {} in {} ms", method, path, code, userId, userName, roles, responseTime);
+        TEMPLATE_LOGGER.info(LogTemplate.ACCESS_LOG, method, path, code, userId, userName, roles, responseTime);
+        LOG_4J_LOGGER.info("Native logger {} /{} Status: {} - user: {} {} - roles: {} in {} ms", method, path, code, userId, userName, roles, responseTime);
+        LOGGER.logApiAccess(method, path, responseTime);
     }
 }
