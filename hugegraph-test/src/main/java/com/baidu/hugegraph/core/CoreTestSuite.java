@@ -31,6 +31,7 @@ import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.core.PropertyCoreTest.EdgePropertyCoreTest;
 import com.baidu.hugegraph.core.PropertyCoreTest.VertexPropertyCoreTest;
 import com.baidu.hugegraph.dist.RegisterUtil;
+import com.baidu.hugegraph.task.TaskManager;
 import com.baidu.hugegraph.testutil.Utils;
 import com.baidu.hugegraph.type.define.NodeRole;
 import com.baidu.hugegraph.util.Log;
@@ -64,6 +65,7 @@ public class CoreTestSuite {
 
     @BeforeClass
     public static void init() {
+        TaskManager.instance(4);
         graph = Utils.open();
         graph.clearBackend();
         graph.initBackend();

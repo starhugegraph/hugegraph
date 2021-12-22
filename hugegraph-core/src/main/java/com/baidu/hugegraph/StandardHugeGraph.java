@@ -289,7 +289,7 @@ public class StandardHugeGraph implements HugeGraph {
     @Override
     public void mode(GraphMode mode) {
         if (this.mode.loading() && mode == GraphMode.NONE &&
-            this.storeProvider.type().equalsIgnoreCase("rocksdb")) {
+            "rocksdb".equalsIgnoreCase(this.backend())) {
             // Flush WAL to sst file after load data for rocksdb backend
             this.metadata(null, "flush");
         }
@@ -498,11 +498,7 @@ public class StandardHugeGraph implements HugeGraph {
     private AbstractSerializer serializer() {
         String name = this.configuration.get(CoreOptions.SERIALIZER);
         LOG.debug("Loading serializer '{}' for graph '{}'", name, this.name);
-        AbstractSerializer serializer = SerializerFactory.serializer(name);
-        if (serializer == null) {
-            throw new HugeException("Can't load serializer with name " + name);
-        }
-        return serializer;
+        return SerializerFactory.serializer(name);
     }
 
     private Analyzer analyzer() {
@@ -736,6 +732,11 @@ public class StandardHugeGraph implements HugeGraph {
     }
 
     @Override
+    public boolean existsOlapTable(PropertyKey pkey) {
+        return this.schemaTransaction().existOlapTable(pkey.id());
+    }
+
+    @Override
     public void addVertexLabel(VertexLabel vertexLabel) {
         assert this.name.equals(vertexLabel.graph().name());
         this.schemaTransaction().addVertexLabel(vertexLabel);
@@ -893,6 +894,9 @@ public class StandardHugeGraph implements HugeGraph {
             this.authManager.close();
         }
         this.taskManager.closeScheduler(this.params);
+        if (this.backend().equals("rocksdb")) {
+            this.metadata(null, "flush");
+        }
         try {
             this.closeTx();
         } finally {
