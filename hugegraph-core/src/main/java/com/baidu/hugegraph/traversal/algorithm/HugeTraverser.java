@@ -174,7 +174,12 @@ public class HugeTraverser {
     }
 
     protected int vertexDegree(Id source, EdgeStep step) {
-        return Iterators.size(this.edgesOfVertex(source, step));
+        int degree = 0;
+        Iterator<Edge> edges = this.edgesOfVertex(source, step);
+        while (edges.hasNext()) {
+            degree++;
+        }
+        return degree;
     }
 
     @Watched
