@@ -32,7 +32,6 @@ import javax.ws.rs.ForbiddenException;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.HugeGraphParams;
@@ -45,6 +44,7 @@ import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.config.AuthOptions;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.event.EventListener;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.type.define.Directions;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Events;
@@ -59,7 +59,8 @@ import io.jsonwebtoken.Claims;
 
 public class StandardAuthManager implements AuthManager {
 
-    protected static final Logger LOG = Log.logger(StandardAuthManager.class);
+    protected static final HugeGraphLogger LOGGER
+        = Log.getLogger(AuthManager.class);
 
     private final HugeGraphParams graph;
     private final EventListener eventListener;
@@ -176,21 +177,27 @@ public class StandardAuthManager implements AuthManager {
     @Override
     public Id createUser(HugeUser user) {
         this.invalidateUserCache();
-        return this.users.add(user);
+        Id id = this.users.add(user);
+        LOGGER.getAuditLogger().logCreateUser(id.asString(), user.creator);
+        return id;
     }
 
     @Override
     public Id updateUser(HugeUser user) {
         this.invalidateUserCache();
         this.invalidatePasswordCache(user.id());
-        return this.users.update(user);
+        Id id = this.users.update(user);
+        LOGGER.getAuditLogger().logUpdateUser(id.asString(), user.idString());
+        return id;
     }
 
     @Override
     public HugeUser deleteUser(Id id) {
         this.invalidateUserCache();
         this.invalidatePasswordCache(id);
-        return this.users.delete(id);
+        HugeUser hugeUser = this.users.delete(id);
+        LOGGER.getAuditLogger().logDeleteUser(id.asString(), "system");
+        return hugeUser;
     }
 
     @Override

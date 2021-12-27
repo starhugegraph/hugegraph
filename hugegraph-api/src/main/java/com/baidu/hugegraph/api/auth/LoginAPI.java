@@ -34,7 +34,6 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
@@ -45,6 +44,7 @@ import com.baidu.hugegraph.auth.AuthConstant;
 import com.baidu.hugegraph.auth.UserWithRole;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.define.Checkable;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
@@ -56,8 +56,9 @@ import com.google.common.collect.ImmutableMap;
 @Singleton
 public class LoginAPI extends API {
 
-    private static final Logger LOG = Log.logger(RestServer.class);
-
+    private static final HugeGraphLogger LOGGER
+            = Log.getLogger(RestServer.class);
+ 
     @POST
     @Timed
     @Path("login")
@@ -66,7 +67,6 @@ public class LoginAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String login(@Context GraphManager manager,
                         JsonLogin jsonLogin) {
-        LOG.debug("Graph [{}] user login: {}", SYSTEM_GRAPH, jsonLogin);
         checkCreatingBody(jsonLogin);
 
         try {
@@ -74,6 +74,7 @@ public class LoginAPI extends API {
                                                            jsonLogin.password,
                                                            jsonLogin.expire);
             HugeGraph g = graph(manager, SYSTEM_GRAPH);
+            LOGGER.getAuditLogger().logUserLogin(jsonLogin.name, SYSTEM_GRAPH);
             return manager.serializer(g)
                           .writeMap(ImmutableMap.of("token", token));
         } catch (AuthenticationException e) {
@@ -91,7 +92,8 @@ public class LoginAPI extends API {
                        @HeaderParam(HttpHeaders.AUTHORIZATION) String auth) {
         E.checkArgument(StringUtils.isNotEmpty(auth),
                         "Request header Authorization must not be null");
-        LOG.debug("Graph [{}] user logout: {}", SYSTEM_GRAPH, auth);
+
+        LOGGER.getAuditLogger().logUserLogout(auth);
 
         if (!auth.startsWith(AuthenticationFilter.BEARER_TOKEN_PREFIX)) {
             throw new BadRequestException(
@@ -115,7 +117,8 @@ public class LoginAPI extends API {
                               String token) {
         E.checkArgument(StringUtils.isNotEmpty(token),
                         "Request header Authorization must not be null");
-        LOG.debug("Graph [{}] get user: {}", SYSTEM_GRAPH, token);
+
+        LOGGER.logDebug("guoyonggang", "Graph get user: " + token, SYSTEM_GRAPH);
 
         if (!token.startsWith(AuthenticationFilter.BEARER_TOKEN_PREFIX)) {
             throw new BadRequestException(
