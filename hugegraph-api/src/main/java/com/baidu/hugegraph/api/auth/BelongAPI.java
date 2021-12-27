@@ -34,8 +34,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
-import org.slf4j.Logger;
-
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
@@ -44,6 +42,7 @@ import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.define.Checkable;
 import com.baidu.hugegraph.exception.NotFoundException;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
@@ -55,7 +54,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @Singleton
 public class BelongAPI extends API {
 
-    private static final Logger LOG = Log.logger(RestServer.class);
+    private static final HugeGraphLogger LOGGER
+            = Log.getLogger(RestServer.class);
 
     @POST
     @Timed
@@ -64,13 +64,15 @@ public class BelongAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String create(@Context GraphManager manager,
                          JsonBelong jsonBelong) {
-        LOG.debug("Graph [{}] create belong: {}", SYSTEM_GRAPH, jsonBelong);
+
         checkCreatingBody(jsonBelong);
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         HugeBelong belong = jsonBelong.build();
         belong.id(manager.authManager().createBelong(belong));
-        return manager.serializer(g).writeAuthElement(belong);
+        String result = manager.serializer(g).writeAuthElement(belong);
+        LOGGER.getServerLogger().logCreateBelong(SYSTEM_GRAPH, jsonBelong);
+        return result;
     }
 
     @PUT
@@ -81,7 +83,7 @@ public class BelongAPI extends API {
     public String update(@Context GraphManager manager,
                          @PathParam("id") String id,
                          JsonBelong jsonBelong) {
-        LOG.debug("Graph [{}] update belong: {}", SYSTEM_GRAPH, jsonBelong);
+
         checkUpdatingBody(jsonBelong);
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
@@ -93,7 +95,9 @@ public class BelongAPI extends API {
         }
         belong = jsonBelong.build(belong);
         manager.authManager().updateBelong(belong);
-        return manager.serializer(g).writeAuthElement(belong);
+        String result = manager.serializer(g).writeAuthElement(belong);
+        LOGGER.getServerLogger().logUpdateBelong(SYSTEM_GRAPH, jsonBelong);
+        return result;
     }
 
     @GET
@@ -103,8 +107,10 @@ public class BelongAPI extends API {
                        @QueryParam("user") String user,
                        @QueryParam("group") String group,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
-        LOG.debug("Graph [{}] list belongs by user {} or group {}",
-                SYSTEM_GRAPH, user, group);
+
+        LOGGER.logCustomDebug(
+            "Graph [{}] list belongs by user {} or group {}",
+            RestServer.EXECUTOR, SYSTEM_GRAPH, user, group);
         E.checkArgument(user == null || group == null,
                         "Can't pass both user and group at the same time");
 
@@ -128,7 +134,9 @@ public class BelongAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String get(@Context GraphManager manager,
                       @PathParam("id") String id) {
-        LOG.debug("Graph [{}] get belong: {}", SYSTEM_GRAPH, id);
+
+        LOGGER.logCustomDebug("Graph [{}] get belong: {}",
+            RestServer.EXECUTOR, SYSTEM_GRAPH, id);
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         HugeBelong belong = manager.authManager().getBelong(UserAPI.parseId(id));
@@ -141,12 +149,12 @@ public class BelongAPI extends API {
     @Consumes(APPLICATION_JSON)
     public void delete(@Context GraphManager manager,
                        @PathParam("id") String id) {
-        LOG.debug("Graph [{}] delete belong: {}", SYSTEM_GRAPH, id);
 
         @SuppressWarnings("unused") // just check if the graph exists
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         try {
             manager.authManager().deleteBelong(UserAPI.parseId(id));
+            LOGGER.getServerLogger().logDeleteBelong(SYSTEM_GRAPH, id);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid belong id: " + id);
         }

@@ -35,8 +35,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
-import org.slf4j.Logger;
-
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
@@ -44,6 +42,7 @@ import com.baidu.hugegraph.auth.HugeTarget;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.define.Checkable;
 import com.baidu.hugegraph.exception.NotFoundException;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.JsonUtil;
@@ -56,8 +55,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @Singleton
 public class TargetAPI extends API {
 
-    private static final Logger LOG = Log.logger(RestServer.class);
-
+    private static final HugeGraphLogger LOGGER
+            = Log.getLogger(RestServer.class);
     @POST
     @Timed
     @Status(Status.CREATED)
@@ -65,13 +64,15 @@ public class TargetAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String create(@Context GraphManager manager,
                          JsonTarget jsonTarget) {
-        LOG.debug("Graph [{}] create target: {}", SYSTEM_GRAPH, jsonTarget);
+
         checkCreatingBody(jsonTarget);
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         HugeTarget target = jsonTarget.build();
         target.id(manager.authManager().createTarget(target));
-        return manager.serializer(g).writeAuthElement(target);
+        String result = manager.serializer(g).writeAuthElement(target);
+        LOGGER.getServerLogger().logCreateTarget(SYSTEM_GRAPH, jsonTarget);
+        return result;
     }
 
     @PUT
@@ -82,7 +83,7 @@ public class TargetAPI extends API {
     public String update(@Context GraphManager manager,
                          @PathParam("id") String id,
                          JsonTarget jsonTarget) {
-        LOG.debug("Graph [{}] update target: {}", SYSTEM_GRAPH, jsonTarget);
+
         checkUpdatingBody(jsonTarget);
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
@@ -94,7 +95,9 @@ public class TargetAPI extends API {
         }
         target = jsonTarget.build(target);
         manager.authManager().updateTarget(target);
-        return manager.serializer(g).writeAuthElement(target);
+        String result = manager.serializer(g).writeAuthElement(target);
+        LOGGER.getServerLogger().logUpdateTarget(SYSTEM_GRAPH, jsonTarget);
+        return result;
     }
 
     @GET
@@ -102,7 +105,7 @@ public class TargetAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String list(@Context GraphManager manager,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
-        LOG.debug("Graph [{}] list targets", SYSTEM_GRAPH);
+        LOGGER.logCustomDebug("Graph [{}] list targets", RestServer.EXECUTOR, SYSTEM_GRAPH);
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         List<HugeTarget> targets = manager.authManager().listAllTargets(limit);
@@ -115,7 +118,7 @@ public class TargetAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String get(@Context GraphManager manager,
                       @PathParam("id") String id) {
-        LOG.debug("Graph [{}] get target: {}", SYSTEM_GRAPH, id);
+        LOGGER.logCustomDebug("Graph [{}] get target: {}", RestServer.EXECUTOR, SYSTEM_GRAPH, id);
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         HugeTarget target = manager.authManager().getTarget(UserAPI.parseId(id));
@@ -128,12 +131,12 @@ public class TargetAPI extends API {
     @Consumes(APPLICATION_JSON)
     public void delete(@Context GraphManager manager,
                        @PathParam("id") String id) {
-        LOG.debug("Graph [{}] delete target: {}", SYSTEM_GRAPH, id);
 
         @SuppressWarnings("unused") // just check if the graph exists
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         try {
             manager.authManager().deleteTarget(UserAPI.parseId(id));
+            LOGGER.getServerLogger().logDeleteTarget(SYSTEM_GRAPH, id);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid target id: " + id);
         }

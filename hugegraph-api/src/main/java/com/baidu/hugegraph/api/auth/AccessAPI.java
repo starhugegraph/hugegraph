@@ -34,8 +34,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
-import org.slf4j.Logger;
-
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
@@ -45,6 +43,7 @@ import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.define.Checkable;
 import com.baidu.hugegraph.exception.NotFoundException;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
@@ -56,7 +55,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @Singleton
 public class AccessAPI extends API {
 
-    private static final Logger LOG = Log.logger(RestServer.class);
+    private static final HugeGraphLogger LOGGER
+            = Log.getLogger(RestServer.class);
 
     @POST
     @Timed
@@ -65,13 +65,14 @@ public class AccessAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String create(@Context GraphManager manager,
                          JsonAccess jsonAccess) {
-        LOG.debug("Graph [{}] create access: {}", SYSTEM_GRAPH, jsonAccess);
         checkCreatingBody(jsonAccess);
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         HugeAccess access = jsonAccess.build();
         access.id(manager.authManager().createAccess(access));
-        return manager.serializer(g).writeAuthElement(access);
+        String result = manager.serializer(g).writeAuthElement(access);
+        LOGGER.getServerLogger().logCreateAccess(SYSTEM_GRAPH, jsonAccess);
+        return result;
     }
 
     @PUT
@@ -82,7 +83,6 @@ public class AccessAPI extends API {
     public String update(@Context GraphManager manager,
                          @PathParam("id") String id,
                          JsonAccess jsonAccess) {
-        LOG.debug("Graph [{}] update access: {}", SYSTEM_GRAPH, jsonAccess);
         checkUpdatingBody(jsonAccess);
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
@@ -94,7 +94,9 @@ public class AccessAPI extends API {
         }
         access = jsonAccess.build(access);
         manager.authManager().updateAccess(access);
-        return manager.serializer(g).writeAuthElement(access);
+        String result = manager.serializer(g).writeAuthElement(access);
+        LOGGER.getServerLogger().logUpdateAccess(SYSTEM_GRAPH, jsonAccess);
+        return result;
     }
 
     @GET
@@ -104,8 +106,10 @@ public class AccessAPI extends API {
                        @QueryParam("group") String group,
                        @QueryParam("target") String target,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
-        LOG.debug("Graph [{}] list belongs by group {} or target {}",
-                SYSTEM_GRAPH, group, target);
+
+        LOGGER.logCustomDebug(
+            "Graph [{}] list belongs by group {} or target {}",
+            "system", SYSTEM_GRAPH, group, target);
         E.checkArgument(group == null || target == null,
                         "Can't pass both group and target at the same time");
 
@@ -129,8 +133,8 @@ public class AccessAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String get(@Context GraphManager manager,
                       @PathParam("id") String id) {
-        LOG.debug("Graph [{}] get access: {}", SYSTEM_GRAPH, id);
 
+        LOGGER.logCustomDebug("Graph [{}] get access: {}", "system", SYSTEM_GRAPH, id);
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         HugeAccess access = manager.authManager().getAccess(UserAPI.parseId(id));
         return manager.serializer(g).writeAuthElement(access);
@@ -142,12 +146,12 @@ public class AccessAPI extends API {
     @Consumes(APPLICATION_JSON)
     public void delete(@Context GraphManager manager,
                        @PathParam("id") String id) {
-        LOG.debug("Graph [{}] delete access: {}", SYSTEM_GRAPH, id);
 
         @SuppressWarnings("unused") // just check if the graph exists
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         try {
             manager.authManager().deleteAccess(UserAPI.parseId(id));
+            LOGGER.getServerLogger().logDeleteAccess(SYSTEM_GRAPH, id);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid access id: " + id);
         }

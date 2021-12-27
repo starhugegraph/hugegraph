@@ -38,7 +38,6 @@ import javax.ws.rs.core.Context;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
@@ -49,6 +48,7 @@ import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.define.Checkable;
 import com.baidu.hugegraph.exception.NotFoundException;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
@@ -60,7 +60,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @Singleton
 public class ProjectAPI extends API {
 
-    private static final Logger LOG = Log.logger(RestServer.class);
+    private static final HugeGraphLogger LOGGER
+            = Log.getLogger(RestServer.class);
     private static final String ACTION_ADD_GRAPH = "add_graph";
     private static final String ACTION_REMOVE_GRAPH = "remove_graph";
 
@@ -71,7 +72,7 @@ public class ProjectAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String create(@Context GraphManager manager,
                          JsonProject jsonProject) {
-        LOG.debug("Graph [{}] create project: {}", SYSTEM_GRAPH, jsonProject);
+
         checkCreatingBody(jsonProject);
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
@@ -82,7 +83,9 @@ public class ProjectAPI extends API {
          * created
          */
         project = manager.authManager().getProject(projectId);
-        return manager.serializer(g).writeAuthElement(project);
+        String result = manager.serializer(g).writeAuthElement(project);
+        LOGGER.getServerLogger().logCreateProject(SYSTEM_GRAPH, jsonProject);
+        return result;
     }
 
     @PUT
@@ -94,8 +97,7 @@ public class ProjectAPI extends API {
                          @PathParam("id") String id,
                          @QueryParam("action") String action,
                          JsonProject jsonProject) {
-        LOG.debug("Graph [{}] update {} project: {}", SYSTEM_GRAPH, action,
-                  jsonProject);
+
         checkUpdatingBody(jsonProject);
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
@@ -121,7 +123,9 @@ public class ProjectAPI extends API {
             project = jsonProject.buildUpdateDescription(project);
         }
         authManager.updateProject(project);
-        return manager.serializer(g).writeAuthElement(project);
+        String result = manager.serializer(g).writeAuthElement(project);
+        LOGGER.getServerLogger().logUpdateProject(SYSTEM_GRAPH, jsonProject);
+        return result;
     }
 
     @GET
@@ -129,7 +133,7 @@ public class ProjectAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String list(@Context GraphManager manager,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
-        LOG.debug("Graph [{}] list project", SYSTEM_GRAPH);
+        LOGGER.logCustomDebug("Graph [{}] list project", RestServer.EXECUTOR, SYSTEM_GRAPH);
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         List<HugeProject> projects = manager.authManager()
@@ -143,7 +147,8 @@ public class ProjectAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String get(@Context GraphManager manager,
                       @PathParam("id") String id) {
-        LOG.debug("Graph [{}] get project: {}", SYSTEM_GRAPH, id);
+        LOGGER.logCustomDebug("Graph [{}] get project: {}",
+            RestServer.EXECUTOR, SYSTEM_GRAPH, id);
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         HugeProject project;
@@ -161,12 +166,12 @@ public class ProjectAPI extends API {
     @Consumes(APPLICATION_JSON)
     public void delete(@Context GraphManager manager,
                        @PathParam("id") String id) {
-        LOG.debug("Graph [{}] delete project: {}", SYSTEM_GRAPH, id);
 
         @SuppressWarnings("unused") // just check if the graph exists
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         try {
             manager.authManager().deleteProject(UserAPI.parseId(id));
+            LOGGER.getServerLogger().logDeleteProject(SYSTEM_GRAPH, id);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid project id: " + id);
         }

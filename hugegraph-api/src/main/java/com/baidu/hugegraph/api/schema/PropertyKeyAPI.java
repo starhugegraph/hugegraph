@@ -37,7 +37,6 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
@@ -46,9 +45,11 @@ import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.define.Checkable;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.schema.PropertyKey;
 import com.baidu.hugegraph.schema.SchemaElement;
 import com.baidu.hugegraph.schema.Userdata;
+import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.type.define.AggregateType;
 import com.baidu.hugegraph.type.define.Cardinality;
 import com.baidu.hugegraph.type.define.DataType;
@@ -65,7 +66,8 @@ import com.google.common.collect.ImmutableMap;
 @Singleton
 public class PropertyKeyAPI extends API {
 
-    private static final Logger LOG = Log.logger(PropertyKeyAPI.class);
+    private static final HugeGraphLogger LOGGER
+    = Log.getLogger(RestServer.class);
 
     @POST
     @Timed
@@ -76,14 +78,15 @@ public class PropertyKeyAPI extends API {
     public String create(@Context GraphManager manager,
                          @PathParam("graph") String graph,
                          JsonPropertyKey jsonPropertyKey) {
-        LOG.debug("Graph [{}] create property key: {}",
-                  graph, jsonPropertyKey);
+
         checkCreatingBody(jsonPropertyKey);
 
         HugeGraph g = graph(manager, graph);
         PropertyKey.Builder builder = jsonPropertyKey.convert2Builder(g);
         SchemaElement.TaskWithSchema pk = builder.createWithTask();
-        return manager.serializer(g).writeTaskWithSchema(pk);
+        String result = manager.serializer(g).writeTaskWithSchema(pk);
+        LOGGER.getServerLogger().logCreateProperty(graph, jsonPropertyKey);
+        return result;
     }
 
     @PUT
@@ -98,8 +101,10 @@ public class PropertyKeyAPI extends API {
                          @PathParam("name") String name,
                          @QueryParam("action") String action,
                          PropertyKeyAPI.JsonPropertyKey jsonPropertyKey) {
-        LOG.debug("Graph [{}] {} property key: {}",
-                  graph, action, jsonPropertyKey);
+
+        LOGGER.getServerLogger()
+            .logUpdateProperty(graph, action, jsonPropertyKey);
+
         checkUpdatingBody(jsonPropertyKey);
         E.checkArgument(name.equals(jsonPropertyKey.name),
                         "The name in url(%s) and body(%s) are different",
@@ -138,9 +143,12 @@ public class PropertyKeyAPI extends API {
                        @QueryParam("names") List<String> names) {
         boolean listAll = CollectionUtils.isEmpty(names);
         if (listAll) {
-            LOG.debug("Graph [{}] list property keys", graph);
+            LOGGER.logCustomDebug(
+                "Graph [{}] list property keys", RestServer.EXECUTOR, graph);
         } else {
-            LOG.debug("Graph [{}] get property keys by names {}", graph, names);
+            LOGGER.logCustomDebug(
+                "Graph [{}] get property keys by names {}",
+                RestServer.EXECUTOR, graph, names);
         }
 
         HugeGraph g = graph(manager, graph);
@@ -164,7 +172,9 @@ public class PropertyKeyAPI extends API {
     public String get(@Context GraphManager manager,
                       @PathParam("graph") String graph,
                       @PathParam("name") String name) {
-        LOG.debug("Graph [{}] get property key by name '{}'", graph, name);
+        LOGGER.logCustomDebug(
+            "Graph [{}] get property key by name '{}'",
+            RestServer.EXECUTOR, graph, name);
 
         HugeGraph g = graph(manager, graph);
         PropertyKey propertyKey = g.schema().getPropertyKey(name);
@@ -181,11 +191,11 @@ public class PropertyKeyAPI extends API {
     public Map<String, Id> delete(@Context GraphManager manager,
                                   @PathParam("graph") String graph,
                                   @PathParam("name") String name) {
-        LOG.debug("Graph [{}] remove property key by name '{}'", graph, name);
 
         HugeGraph g = graph(manager, graph);
         // Throw 404 if not exists
         g.schema().getPropertyKey(name);
+        LOGGER.getServerLogger().logDeleteProperty(graph, name);
         return ImmutableMap.of("task_id",
                                g.schema().propertyKey(name).remove());
     }
