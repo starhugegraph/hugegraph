@@ -35,7 +35,6 @@ import javax.ws.rs.core.HttpHeaders;
 
 import com.baidu.hugegraph.auth.AuthManager;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
 
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.AuthenticationFilter;
@@ -45,6 +44,7 @@ import com.baidu.hugegraph.auth.AuthConstant;
 import com.baidu.hugegraph.auth.UserWithRole;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.define.Checkable;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
@@ -56,8 +56,9 @@ import com.google.common.collect.ImmutableMap;
 @Singleton
 public class LoginAPI extends API {
 
-    private static final Logger LOG = Log.logger(RestServer.class);
-
+    private static final HugeGraphLogger LOGGER
+            = Log.getLogger(RestServer.class);
+ 
     @POST
     @Timed
     @Path("login")
