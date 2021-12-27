@@ -38,7 +38,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
-import com.baidu.hugegraph.traversal.algorithm.steps.Steps;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.slf4j.Logger;
@@ -47,7 +46,6 @@ import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.graph.EdgeAPI;
 import com.baidu.hugegraph.api.graph.VertexAPI;
 import com.baidu.hugegraph.backend.id.Id;
-import com.baidu.hugegraph.backend.query.Query;
 import com.baidu.hugegraph.backend.query.QueryResults;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.server.RestServer;
@@ -55,7 +53,7 @@ import com.baidu.hugegraph.structure.HugeVertex;
 import com.baidu.hugegraph.traversal.algorithm.HugeTraverser;
 import com.baidu.hugegraph.traversal.algorithm.KneighborTraverser;
 import com.baidu.hugegraph.traversal.algorithm.records.KneighborRecords;
-import com.baidu.hugegraph.traversal.algorithm.steps.EdgeStep;
+import com.baidu.hugegraph.traversal.algorithm.steps.Steps;
 import com.baidu.hugegraph.type.define.Directions;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
@@ -146,7 +144,7 @@ public class KneighborAPI extends TraverserAPI {
         }
 
         long size = results.size();
-        if (request.limit != Query.NO_LIMIT && size > request.limit) {
+        if (size > request.limit) {
             size = request.limit;
         }
         List<Id> neighbors = request.countOnly ?
@@ -156,8 +154,9 @@ public class KneighborAPI extends TraverserAPI {
         if (request.withPath) {
             paths.addAll(results.paths(request.limit));
         }
-        Iterator<Vertex> iterVertice = QueryResults.emptyIterator();
-        Iterator<Edge> iterEdge = QueryResults.emptyIterator();
+
+        Iterator<Vertex> verticesIter = QueryResults.emptyIterator();
+        Iterator<Edge> edgesIter = QueryResults.emptyIterator();
         if (request.withVertex && !request.countOnly) {
             Set<Id> ids = new HashSet<>(neighbors);
             if (request.withPath) {
@@ -166,26 +165,27 @@ public class KneighborAPI extends TraverserAPI {
                 }
             }
             if (!ids.isEmpty()) {
-                iterVertice = g.vertices(ids.toArray());
+                verticesIter = g.vertices(ids.toArray());
                 measure.addIterCount(ids.size(), 0);
             }
         }
+
         if (request.withEdge && !request.countOnly) {
-            Iterator<Edge> iter = results.getEdges();
-            if (iter == null) {
+            Iterator<Edge> edges = results.getEdges();
+            if (edges == null) {
                 Set<Id> ids = results.getEdgeIds();
                 if (!ids.isEmpty()) {
-                    iter = g.edges(ids.toArray());
+                    edges = g.edges(ids.toArray());
                     measure.addIterCount(0, ids.size());
                 }
             }
-            if (iter != null) {
-                iterEdge = iter;
+            if (edges != null) {
+                edgesIter = edges;
             }
         }
         return manager.serializer(g, measure.getResult())
                       .writeNodesWithPath("kneighbor", neighbors, size,
-                                          paths, iterVertice, iterEdge, null);
+                                          paths, verticesIter, edgesIter, null);
     }
 
     private static class Request {
@@ -193,7 +193,7 @@ public class KneighborAPI extends TraverserAPI {
         @JsonProperty("source")
         public Object source;
         @JsonProperty("steps")
-        public TraverserAPI.EVSteps steps;
+        public VESteps steps;
         @JsonProperty("max_depth")
         public int maxDepth;
         @JsonProperty("limit")
