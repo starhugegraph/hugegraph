@@ -109,7 +109,7 @@ public class AccessAPI extends API {
 
         LOGGER.logCustomDebug(
             "Graph [{}] list belongs by group {} or target {}",
-            "system", SYSTEM_GRAPH, group, target);
+            RestServer.EXECUTOR, SYSTEM_GRAPH, group, target);
         E.checkArgument(group == null || target == null,
                         "Can't pass both group and target at the same time");
 
@@ -134,7 +134,7 @@ public class AccessAPI extends API {
     public String get(@Context GraphManager manager,
                       @PathParam("id") String id) {
 
-        LOGGER.logCustomDebug("Graph [{}] get access: {}", "system", SYSTEM_GRAPH, id);
+        LOGGER.logCustomDebug("Graph [{}] get access: {}", RestServer.EXECUTOR, SYSTEM_GRAPH, id);
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         HugeAccess access = manager.authManager().getAccess(UserAPI.parseId(id));
         return manager.serializer(g).writeAuthElement(access);

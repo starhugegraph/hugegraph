@@ -136,7 +136,7 @@ public class BelongAPI extends API {
                       @PathParam("id") String id) {
 
         LOGGER.logCustomDebug("Graph [{}] get belong: {}",
-            RestServer.EXECUTOR, SYSTEM_GRAPH, id);
+            RestServer.EXECUTOR, SYSTEM_GRAPH, id);;
 
         HugeGraph g = graph(manager, SYSTEM_GRAPH);
         HugeBelong belong = manager.authManager().getBelong(UserAPI.parseId(id));
