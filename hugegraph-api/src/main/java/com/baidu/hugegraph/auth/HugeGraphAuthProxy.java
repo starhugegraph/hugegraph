@@ -52,7 +52,6 @@ import org.apache.tinkerpop.gremlin.structure.Transaction;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.VertexProperty;
 import org.apache.tinkerpop.gremlin.structure.io.Io;
-import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.auth.HugeAuthenticator.RolePerm;
@@ -70,6 +69,7 @@ import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.config.TypedOption;
 import com.baidu.hugegraph.exception.NotSupportException;
 import com.baidu.hugegraph.iterator.FilterIterator;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.schema.EdgeLabel;
 import com.baidu.hugegraph.schema.IndexLabel;
 import com.baidu.hugegraph.schema.PropertyKey;
@@ -101,7 +101,8 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         HugeGraph.registerTraversalStrategies(HugeGraphAuthProxy.class);
     }
 
-    private static final Logger LOG = Log.logger(HugeGraphAuthProxy.class);
+    private static final HugeGraphLogger LOGGER
+            = Log.getLogger(HugeGraphAuthProxy.class);
     private final Cache<Id, UserWithRole> usersRoleCache;
     private final Cache<Id, RateLimiter> auditLimiters;
     private final double auditLogMaxRate;
@@ -112,7 +113,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     // private final AuthManagerProxy authManager;
 
     public HugeGraphAuthProxy(HugeGraph hugegraph) {
-        LOG.info("Wrap graph '{}' with HugeGraphAuthProxy", hugegraph.name());
         HugeConfig config = (HugeConfig) hugegraph.configuration();
         long expired = config.get(AuthOptions.AUTH_PROXY_CACHE_EXPIRE);
         long capacity = config.get(AuthOptions.AUTH_CACHE_CAPACITY);
@@ -125,7 +125,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
         // TODO: Consider better way to get, use auth client's config now
         this.auditLogMaxRate = config.get(AuthOptions.AUTH_AUDIT_LOG_RATE);
-        LOG.info("Audit log rate limit is {}/s", this.auditLogMaxRate);
+        LOGGER.getServerLogger().logInitAuthProxy(hugegraph.name(), this.auditLogMaxRate);
     }
 
     @Override
@@ -946,9 +946,11 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         ResourceObject<V> ro = fetcher.get();
         String action = actionPerm.string();
 
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Verify permission {} {} for user '{}' with role {}",
-                      action, ro, username, role);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.logCustomDebug(
+                "Verify permission {} {} for user '{}' with role {}",
+                "Jermy Li",
+                action, ro, username, role);
         }
 
         V result = ro.operated();
@@ -980,7 +982,8 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         if (!(actionPerm == HugePermission.READ && ro.type().isSchema()) &&
             auditLimiter.tryAcquire()) {
             String status = result == null ? "denied" : "allowed";
-            LOG.info("User '{}' is {} to {} {}", username, status, action, ro);
+            LOGGER.getServerLogger().logVerifyResPermission(
+                username, status, action ,ro);
         }
 
         // result = null means no permission, throw if needed
@@ -1310,8 +1313,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     protected static final void logUser(User user, String path) {
-        LOG.info("User '{}' login from client [{}] with path '{}'",
-                 user.username(), user.client(), path);
+        LOGGER.getAuditLogger().logUserLogin(user.username(), user.client(), path);
     }
 
     static class Context {

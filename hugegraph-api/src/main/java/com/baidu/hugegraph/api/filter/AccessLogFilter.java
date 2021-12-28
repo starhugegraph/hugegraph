@@ -21,6 +21,7 @@
 package com.baidu.hugegraph.api.filter;
 
 import com.baidu.hugegraph.auth.HugePermission;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.util.DateUtil;
 import com.baidu.hugegraph.util.Log;
 import org.slf4j.Logger;
@@ -44,7 +45,8 @@ import java.util.Optional;
 @Singleton
 public class AccessLogFilter implements ContainerResponseFilter {
 
-    private static final Logger LOG = Log.logger(AccessLogFilter.class);
+    private static final HugeGraphLogger LOGGER
+            = Log.getLogger(AccessLogFilter.class);
 
     /**
      * Use filter to log request info
@@ -79,7 +81,6 @@ public class AccessLogFilter implements ContainerResponseFilter {
         }
 
         // build log string
-        // TODO by Scorpiour: Use Formatted log template to replace hard-written string when logging
-        LOG.info("{} /{} Status: {} - user: {} {} - roles: {} in {} ms", method, path, code, userId, userName, roles, responseTime);
+        LOGGER.logApiAccess(method, path, code, userId + " " + userName, roles, responseTime);
     }
 }

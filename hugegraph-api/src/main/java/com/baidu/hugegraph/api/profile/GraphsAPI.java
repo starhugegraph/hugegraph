@@ -39,8 +39,6 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
 
-import org.slf4j.Logger;
-
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
@@ -48,6 +46,7 @@ import com.baidu.hugegraph.auth.HugeAuthenticator.RequiredPerm;
 import com.baidu.hugegraph.auth.HugePermission;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.core.GraphManager;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.type.define.GraphReadMode;
@@ -62,7 +61,8 @@ import com.google.common.collect.ImmutableMap;
 @Singleton
 public class GraphsAPI extends API {
 
-    private static final Logger LOG = Log.logger(RestServer.class);
+    private static final HugeGraphLogger LOGGER
+            = Log.getLogger(RestServer.class);
 
     private static final String GRAPH_ACTION = "action";
     private static final String CLEAR_SCHEMA = "clear_schema";
@@ -104,8 +104,9 @@ public class GraphsAPI extends API {
     public Object get(@Context GraphManager manager,
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("graph") String graph) {
-        LOG.debug("Get graph by graph space {} and name '{}' ",
-                  graphSpace, graph);
+        LOGGER.logCustomDebug(
+            "Get graph by graph space {} and name '{}' ",
+            RestServer.EXECUTOR, graphSpace, graph);
 
         HugeGraph g = graph(manager, graphSpace, graph);
         return ImmutableMap.of("name", g.name(), "backend", g.backend());
@@ -122,12 +123,14 @@ public class GraphsAPI extends API {
                          @PathParam("graphspace") String graphSpace,
                          @PathParam("name") String name,
                          Map<String, Object> configs) {
-        LOG.debug("Create graph {} with config options '{}' in graph space " +
-                  "'{}'", name, configs, graphSpace);
+        // LOG.debug("Create graph {} with config options '{}' in graph space " +
+         //         "'{}'", name, configs, graphSpace);
         HugeGraph graph = manager.createGraph(graphSpace, name,
                                               configs, true);
         graph.tx().close();
-        return ImmutableMap.of("name", name, "backend", graph.backend());
+        Object result = ImmutableMap.of("name", name, "backend", graph.backend());
+        LOGGER.getServerLogger().logCreateGraph(name, configs.toString());
+        return result;
     }
 
     @GET
@@ -138,7 +141,9 @@ public class GraphsAPI extends API {
     public String getConf(@Context GraphManager manager,
                           @PathParam("graphspace") String graphSpace,
                           @PathParam("graph") String graph) {
-        LOG.debug("Get graph configuration by name '{}'", graph);
+        
+        LOGGER.logCustomDebug(
+            "Get graph configuration by name '{}'", RestServer.EXECUTOR, graph);
 
         // HugeGraph g = graph4admin(manager, graphSpace, graph);
         HugeGraph g = graph(manager, graphSpace, graph);
@@ -158,7 +163,8 @@ public class GraphsAPI extends API {
                                @PathParam("graphspace") String graphSpace,
                                @PathParam("name") String name,
                                Map<String, Object> actionMap) {
-        LOG.debug("Clear graph by name '{}'", name);
+  
+        LOGGER.getServerLogger().logClearGraph(name);
         E.checkArgument(actionMap != null &&
                         actionMap.containsKey(GRAPH_ACTION),
                         "Please pass '%s' for graph manage", GRAPH_ACTION);
@@ -181,6 +187,7 @@ public class GraphsAPI extends API {
                 throw new AssertionError(String.format(
                           "Invalid graph action: '%s'", action));
         }
+
     }
 
     @DELETE
@@ -193,10 +200,12 @@ public class GraphsAPI extends API {
                        @PathParam("name") String name,
                        @PathParam("graphspace") String graphSpace,
                        @QueryParam("confirm_message") String message) {
-        LOG.debug("Remove graph by name '{}'", name);
+
         E.checkArgument(CONFIRM_DROP.equals(message),
                         "Please take the message: %s", CONFIRM_DROP);
+
         manager.dropGraph(graphSpace, name, true);
+        LOGGER.getServerLogger().logRemoveGraph(name);
     }
 
     @PUT
@@ -206,7 +215,8 @@ public class GraphsAPI extends API {
     @RolesAllowed({"admin"})
     public Object reload(@Context GraphManager manager,
                          Map<String, String> actionMap) {
-        LOG.debug("Manage graphs with '{}'", actionMap);
+
+        LOGGER.getServerLogger().logManageGraph(actionMap);
         E.checkArgument(actionMap != null &&
                         actionMap.containsKey(GRAPH_ACTION),
                         "Please pass '%s' for graphs manage", GRAPH_ACTION);
@@ -229,11 +239,12 @@ public class GraphsAPI extends API {
     public Object createSnapshot(@Context GraphManager manager,
                                  @PathParam("graphspace") String graphSpace,
                                  @PathParam("graph") String graph) {
-        LOG.debug("Create snapshot for graph '{}'", graph);
 
         HugeGraph g = graph(manager, graphSpace, graph);
         g.createSnapshot();
-        return ImmutableMap.of(graph, "snapshot_created");
+        Object result = ImmutableMap.of(graph, "snapshot_created");
+        LOGGER.getServerLogger().logCreateSnapshot(graph);
+        return result;
     }
 
     @PUT
@@ -244,11 +255,12 @@ public class GraphsAPI extends API {
     public Object resumeSnapshot(@Context GraphManager manager,
                                  @PathParam("graphspace") String graphSpace,
                                  @PathParam("graph") String graph) {
-        LOG.debug("Resume snapshot for graph '{}'", graph);
 
         HugeGraph g = graph(manager, graphSpace, graph);
         g.resumeSnapshot();
-        return ImmutableMap.of(graph, "snapshot_resumed");
+        Object result = ImmutableMap.of(graph, "snapshot_resumed");
+        LOGGER.getServerLogger().logResumeSnapshot(graph);
+        return result;
     }
 
     @PUT
@@ -260,10 +272,11 @@ public class GraphsAPI extends API {
     public String compact(@Context GraphManager manager,
                           @PathParam("graphspace") String graphSpace,
                           @PathParam("graph") String graph) {
-        LOG.debug("Manually compact graph '{}'", graph);
 
         HugeGraph g = graph(manager, graphSpace, graph);
-        return JsonUtil.toJson(g.metadata(null, "compact"));
+        String jsonResult = JsonUtil.toJson(g.metadata(null, "compact"));
+        LOGGER.getServerLogger().logCompactGraph(graph);
+        return jsonResult;
     }
 
     @PUT
@@ -275,13 +288,14 @@ public class GraphsAPI extends API {
     public String flush(@Context GraphManager manager,
                         @PathParam("graphspace") String graphSpace,
                         @PathParam("graph") String graph) {
-        LOG.debug("Manually flush graph '{}'", graph);
 
         HugeGraph g = graph(manager, graphSpace, graph);
         if (g.backend().equals("rocksdb")) {
             g.metadata(null, "flush");
         }
-        return JsonUtil.toJson(ImmutableMap.of(graph, "flushed"));
+        String jsonResult = JsonUtil.toJson(ImmutableMap.of(graph, "flushed"));
+        LOGGER.getServerLogger().logFlushGraph(graph);
+        return jsonResult;
     }
 
     @PUT
@@ -294,7 +308,8 @@ public class GraphsAPI extends API {
                                        @PathParam("graphspace") String graphSpace,
                                        @PathParam("graph") String graph,
                                        GraphMode mode) {
-        LOG.debug("Set mode to: '{}' of graph '{}'", mode, graph);
+        LOGGER.logCustomDebug(
+            "Set mode to: '{}' of graph '{}'", RestServer.EXECUTOR, mode, graph);
 
         E.checkArgument(mode != null, "Graph mode can't be null");
         HugeGraph g = graph(manager, graphSpace, graph);
@@ -313,7 +328,7 @@ public class GraphsAPI extends API {
     public Map<String, GraphMode> mode(@Context GraphManager manager,
                                        @PathParam("graphspace") String graphSpace,
                                        @PathParam("graph") String graph) {
-        LOG.debug("Get mode of graph '{}'", graph);
+        LOGGER.logCustomDebug("Get mode of graph '{}'", RestServer.EXECUTOR, graph);
 
         HugeGraph g = graph(manager, graphSpace, graph);
         return ImmutableMap.of("mode", g.mode());
@@ -330,8 +345,8 @@ public class GraphsAPI extends API {
                                       @PathParam("graphspace") String graphSpace,
                                       @PathParam("graph") String graph,
                                       GraphReadMode readMode) {
-        LOG.debug("Set graph-read-mode to: '{}' of graph '{}'",
-                  readMode, graph);
+        LOGGER.logCustomDebug("Set graph-read-mode to: '{}' of graph '{}'",
+                RestServer.EXECUTOR, readMode, graph);
 
         E.checkArgument(readMode != null,
                         "Graph-read-mode can't be null");
@@ -350,7 +365,8 @@ public class GraphsAPI extends API {
                                       @Context GraphManager manager,
                                       @PathParam("graphspace") String graphSpace,
                                       @PathParam("graph") String graph) {
-        LOG.debug("Get graph-read-mode of graph '{}'", graph);
+        LOGGER.logCustomDebug("Get graph-read-mode of graph '{}'",
+                RestServer.EXECUTOR, graph);
 
         HugeGraph g = graph(manager, graphSpace, graph);
         return ImmutableMap.of("graph_read_mode", g.readMode());

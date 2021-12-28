@@ -35,15 +35,15 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
-import com.baidu.hugegraph.auth.AuthManager;
-import org.slf4j.Logger;
-
+import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
+import com.baidu.hugegraph.auth.AuthManager;
 import com.baidu.hugegraph.auth.HugeTarget;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.define.Checkable;
 import com.baidu.hugegraph.exception.NotFoundException;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.JsonUtil;
@@ -56,8 +56,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @Singleton
 public class TargetAPI extends API {
 
-    private static final Logger LOG = Log.logger(RestServer.class);
-
+    private static final HugeGraphLogger LOGGER
+            = Log.getLogger(RestServer.class);
     @POST
     @Timed
     @Status(Status.CREATED)
@@ -66,13 +66,14 @@ public class TargetAPI extends API {
     public String create(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          JsonTarget jsonTarget) {
-        LOG.debug("Graph space [{}] create target: {}", graphSpace, jsonTarget);
         checkCreatingBody(jsonTarget);
 
         HugeTarget target = jsonTarget.build(graphSpace);
         AuthManager authManager = manager.authManager();
         target.id(authManager.createTarget(graphSpace, target, true));
-        return manager.serializer().writeAuthElement(target);
+        String result = manager.serializer().writeAuthElement(target);
+        LOGGER.getServerLogger().logCreateTarget(graphSpace, jsonTarget);
+        return result;
     }
 
     @PUT
@@ -84,7 +85,6 @@ public class TargetAPI extends API {
                          @PathParam("graphspace") String graphSpace,
                          @PathParam("id") String id,
                          JsonTarget jsonTarget) {
-        LOG.debug("Graph space [{}] update target: {}", graphSpace, jsonTarget);
         checkUpdatingBody(jsonTarget);
 
         HugeTarget target;
@@ -97,7 +97,9 @@ public class TargetAPI extends API {
         }
         target = jsonTarget.build(target);
         target = authManager.updateTarget(graphSpace, target, true);
-        return manager.serializer().writeAuthElement(target);
+        String result = manager.serializer().writeAuthElement(target);
+        LOGGER.getServerLogger().logUpdateTarget(graphSpace, jsonTarget);
+        return result;
     }
 
     @GET
@@ -106,7 +108,7 @@ public class TargetAPI extends API {
     public String list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
-        LOG.debug("Graph space [{}] list targets", graphSpace);
+        LOGGER.logCustomDebug("Graph [{}] list targets", RestServer.EXECUTOR, graphSpace);
 
         AuthManager authManager = manager.authManager();
         List<HugeTarget> targets = authManager.listAllTargets(graphSpace,
@@ -121,7 +123,7 @@ public class TargetAPI extends API {
     public String get(@Context GraphManager manager,
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("id") String id) {
-        LOG.debug("Graph space [{}] get target: {}", graphSpace, id);
+        LOGGER.logCustomDebug("Graph [{}] get target: {}", RestServer.EXECUTOR, graphSpace, id);
 
         AuthManager authManager = manager.authManager();
         HugeTarget target = authManager.getTarget(graphSpace,
@@ -136,11 +138,11 @@ public class TargetAPI extends API {
     public void delete(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("id") String id) {
-        LOG.debug("Graph space [{}] delete target: {}", graphSpace, id);
 
         try {
             AuthManager authManager = manager.authManager();
             authManager.deleteTarget(graphSpace, UserAPI.parseId(id), true);
+            LOGGER.getServerLogger().logDeleteTarget(graphSpace, id);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid target id: " + id);
         }
