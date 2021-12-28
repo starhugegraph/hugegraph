@@ -1130,6 +1130,9 @@ public final class GraphManager {
     }
 
     private static void checkGraphSpaceName(String name) {
+        if (DEFAULT_GRAPH_SPACE_NAME.equals(name)) {
+            return;
+        }
         checkName(name, "graph space");
     }
 
