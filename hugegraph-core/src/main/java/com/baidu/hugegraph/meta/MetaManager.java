@@ -483,8 +483,8 @@ public class MetaManager {
     private String graphUpdateKey() {
         // HUGEGRAPH/{cluster}/EVENT/GRAPH/UPDATE
         return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
-                this.cluster, META_PATH_EVENT,
-                META_PATH_GRAPH, META_PATH_UPDATE);
+                           this.cluster, META_PATH_EVENT,
+                           META_PATH_GRAPH, META_PATH_UPDATE);
     }
 
     private String graphSpaceConfKey(String name) {
