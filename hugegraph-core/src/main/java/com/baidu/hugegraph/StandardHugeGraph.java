@@ -312,6 +312,9 @@ public class StandardHugeGraph implements HugeGraph {
 
     @Override
     public void readMode(GraphReadMode readMode) {
+        if (this.readMode == readMode) {
+            return;
+        }
         this.clearVertexCache();
         this.readMode = readMode;
     }

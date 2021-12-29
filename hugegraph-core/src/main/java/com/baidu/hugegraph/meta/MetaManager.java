@@ -153,6 +153,10 @@ public class MetaManager {
         this.listen(this.graphAddKey(), consumer);
     }
 
+    public <T> void listenGraphUpdate(Consumer<T> consumer) {
+        this.listen(this.graphUpdateKey(), consumer);
+    }
+
     public <T> void listenGraphRemove(Consumer<T> consumer) {
         this.listen(this.graphRemoveKey(), consumer);
     }
@@ -391,6 +395,11 @@ public class MetaManager {
                             this.graphName(graphSpace, graph));
     }
 
+    public void notifyGraphUpdate(String graphSpace, String graph) {
+        this.metaDriver.put(this.graphUpdateKey(),
+                            this.graphName(graphSpace, graph));
+    }
+
     public LockResult lock(String... keys) {
         return this.lock(LOCK_DEFAULT_LEASE, keys);
     }
@@ -469,6 +478,13 @@ public class MetaManager {
         return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
                            this.cluster, META_PATH_EVENT,
                            META_PATH_GRAPH, META_PATH_REMOVE);
+    }
+
+    private String graphUpdateKey() {
+        // HUGEGRAPH/{cluster}/EVENT/GRAPH/UPDATE
+        return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
+                this.cluster, META_PATH_EVENT,
+                META_PATH_GRAPH, META_PATH_UPDATE);
     }
 
     private String graphSpaceConfKey(String name) {
