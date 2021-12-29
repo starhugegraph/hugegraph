@@ -1278,9 +1278,13 @@ public final class GraphManager {
 
     public void graphReadMode(String graphSpace, String graphName,
                               GraphReadMode readMode) {
-        Map<String, Object> configs =
-                    this.metaManager.getGraphConfig(graphSpace, graphName);
-        configs.put(CoreOptions.GRAPH_READ_MODE.name(), readMode);
-        this.metaManager.updateGraphConfig(graphSpace, graphName, configs);
+        try {
+            Map<String, Object> configs =
+                        this.metaManager.getGraphConfig(graphSpace, graphName);
+            configs.put(CoreOptions.GRAPH_READ_MODE.name(), readMode);
+            this.metaManager.updateGraphConfig(graphSpace, graphName, configs);
+        } catch (Exception e) {
+            LOG.warn("The graph not exist or local graph");
+        }
     }
 }
