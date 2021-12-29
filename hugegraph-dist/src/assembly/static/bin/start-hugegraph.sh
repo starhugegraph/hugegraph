@@ -41,13 +41,13 @@ if [ -z "$WITH_CA" ];then
   WITH_CA="false"
 fi
 if [ -z "$CA_FILE" ];then
-  CA_FILE="false"
+  CA_FILE="conf/ca.perm"
 fi
 if [ -z "$CLIENT_CA" ];then
-  CLIENT_CA="false"
+  CLIENT_CA="conf/client_ca.perm"
 fi
 if [ -z "$CLIENT_KEY" ];then
-  CLIENT_KEY="false"
+  CLIENT_KEY="conf/client.key"
 fi
 
 while getopts "g:m:s:j:G:S:N:R:M:E:W:C:A:K:v" arg; do
