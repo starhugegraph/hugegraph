@@ -39,6 +39,7 @@ import com.baidu.hugegraph.k8s.K8sDriverProxy;
 import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.space.SchemaTemplate;
 import com.baidu.hugegraph.traversal.optimize.HugeScriptTraversal;
+import com.baidu.hugegraph.type.define.GraphReadMode;
 import com.baidu.hugegraph.util.JsonUtil;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.MapConfiguration;
@@ -1273,5 +1274,13 @@ public final class GraphManager {
 
     public void dropSchemaTemplate(String graphSpace, String name) {
         this.metaManager.removeSchemaTemplate(graphSpace, name);
+    }
+
+    public void graphReadMode(String graphSpace, String graphName,
+                              GraphReadMode readMode) {
+        Map<String, Object> configs =
+                    this.metaManager.getGraphConfig(graphSpace, graphName);
+        configs.put(CoreOptions.GRAPH_READ_MODE.name(), readMode);
+        this.metaManager.updateGraphConfig(graphSpace, graphName, configs);
     }
 }

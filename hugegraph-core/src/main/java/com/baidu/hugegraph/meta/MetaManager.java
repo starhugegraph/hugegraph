@@ -300,6 +300,12 @@ public class MetaManager {
                             JsonUtil.toJson(configs));
     }
 
+    public void updateGraphConfig(String graphSpace, String graph,
+                                  Map<String, Object> configs) {
+        this.metaDriver.put(this.graphConfKey(graphSpace, graph),
+                            JsonUtil.toJson(configs));
+    }
+
     public GraphSpace graphSpace(String name) {
         String space = this.metaDriver.get(this.graphSpaceConfKey(name));
         if (space == null) {

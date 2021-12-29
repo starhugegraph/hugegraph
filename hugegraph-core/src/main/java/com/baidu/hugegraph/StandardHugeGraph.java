@@ -193,7 +193,8 @@ public class StandardHugeGraph implements HugeGraph {
         this.started = false;
         this.closed = false;
         this.mode = GraphMode.NONE;
-        this.readMode = GraphReadMode.OLTP_ONLY;
+        this.readMode = GraphReadMode.valueOf(
+                        config.get(CoreOptions.GRAPH_READ_MODE));
 
         LockUtil.init(this.name);
 
