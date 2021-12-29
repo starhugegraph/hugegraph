@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +40,7 @@ import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.space.GraphSpace;
+import com.baidu.hugegraph.space.SchemaTemplate;
 import com.baidu.hugegraph.space.Service;
 import com.baidu.hugegraph.util.JsonUtil;
 import com.google.common.collect.ImmutableMap;
@@ -74,6 +76,7 @@ public class MetaManager {
     public static final String META_PATH_REST_PROPERTIES = "REST_PROPERTIES";
     public static final String META_PATH_GREMLIN_YAML = "GREMLIN_YAML";
     private static final String META_PATH_URLS = "URLS";
+    public static final String META_PATH_SCHEMA_TEMPLATE = "SCHEMA_TEMPLATE";
 
     public static final String META_PATH_AUTH_EVENT = "AUTH_EVENT";
     public static final String META_PATH_EVENT = "EVENT";
@@ -233,6 +236,35 @@ public class MetaManager {
             configs.put(graphName, configMap(entry.getValue()));
         }
         return configs;
+    }
+
+    public Set<String> schemaTemplates(String graphSpace) {
+        Set<String> result = new HashSet<>();
+        Map<String, String> keyValues = this.metaDriver.scanWithPrefix(
+                this.schemaTemplatePrefix(graphSpace));
+        for (String key : keyValues.keySet()) {
+            String[] parts = key.split(META_PATH_DELIMETER);
+            result.add(parts[parts.length - 1]);
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    public SchemaTemplate schemaTemplate(String graphSpace,
+                                         String schemaTemplate) {
+        String s = this.metaDriver.get(this.schemaTemplateKey(graphSpace,
+                                                              schemaTemplate));
+        return SchemaTemplate.fromMap(JsonUtil.fromJson(s, Map.class));
+    }
+
+    public void addSchemaTemplate(String graphSpace,
+                                  SchemaTemplate template) {
+        this.metaDriver.put(this.schemaTemplateKey(graphSpace, template.name()),
+                            JsonUtil.toJson(template.asMap()));
+    }
+
+    public void removeSchemaTemplate(String graphSpace, String name) {
+        this.metaDriver.delete(this.schemaTemplateKey(graphSpace, name));
     }
 
     public <T> List<String> extractGraphSpacesFromResponse(T response) {
@@ -454,6 +486,10 @@ public class MetaManager {
         return this.graphConfKey(graphSpace, Strings.EMPTY);
     }
 
+    private String schemaTemplatePrefix(String graphSpace) {
+        return this.schemaTemplateKey(graphSpace, Strings.EMPTY);
+    }
+
     private String graphSpaceBindingsKey(String name, BindingType type) {
         // HUGEGRAPH/{cluster}/GRAPHSPACE/CONF/{graphspace}
         return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
@@ -480,6 +516,14 @@ public class MetaManager {
         return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
                            this.cluster, META_PATH_GRAPHSPACE,
                            graphSpace, META_PATH_GRAPH_CONF, graph);
+    }
+
+    private String schemaTemplateKey(String graphSpace, String schemaTemplate) {
+        // HUGEGRAPH/{cluster}/GRAPHSPACE/{graphspace}/SCHEMA_TEMPLATE
+        return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
+                           this.cluster, META_PATH_GRAPHSPACE,
+                           graphSpace, META_PATH_SCHEMA_TEMPLATE,
+                           schemaTemplate);
     }
 
     private String restPropertiesKey(String graphSpace, String serviceId) {

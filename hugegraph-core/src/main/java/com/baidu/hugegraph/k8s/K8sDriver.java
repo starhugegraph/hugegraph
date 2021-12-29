@@ -21,6 +21,7 @@ package com.baidu.hugegraph.k8s;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,6 +42,7 @@ import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
 import io.fabric8.kubernetes.api.model.ResourceRequirementsBuilder;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
+import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.client.Config;
@@ -253,18 +255,30 @@ public class K8sDriver {
 
         this.client.services().inNamespace(namespace).create(service);
 
-        return ImmutableSet.of(this.client.services()
-                                          .inNamespace(namespace)
-                                          .withName(serviceName)
-                                          .getURL(portName));
+        service = this.client.services()
+                             .inNamespace(namespace)
+                             .withName(serviceName)
+                             .get();
+
+        return urlsOfService(service);
+    }
+
+    private static Set<String> urlsOfService(
+            io.fabric8.kubernetes.api.model.Service service) {
+        Set<String> urls = new HashSet<>();
+        String clusterIP = service.getSpec().getClusterIP();
+        for (ServicePort port : service.getSpec().getPorts()) {
+            urls.add(clusterIP + ":" + port.getPort());
+        }
+        return urls;
     }
 
     private Deployment constructDeployment(GraphSpace graphSpace,
                                            Service service) {
-        String deploymentName = serviceName(graphSpace, service);
+        String deploymentName = deploymentName(graphSpace, service);
         String containerName = String.join(DELIMETER, deploymentName,
                                            CONTAINER);
-        Quantity cpu = Quantity.parse((service.cpuLimit() * 100) + "m");
+        Quantity cpu = Quantity.parse((service.cpuLimit() * 1000) + "m");
         Quantity memory = Quantity.parse(service.memoryLimit() + "G");
         ResourceRequirements rr = new ResourceRequirementsBuilder()
                 .addToLimits("cpu", cpu)
@@ -335,6 +349,12 @@ public class K8sDriver {
                            service.type().name().toLowerCase(), service.name());
     }
 
+    private static String deploymentName(GraphSpace graphSpace,
+                                         Service service) {
+        return String.join(DELIMETER, graphSpace.name(),
+                           service.type().name().toLowerCase(), service.name());
+    }
+
     private static String serviceName(GraphSpace graphSpace,
                                       Service service) {
         return String.join(DELIMETER, graphSpace.name(),
@@ -347,5 +367,16 @@ public class K8sDriver {
         } catch (InterruptedException e) {
             // Ignore
         }
+    }
+
+    public int podsRunning(GraphSpace graphSpace, Service service) {
+        String deploymentName = deploymentName(graphSpace, service);
+        String namespace = namespace(graphSpace, service);
+        Deployment deployment;
+        deployment = this.client.apps().deployments()
+                         .inNamespace(namespace)
+                         .withName(deploymentName)
+                         .get();
+        return deployment.getStatus().getReadyReplicas();
     }
 }
