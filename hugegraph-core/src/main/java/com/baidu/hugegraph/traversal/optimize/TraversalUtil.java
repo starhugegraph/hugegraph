@@ -776,7 +776,6 @@ public final class TraversalUtil {
 
         String method = matcher.group(1);
         String value = matcher.group(2);
-        System.out.printf("method = %s, value = %s", method, value);
         switch (method) {
             case "eq":
                 return P.eq(predicateNumber(value));
@@ -821,7 +820,7 @@ public final class TraversalUtil {
         String method = matcher.group(1);
         String value = matcher.group(2);
         Object validValue;
-        System.out.printf("method = %s, value = %s", method, value);
+        //System.out.printf("method = %s, value = %s", method, value);
         switch (method) {
             case "eq":
                 validValue = validPropertyValue(predicateNumber(value), pk);
