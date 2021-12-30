@@ -25,13 +25,11 @@ import com.baidu.hugegraph.backend.store.BackendEntryIterator;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.pd.client.PDClient;
 import com.baidu.hugegraph.pd.client.PDConfig;
-import com.baidu.hugegraph.pd.grpc.Metapb;
 import com.baidu.hugegraph.store.HgKvIterator;
 import com.baidu.hugegraph.store.HgOwnerKey;
 import com.baidu.hugegraph.store.HgSessionManager;
 import com.baidu.hugegraph.store.HgStoreSession;
 import com.baidu.hugegraph.store.client.HgStoreNodeManager;
-import com.baidu.hugegraph.store.client.HgStoreNodePartitioner;
 import com.baidu.hugegraph.store.client.util.HgStoreClientConst;
 import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.util.Bytes;
@@ -54,17 +52,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class HstoreSessionsImpl extends HstoreSessions {
 
     private final HugeConfig config;
-    private HstoreSession session;
+    private final HstoreSession session;
     private final Map<String, Integer> tables;
     private final AtomicInteger refCount;
     private static int tableCode = 0;
-    private String graphName;
-    private String database;
+    private final String graphName;
+    private final String database;
     private static volatile Boolean INITIALIZED_NODE = Boolean.FALSE;
-    private static volatile Set<String> INITIALIZED_GRAPH = new HashSet<String>();
     private static volatile PDClient defaultPdClient;
     private static volatile HstoreNodePartitionerImpl nodePartitioner = null;
-
     public HstoreSessionsImpl(HugeConfig config, String database, String store) {
         super(config, database, store);
         this.config = config;
@@ -75,6 +71,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         this.tables = new ConcurrentHashMap<>();
         this.refCount = new AtomicInteger(1);
     }
+
     private void initStoreNode(HugeConfig config) {
         if (!INITIALIZED_NODE) {
             synchronized (INITIALIZED_NODE) {
@@ -87,7 +84,6 @@ public class HstoreSessionsImpl extends HstoreSessions {
                     nodeManager.setNodePartitioner(nodePartitioner);
                     nodeManager.setNodeNotifier(nodePartitioner);
                     INITIALIZED_NODE = Boolean.TRUE;
-
                 }
             }
         }
@@ -158,11 +154,11 @@ public class HstoreSessionsImpl extends HstoreSessions {
     private void checkValid() {
     }
 
-    public static final byte[] encode(String string) {
+    public static byte[] encode(String string) {
         return StringEncoding.encode(string);
     }
 
-    public static final String decode(byte[] bytes) {
+    public static String decode(byte[] bytes) {
         return StringEncoding.decode(bytes);
     }
 
@@ -196,13 +192,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public void close() {
-//            assert this.closeable();
-            try {
-
-                this.opened = false;
-            } catch (Exception e) {
-
-            }
+            this.opened = false;
         }
 
         @Override
@@ -244,12 +234,12 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
             if (this.putBatch.size() > 0) {
                 this.graph.batchPutOwner(this.putBatch);
-                this.putBatch = new HashMap<String, Map<HgOwnerKey, byte[]>>();
+                this.putBatch.clear();
             }
 
             if (this.deleteBatch.size() > 0) {
                 this.graph.batchDeleteOwner(this.deleteBatch);
-                this.deleteBatch = new HashMap<String, Set<HgOwnerKey>>();
+                this.deletePrefixBatch.clear();
             }
 
             if (this.deletePrefixBatch.size() > 0) {
@@ -258,7 +248,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
                         this.graph.deletePrefix(table,key);
                     });
                 });
-                this.deletePrefixBatch = new HashMap<String, List<HgOwnerKey>>();
+                this.deletePrefixBatch.clear();
             }
 
             if (this.deleteRangeBatch.size() > 0) {
@@ -266,8 +256,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
                     this.graph.deleteRange(table,keys.getLeft(),
                                            keys.getRight());
                 });
-                this.deleteRangeBatch = new HashMap<String,
-                                        MutablePair<HgOwnerKey, HgOwnerKey>>();
+                this.deleteRangeBatch.clear();
             }
 
             return count;
@@ -300,14 +289,14 @@ public class HstoreSessionsImpl extends HstoreSessions {
                 valueMap = new HashMap<HgOwnerKey, byte[]>();
                 this.putBatch.put(table, valueMap);
             }
-            valueMap.put(new HgOwnerKey(ownerKey, key), value);
+            valueMap.put(HgOwnerKey.of(ownerKey, key), value);
 
         }
 
         @Override
         public synchronized void increase(String table, byte[] ownerKey,
                                           byte[] key, byte[] value) {
-            this.graph.merge(table, new HgOwnerKey(ownerKey, key), value);
+            this.graph.merge(table, HgOwnerKey.of(ownerKey, key), value);
         }
 
         @Override
@@ -321,7 +310,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
                 valueSet = new HashSet<HgOwnerKey>();
                 this.deleteBatch.put(table, valueSet);
             }
-            valueSet.add(new HgOwnerKey(ownerKey, key));
+            valueSet.add(HgOwnerKey.of(ownerKey, key));
         }
 
         @Override
@@ -331,7 +320,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
                 values = new ArrayList<HgOwnerKey>();
                 this.deletePrefixBatch.put(table, values);
             }
-            values.add(new HgOwnerKey(ownerKey, key));
+            values.add(HgOwnerKey.of(ownerKey, key));
         }
 
         /**
@@ -343,13 +332,13 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                 byte[] keyTo) {
             this.deleteRangeBatch.put(table,
                                       new MutablePair<HgOwnerKey, HgOwnerKey>(
-                                          new HgOwnerKey(ownerKeyFrom, keyFrom),
-                                          new HgOwnerKey(ownerKeyTo, keyTo)));
+                                          HgOwnerKey.of(ownerKeyFrom, keyFrom),
+                                          HgOwnerKey.of(ownerKeyTo, keyTo)));
         }
 
         @Override
         public byte[] get(String table, byte[] key) {
-            return this.graph.get(table, new HgOwnerKey(
+            return this.graph.get(table, HgOwnerKey.of(
                                          HgStoreClientConst.ALL_PARTITION_OWNER,
                                          key));
         }
@@ -357,7 +346,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         @Override
         public byte[] get(String table, byte[] ownerKey, byte[] key) {
             byte[] values = this.graph.get(table,
-                                           new HgOwnerKey(ownerKey, key));
+                                           HgOwnerKey.of(ownerKey, key));
             return values != null ? values : new byte[0];
         }
 
@@ -379,7 +368,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public BackendColumnIterator scan(String table,byte[] ownerKey,
                                           byte[] prefix) {
             assert !this.hasChanges();
-            HgKvIterator result=this.graph.scanIterator(table, new HgOwnerKey(ownerKey, prefix));
+            HgKvIterator result=this.graph.scanIterator(table, HgOwnerKey.of(ownerKey, prefix));
             return new ColumnIterator<HgKvIterator>(table, result);
         }
 
@@ -389,8 +378,8 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                           byte[] keyTo, int scanType) {
             assert !this.hasChanges();
             HgKvIterator result=this.graph.scanIterator(table,
-                                        new HgOwnerKey(ownerKeyFrom,keyFrom),
-                                        new HgOwnerKey(ownerKeyTo,keyTo),
+                                        HgOwnerKey.of(ownerKeyFrom,keyFrom),
+                                        HgOwnerKey.of(ownerKeyTo,keyTo),
                                         scanType);
             return new ColumnIterator<HgKvIterator>(table, result, keyFrom, keyTo, scanType);
         }
@@ -399,15 +388,15 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public BackendColumnIterator scan(String table, byte[] ownerKeyFrom, byte[] ownerKeyTo, byte[] keyFrom, byte[] keyTo, int scanType, byte[] query) {
             assert !this.hasChanges();
             HgKvIterator result=this.graph.scanIterator(table,
-                                                        new HgOwnerKey(ownerKeyFrom,keyFrom),
-                                                        new HgOwnerKey(ownerKeyTo,keyTo),
+                                                        HgOwnerKey.of(ownerKeyFrom,keyFrom),
+                                                        HgOwnerKey.of(ownerKeyTo,keyTo),
                                                         scanType,query);
             return new ColumnIterator<HgKvIterator>(table, result, keyFrom, keyTo, scanType);
         }
 
         @Override
         public void merge(String table, byte[] ownerKey, byte[] key, byte[] value) {
-            this.graph.merge(table,new HgOwnerKey(ownerKey,key),value);
+            this.graph.merge(table,HgOwnerKey.of(ownerKey,key),value);
         }
 
         @Override
