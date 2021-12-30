@@ -668,7 +668,7 @@ public final class TraversalUtil {
                                 "Invalid data type of query value in %s, " +
                                 "expect %s for '%s', actual got %s",
                                 value, pkey.dataType(), pkey.name(),
-                                value == null ? null : classes);
+                                classes);
             }
 
             @SuppressWarnings("unchecked")
