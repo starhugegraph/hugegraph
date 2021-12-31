@@ -68,6 +68,9 @@ public final class TaskManager {
     private final PausableScheduledThreadPool schedulerExecutor;
 
     public static TaskManager instance() {
+        if (MANAGER == null) {
+            MANAGER = new TaskManager(1);
+        }
         return MANAGER;
     }
 
