@@ -21,4 +21,5 @@ build
 node*
 /hugegraph-0.*
 /dist.sh
-.vscode
+/.vscode
+/rocksdb-data

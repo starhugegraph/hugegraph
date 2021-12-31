@@ -19,7 +19,7 @@
         <RollingRandomAccessFile name="error" fileName="${LOG_PATH}/error-${FILE_NAME}.log"
             filePattern="${LOG_PATH}/$${date:yyyy-MM}/error-${FILE_NAME}-%d{yyyy-MM-dd-HH}-%i.gz"
             bufferedIO="false" immediateFlush="true">
-            <ThresholdFilter level="WARN" onMath="ACCEPT" onMismatch="DENY"/>
+            <ThresholdFilter level="WARN" onMatch="ACCEPT" onMismatch="DENY"/>
             <PatternLayout pattern="%-d{yyyy-MM-dd HH:mm:ss} [%t] [%p] %c{1.} - %m%n"/>
             <!--JsonLayout compact="false" eventEol="true" locationInfo="true">
                 <KeyValuePair key="timestamp" value="$${date:yyyy-MM-dd HH:mm:ss.SSS}"/>
