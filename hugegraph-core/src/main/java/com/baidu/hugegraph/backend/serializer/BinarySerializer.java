@@ -232,14 +232,15 @@ public class BinarySerializer extends AbstractSerializer {
     }
 
     protected byte[] formatEdgeValue(HugeEdge edge) {
-        int propsCount = edge.getProperties().size();
+        Map<Id, HugeProperty<?>> properties = edge.getProperties();
+        int propsCount = properties.size();
         BytesBuffer buffer = BytesBuffer.allocate(4 + 16 * propsCount);
 
         // Write edge id
         //buffer.writeId(edge.id());
 
         // Write edge properties
-        this.formatProperties(edge.getProperties().values(), buffer);
+        this.formatProperties(properties.values(), buffer);
 
         // Write edge expired time if needed
         if (edge.hasTtl()) {

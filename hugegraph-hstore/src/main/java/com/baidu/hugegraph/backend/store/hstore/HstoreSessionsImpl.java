@@ -25,12 +25,14 @@ import com.baidu.hugegraph.backend.store.BackendEntryIterator;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.pd.client.PDClient;
 import com.baidu.hugegraph.pd.client.PDConfig;
+import com.baidu.hugegraph.pd.grpc.Metapb;
 import com.baidu.hugegraph.store.HgKvIterator;
 import com.baidu.hugegraph.store.HgOwnerKey;
 import com.baidu.hugegraph.store.HgSessionManager;
 import com.baidu.hugegraph.store.HgStoreSession;
 import com.baidu.hugegraph.store.client.HgStoreNodeManager;
 import com.baidu.hugegraph.store.client.util.HgStoreClientConst;
+import com.baidu.hugegraph.testutil.Assert;
 import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.util.Bytes;
 import com.baidu.hugegraph.util.E;
@@ -40,6 +42,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -61,6 +64,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
     private static volatile Boolean INITIALIZED_NODE = Boolean.FALSE;
     private static volatile PDClient defaultPdClient;
     private static volatile HstoreNodePartitionerImpl nodePartitioner = null;
+    private static volatile Set<String> INFO_INITIALIZED_GRAPH = Collections.synchronizedSet(new HashSet<>());
     public HstoreSessionsImpl(HugeConfig config, String database, String store) {
         super(config, database, store);
         this.config = config;
@@ -97,6 +101,23 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
     @Override
     public void open() throws Exception {
+        if (!INFO_INITIALIZED_GRAPH.contains(this.graphName)){
+            synchronized (INITIALIZED_NODE){
+                if (!INFO_INITIALIZED_GRAPH.contains(this.graphName)){
+                    Integer partitionCount = this.config.get(HstoreOptions.PARTITION_COUNT);
+                    Assert.assertTrue("The value of hstore.partition_count cannot be less than 0.",
+                                      partitionCount >-1);
+                    Integer shareCount = this.config.get(HstoreOptions.SHARD_COUNT);
+                    Assert.assertTrue("The value of hstore.shard_count cannot be less than 0.",
+                                      shareCount >-1);
+                    defaultPdClient.setGraph(Metapb.Graph.newBuilder()
+                                   .setGraphName(this.graphName)
+                                   .setPartitionCount(partitionCount)
+                                   .setShardCount(shareCount).build());
+                    INFO_INITIALIZED_GRAPH.add(this.graphName);
+                }
+            }
+        }
         this.session.open();
     }
 
