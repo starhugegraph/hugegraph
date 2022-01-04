@@ -86,7 +86,7 @@ public class EtcdMetaDriver implements MetaDriver {
             keyValues = kvClient.get(toByteSequence(key))
                                 .get().getKvs();
         } catch (InterruptedException | ExecutionException e) {
-            throw new HugeException("Failed to get key '%s' from etcd", key, e);
+            throw new HugeException("Failed to get key '%s' from etcd", e, key);
         }
         E.checkState(keyValues.size() == 1,
                      "There must be only one value for key '%s'", key);
@@ -103,7 +103,7 @@ public class EtcdMetaDriver implements MetaDriver {
                 kvClient.delete(toByteSequence(key)).get();
             } catch (Throwable t) {
                 throw new HugeException("Failed to put '%s:%s' to etcd",
-                                        key, value, e);
+                                        e, key, value);
             }
         }
     }
@@ -115,7 +115,7 @@ public class EtcdMetaDriver implements MetaDriver {
             kvClient.delete(toByteSequence(key)).get();
         } catch (InterruptedException | ExecutionException e) {
             throw new HugeException(
-                      "Failed to delete key '%s' from etcd", key, e);
+                      "Failed to delete key '%s' from etcd", e, key);
         }
     }
 
@@ -130,7 +130,7 @@ public class EtcdMetaDriver implements MetaDriver {
                                                      getOption).get();
         } catch (InterruptedException | ExecutionException e) {
             throw new HugeException("Failed to scan etcd with prefix '%s'",
-                                    prefix, e);
+                                    e, prefix);
         }
         int size = (int) response.getCount();
         Map<String, String> keyValues = CollectionFactory.newMap(
