@@ -61,11 +61,11 @@ import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 
-@Path("graphs/{graph}/traversers/kneighbors")
+@Path("graphs/{graph}/traversers/egonet")
 @Singleton
-public class KneighborsAPI extends TraverserAPI {
+public class EgonetAPI extends TraverserAPI {
 
-    private static final Logger LOG = Log.logger(KneighborsAPI.class);
+    private static final Logger LOG = Log.logger(EgonetAPI.class);
 
     @GET
     @Timed
@@ -80,10 +80,9 @@ public class KneighborsAPI extends TraverserAPI {
                       @DefaultValue(DEFAULT_MAX_DEGREE) long maxDegree,
                       @QueryParam("limit")
                       @DefaultValue(DEFAULT_ELEMENTS_LIMIT) long limit) {
-        LOG.debug("Graph [{}] get k-neighbors from '{}' with " +
-                  "direction '{}', edge label '{}', max depth '{}', " +
-                  "max degree '{}' and limit '{}'",
-                  graph, sourceV, direction, edgeLabel, depth,
+        LOG.debug("Graph [{}] get egonet from '{}' with direction '{}', " +
+                  "edge label '{}', max depth '{}', max degree '{}' and " +
+                  "limit '{}'", graph, sourceV, direction, edgeLabel, depth,
                   maxDegree, limit);
 
         Id source = VertexAPI.checkAndParseVertexId(sourceV);
@@ -116,7 +115,7 @@ public class KneighborsAPI extends TraverserAPI {
                             "Can't return vertex or path when count only");
         }
 
-        LOG.debug("Graph [{}] get kneighbors from source vertex '{}', " +
+        LOG.debug("Graph [{}] get egonet from source vertex '{}', " +
                   "with steps '{}', limit '{}', count_only '{}', " +
                   "with_vertex '{}', with_path '{}' and with_edge '{}'",
                   graph, request.sources, request.steps, request.limit,
@@ -188,7 +187,7 @@ public class KneighborsAPI extends TraverserAPI {
 
         List<Id> ids = new ArrayList<>(multiNeighbors);
         return manager.serializer(g)
-                      .writeNodesWithPath("kneighbors", ids, size, paths,
+                      .writeNodesWithPath("egonet", ids, size, paths,
                                           verticesIter, edgesIter, null);
     }
 
