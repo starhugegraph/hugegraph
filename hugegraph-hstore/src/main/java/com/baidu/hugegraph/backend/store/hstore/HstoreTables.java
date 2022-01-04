@@ -39,6 +39,7 @@ import com.baidu.hugegraph.util.E;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -50,7 +51,7 @@ public class HstoreTables {
         private static final int DELTA = 10000;
         private static final int times = 10000;
         private static final String DELIMITER="/";
-        private static ConcurrentHashMap<String, HgPair> ids = new ConcurrentHashMap<>();
+        private static ConcurrentHashMap<String, HgPair> IDS = new ConcurrentHashMap<>();
 
 
         public Counters(String namespace) {
@@ -62,15 +63,15 @@ public class HstoreTables {
         public long getCounterFromPd(Session session, HugeType type) {
             AtomicLong currentId,maxId;
             HgPair<AtomicLong, AtomicLong> idPair;
-            String key = toKey(this.getDatabase(),session.getGraphName(),type);
-            if ((idPair = ids.get(key)) == null) {
-                synchronized (ids) {
-                    if ((idPair = ids.get(key)) == null) {
+            String key = toKey(session.getGraphName(),type);
+            if ((idPair = IDS.get(key)) == null) {
+                synchronized (IDS) {
+                    if ((idPair = IDS.get(key)) == null) {
                         try {
                             currentId = new AtomicLong(0);
                             maxId = new AtomicLong(0);
                             idPair = new HgPair(currentId, maxId);
-                            ids.put(key, idPair);
+                            IDS.put(key, idPair);
                         } catch (Exception e) {
                             throw new BackendException(String.format(
                                     "Failed to get the ID from pd,%s", e));
@@ -105,10 +106,9 @@ public class HstoreTables {
             return 0L;
         }
 
-        private String toKey(String namespace,String graphName, HugeType type){
+        private String toKey(String graphName, HugeType type){
             StringBuilder builder = new StringBuilder();
-            builder.append(namespace).append(DELIMITER)
-                    .append(graphName).append(DELIMITER)
+            builder.append(graphName).append(DELIMITER)
                     .append(type.code());
             return builder.toString();
         }
@@ -126,9 +126,9 @@ public class HstoreTables {
         public  static  final byte[] COUNTER_OWNER = new byte[] { 'c' };
 
         public synchronized void increaseCounter(Session session, HugeType type, long lowest) {
-            String key = toKey(this.getDatabase(),session.getGraphName(),type);
+            String key = toKey(session.getGraphName(),type);
             getCounterFromPd(session,type);
-            HgPair<AtomicLong,AtomicLong> idPair = ids.get(key);
+            HgPair<AtomicLong,AtomicLong> idPair = IDS.get(key);
             AtomicLong currentId = idPair.getKey();
             AtomicLong maxId = idPair.getValue();
             if (currentId.longValue() >= lowest) return;
@@ -136,14 +136,14 @@ public class HstoreTables {
                 currentId.set(lowest);
                 return;
             }
-            synchronized (ids){
+            synchronized (IDS){
                 try{
                     PDClient pdClient;
                     String conf = session.getConf()
                                          .get(HstoreOptions.PD_PEERS);
                     pdClient = PDClient.create(PDConfig.of(conf));
                     pdClient.getIdByKey(key, (int)(lowest - maxId.longValue()));
-                    ids.remove(key);
+                    IDS.remove(key);
                 } catch (Exception e) {
                     throw new BackendException("");
                 } finally {
@@ -161,6 +161,15 @@ public class HstoreTables {
             assert bytes.length == Long.BYTES;
             return ByteBuffer.wrap(bytes).order(
                     ByteOrder.nativeOrder()).getLong();
+        }
+
+        public static void truncate(String graphName){
+            String prefix = graphName + DELIMITER;
+            for (Map.Entry<String, HgPair> entry:IDS.entrySet()) {
+                if (entry.getKey().startsWith(prefix)){
+                    IDS.remove(entry.getKey());
+                }
+            }
         }
     }
 

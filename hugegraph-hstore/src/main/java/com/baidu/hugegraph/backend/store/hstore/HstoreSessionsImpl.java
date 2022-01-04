@@ -433,9 +433,10 @@ public class HstoreSessionsImpl extends HstoreSessions {
         }
 
         @Override
-        public void truncate() {
+        public void truncate() throws Exception {
             this.graph.truncate();
-
+            HstoreSessionsImpl.getDefaultPdClient().resetIdByKey(this.getGraphName());
+            HstoreTables.Counters.truncate(this.getGraphName());
         }
 
         private int size() {

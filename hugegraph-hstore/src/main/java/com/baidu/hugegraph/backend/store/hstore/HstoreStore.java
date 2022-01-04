@@ -239,7 +239,12 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
 
     @Override
     public void truncate() {
-        this.sessions.session().truncate();
+        try {
+            this.sessions.session().truncate();
+        } catch (Exception e) {
+            LOG.error("Store truncated failed: {}", e);
+            return;
+        }
         LOG.debug("Store truncated: {}", this.store);
     }
 

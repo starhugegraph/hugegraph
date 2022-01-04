@@ -21,6 +21,7 @@ package com.baidu.hugegraph.backend.store.hstore;
 
 import java.util.Set;
 
+import com.baidu.hugegraph.pd.common.PDException;
 import com.baidu.hugegraph.type.define.GraphMode;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -105,7 +106,7 @@ public abstract class HstoreSessions extends BackendSessionPool {
         }
         public abstract void merge(String table, byte[] ownerKey, byte[] key, byte[] value);
         public abstract void setMode(GraphMode mode);
-        public abstract void truncate();
+        public abstract void truncate() throws Exception;
         public abstract BackendColumnIterator scan(String table, byte[] conditionQueryToByte);
 
         public HugeConfig getConf() {
