@@ -199,8 +199,8 @@ public abstract class SingleWayMultiPathsRecords extends AbstractRecords {
     }
 
     protected static Long makeCodePair(int source, int target) {
-        return ((long) source & 0xFFFFFFFFl) |
-               (((long) target << 32) & 0xFFFFFFFF00000000l);
+        return ((long) source & 0xFFFFFFFFL) |
+               (((long) target << 32) & 0xFFFFFFFF00000000L);
     }
 
     protected void addEdgeToCodePair(HashSet<Long> codePairs,
