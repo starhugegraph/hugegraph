@@ -19,17 +19,17 @@
 
 package com.baidu.hugegraph.meta;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.auth.HugeAccess;
 import com.baidu.hugegraph.auth.HugeBelong;
 import com.baidu.hugegraph.auth.HugeGroup;
@@ -38,9 +38,12 @@ import com.baidu.hugegraph.auth.HugeUser;
 import com.baidu.hugegraph.auth.SchemaDefine;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
+import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.space.GraphSpace;
+import com.baidu.hugegraph.space.SchemaTemplate;
 import com.baidu.hugegraph.space.Service;
 import com.baidu.hugegraph.util.JsonUtil;
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 
@@ -70,14 +73,18 @@ public class MetaManager {
     public static final String META_PATH_BELONG = "BELONG";
     public static final String META_PATH_ACCESS = "ACCESS";
     public static final String META_PATH_K8S_BINDINGS = "BINDING";
+    public static final String META_PATH_REST_PROPERTIES = "REST_PROPERTIES";
+    public static final String META_PATH_GREMLIN_YAML = "GREMLIN_YAML";
     private static final String META_PATH_URLS = "URLS";
+    public static final String META_PATH_SCHEMA_TEMPLATE = "SCHEMA_TEMPLATE";
 
+    public static final String META_PATH_AUTH_EVENT = "AUTH_EVENT";
     public static final String META_PATH_EVENT = "EVENT";
     public static final String META_PATH_ADD = "ADD";
     public static final String META_PATH_REMOVE = "REMOVE";
     public static final String META_PATH_UPDATE = "UPDATE";
 
-    public static final String DEFAULT_NAMESPACE = "default_ns";
+    public static final long LOCK_DEFAULT_LEASE = 30L;
 
     private MetaDriver metaDriver;
     private String cluster;
@@ -146,8 +153,28 @@ public class MetaManager {
         this.listen(this.graphAddKey(), consumer);
     }
 
+    public <T> void listenGraphUpdate(Consumer<T> consumer) {
+        this.listen(this.graphUpdateKey(), consumer);
+    }
+
     public <T> void listenGraphRemove(Consumer<T> consumer) {
         this.listen(this.graphRemoveKey(), consumer);
+    }
+
+    public <T> void listenRestPropertiesUpdate(String graphSpace,
+                                               String serviceId,
+                                               Consumer<T> consumer) {
+        this.listen(this.restPropertiesKey(graphSpace, serviceId), consumer);
+    }
+
+    public <T> void listenGremlinYamlUpdate(String graphSpace,
+                                            String serviceId,
+                                            Consumer<T> consumer) {
+        this.listen(this.gremlinYamlKey(graphSpace, serviceId), consumer);
+    }
+
+    public <T> void listenAuthEvent(Consumer<T> consumer) {
+        this.listen(this.authEventKey(), consumer);
     }
 
     private <T> void listen(String key, Consumer<T> consumer) {
@@ -187,7 +214,7 @@ public class MetaManager {
         return configs;
     }
 
-    public Map<String, Service> services(String graphSpace) {
+    public Map<String, Service> serviceConfigs(String graphSpace) {
         Map<String, Service> serviceMap =  new HashMap<>();
         Map<String, String> keyValues = this.metaDriver.scanWithPrefix(
                             this.serviceConfPrefix(graphSpace));
@@ -213,6 +240,35 @@ public class MetaManager {
             configs.put(graphName, configMap(entry.getValue()));
         }
         return configs;
+    }
+
+    public Set<String> schemaTemplates(String graphSpace) {
+        Set<String> result = new HashSet<>();
+        Map<String, String> keyValues = this.metaDriver.scanWithPrefix(
+                this.schemaTemplatePrefix(graphSpace));
+        for (String key : keyValues.keySet()) {
+            String[] parts = key.split(META_PATH_DELIMETER);
+            result.add(parts[parts.length - 1]);
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    public SchemaTemplate schemaTemplate(String graphSpace,
+                                         String schemaTemplate) {
+        String s = this.metaDriver.get(this.schemaTemplateKey(graphSpace,
+                                                              schemaTemplate));
+        return SchemaTemplate.fromMap(JsonUtil.fromJson(s, Map.class));
+    }
+
+    public void addSchemaTemplate(String graphSpace,
+                                  SchemaTemplate template) {
+        this.metaDriver.put(this.schemaTemplateKey(graphSpace, template.name()),
+                            JsonUtil.toJson(template.asMap()));
+    }
+
+    public void removeSchemaTemplate(String graphSpace, String name) {
+        this.metaDriver.delete(this.schemaTemplateKey(graphSpace, name));
     }
 
     public <T> List<String> extractGraphSpacesFromResponse(T response) {
@@ -248,6 +304,12 @@ public class MetaManager {
                             JsonUtil.toJson(configs));
     }
 
+    public void updateGraphConfig(String graphSpace, String graph,
+                                  Map<String, Object> configs) {
+        this.metaDriver.put(this.graphConfKey(graphSpace, graph),
+                            JsonUtil.toJson(configs));
+    }
+
     public GraphSpace graphSpace(String name) {
         String space = this.metaDriver.get(this.graphSpaceConfKey(name));
         if (space == null) {
@@ -270,30 +332,30 @@ public class MetaManager {
                             JsonUtil.toJson(space));
     }
 
-    public void addGraphSpace(String graphSpace) {
+    public void notifyGraphSpaceAdd(String graphSpace) {
         this.metaDriver.put(this.graphSpaceAddKey(), graphSpace);
     }
 
-    public void addService(String graphSpace, String name) {
+    public void notifyServiceAdd(String graphSpace, String name) {
         this.metaDriver.put(this.serviceAddKey(),
                             this.serviceName(graphSpace, name));
     }
 
-    public void removeService(String graphSpace, String name) {
+    public void notifyServiceRemove(String graphSpace, String name) {
         this.metaDriver.put(this.serviceRemoveKey(),
                             this.serviceName(graphSpace, name));
     }
 
-    public void updateService(String graphSpace, String name) {
+    public void notifyServiceUpdate(String graphSpace, String name) {
         this.metaDriver.put(this.serviceUpdateKey(),
                             this.serviceName(graphSpace, name));
     }
 
-    public void removeGraphSpace(String graphSpace) {
+    public void notifyGraphSpaceRemove(String graphSpace) {
         this.metaDriver.put(this.graphSpaceRemoveKey(), graphSpace);
     }
 
-    public void updateGraphSpace(String graphSpace) {
+    public void notifyGraphSpaceUpdate(String graphSpace) {
         this.metaDriver.put(this.graphSpaceUpdateKey(), graphSpace);
     }
 
@@ -323,14 +385,49 @@ public class MetaManager {
         this.metaDriver.delete(this.graphConfKey(graphSpace, graph));
     }
 
-    public void addGraph(String graphSpace, String graph) {
+    public void notifyGraphAdd(String graphSpace, String graph) {
         this.metaDriver.put(this.graphAddKey(),
                             this.graphName(graphSpace, graph));
     }
 
-    public void removeGraph(String graphSpace, String graph) {
+    public void notifyGraphRemove(String graphSpace, String graph) {
         this.metaDriver.put(this.graphRemoveKey(),
                             this.graphName(graphSpace, graph));
+    }
+
+    public void notifyGraphUpdate(String graphSpace, String graph) {
+        this.metaDriver.put(this.graphUpdateKey(),
+                            this.graphName(graphSpace, graph));
+    }
+
+    public LockResult lock(String... keys) {
+        return this.lock(LOCK_DEFAULT_LEASE, keys);
+    }
+
+    public LockResult lock(long ttl, String... keys) {
+        String key = String.join(META_PATH_DELIMETER, keys);
+        return this.lock(key, ttl);
+    }
+
+    public LockResult lock(String key, long ttl) {
+        LockResult lockResult = this.metaDriver.lock(key, ttl);
+        if (!lockResult.lockSuccess()) {
+            throw new HugeException("Failed to lock '%s'", key);
+        }
+        return lockResult;
+    }
+
+    public LockResult lock(String key) {
+        return this.metaDriver.lock(key, LOCK_DEFAULT_LEASE);
+    }
+
+    public void unlock(LockResult lockResult, String... keys) {
+        String key = String.join(META_PATH_DELIMETER, keys);
+        this.unlock(key, lockResult);
+    }
+
+    public void unlock(String key, LockResult lockResult) {
+        this.metaDriver.unlock(key, lockResult);
     }
 
     private String graphSpaceAddKey() {
@@ -383,6 +480,13 @@ public class MetaManager {
                            META_PATH_GRAPH, META_PATH_REMOVE);
     }
 
+    private String graphUpdateKey() {
+        // HUGEGRAPH/{cluster}/EVENT/GRAPH/UPDATE
+        return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
+                           this.cluster, META_PATH_EVENT,
+                           META_PATH_GRAPH, META_PATH_UPDATE);
+    }
+
     private String graphSpaceConfKey(String name) {
         // HUGEGRAPH/{cluster}/GRAPHSPACE/CONF/{graphspace}
         return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
@@ -402,6 +506,10 @@ public class MetaManager {
 
     private String graphConfPrefix(String graphSpace) {
         return this.graphConfKey(graphSpace, Strings.EMPTY);
+    }
+
+    private String schemaTemplatePrefix(String graphSpace) {
+        return this.schemaTemplateKey(graphSpace, Strings.EMPTY);
     }
 
     private String graphSpaceBindingsKey(String name, BindingType type) {
@@ -430,6 +538,32 @@ public class MetaManager {
         return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
                            this.cluster, META_PATH_GRAPHSPACE,
                            graphSpace, META_PATH_GRAPH_CONF, graph);
+    }
+
+    private String schemaTemplateKey(String graphSpace, String schemaTemplate) {
+        // HUGEGRAPH/{cluster}/GRAPHSPACE/{graphspace}/SCHEMA_TEMPLATE
+        return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
+                           this.cluster, META_PATH_GRAPHSPACE,
+                           graphSpace, META_PATH_SCHEMA_TEMPLATE,
+                           schemaTemplate);
+    }
+
+    private String restPropertiesKey(String graphSpace, String serviceId) {
+        // HUGEGRAPH/{cluster}/GRAPHSPACE/{graphspace}/SERVICE/
+        // {serviceId}/REST_PROPERTIES
+        return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
+                           this.cluster, META_PATH_GRAPHSPACE,
+                           graphSpace, META_PATH_SERVICE, serviceId,
+                           META_PATH_REST_PROPERTIES);
+    }
+
+    private String gremlinYamlKey(String graphSpace, String serviceId) {
+        // HUGEGRAPH/{cluster}/GRAPHSPACE/{graphspace}/SERVICE/
+        // {serviceId}/GREMLIN_YAML
+        return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
+                           this.cluster, META_PATH_GRAPHSPACE,
+                           graphSpace, META_PATH_SERVICE, serviceId,
+                           META_PATH_GREMLIN_YAML);
     }
 
     private String userKey(String name) {
@@ -530,6 +664,12 @@ public class MetaManager {
         return String.join("->", groupName, code, targetName);
     }
 
+    public String authEventKey() {
+        // HUGEGRAPH/{cluster}/AUTH_EVENT
+        return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
+                           this.cluster, META_PATH_AUTH_EVENT);
+    }
+
     private String graphSpaceListKey() {
         // HUGEGRAPH/{cluster}/GRAPHSPACE_LIST
         return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
@@ -544,9 +684,61 @@ public class MetaManager {
         return String.join(META_PATH_JOIN, graphSpace, name);
     }
 
-    private String serialize(SchemaDefine.AuthElement element) throws IOException {
+    private String serialize(SchemaDefine.AuthElement element) {
         Map<String, Object> objectMap = element.asMap();
         return JsonUtil.toJson(objectMap);
+    }
+
+    public static class AuthEvent {
+        private String op; // ALLOW: CREATE | DELETE | UPDATE
+        private String type; // ALLOW: USER | GROUP | TARGET | ACCESS | BELONG
+        private String id;
+
+        public AuthEvent(String op, String type, String id) {
+            this.op = op;
+            this.type = type;
+            this.id = id;
+        }
+
+        public AuthEvent(Map<String, Object> properties) {
+            this.op = properties.get("op").toString();
+            this.type = properties.get("type").toString();
+            this.id = properties.get("id").toString();
+        }
+
+        public String op() {
+            return this.op;
+        }
+
+        public void op(String op) {
+            this.op = op;
+        }
+
+        public String type() {
+            return this.type;
+        }
+
+        public void type(String type) {
+            this.type = type;
+        }
+
+        public String id() {
+            return this.id;
+        }
+
+        public void id(String id) {
+            this.id = id;
+        }
+
+        public Map<String, Object> asMap() {
+            return ImmutableMap.of("op", this.op,
+                                   "type", this.type,
+                                   "id", this.id);
+        }
+    }
+
+    private void putAuthEvent(AuthEvent event) {
+        this.metaDriver.put(authEventKey(), JsonUtil.toJson(event.asMap()));
     }
 
     public void createUser(HugeUser user) throws IOException {
@@ -579,6 +771,7 @@ public class MetaManager {
         E.checkArgument(StringUtils.isNotEmpty(result),
                         "The user name '%s' does not existed", id.asString());
         this.metaDriver.delete(userKey(id.asString()));
+        this.putAuthEvent(new AuthEvent("DELETE", "USER", id.asString()));
         Map<String, Object> map = JsonUtil.fromJson(result, Map.class);
         HugeUser user = HugeUser.fromMap(map);
         return user;
@@ -664,6 +857,7 @@ public class MetaManager {
         E.checkArgument(StringUtils.isNotEmpty(result),
                         "The group name '%s' is not existed", id.asString());
         this.metaDriver.delete(groupKey(graphSpace, id.asString()));
+        this.putAuthEvent(new AuthEvent("DELETE", "GROUP", id.asString()));
         Map<String, Object> map = JsonUtil.fromJson(result, Map.class);
         return HugeGroup.fromMap(map);
     }
@@ -743,6 +937,8 @@ public class MetaManager {
         ori.resources(target.resources());
         this.metaDriver.put(targetKey(graphSpace, target.name()),
                             serialize(ori));
+        this.putAuthEvent(new AuthEvent("UPDATE", "TARGET",
+                                        ori.id().asString()));
         return ori;
     }
 
@@ -754,6 +950,7 @@ public class MetaManager {
         E.checkArgument(StringUtils.isNotEmpty(result),
                         "The target name '%s' is not existed", id.asString());
         this.metaDriver.delete(targetKey(graphSpace, id.asString()));
+        this.putAuthEvent(new AuthEvent("DELETE", "TARGET", id.asString()));
         Map<String, Object> map = JsonUtil.fromJson(result, Map.class);
         return HugeTarget.fromMap(map);
     }
@@ -824,6 +1021,7 @@ public class MetaManager {
         E.checkArgument(StringUtils.isEmpty(result),
                         "The belong name '%s' has existed", belongId);
         this.metaDriver.put(belongKey(graphSpace, belongId), serialize(belong));
+        this.putAuthEvent(new AuthEvent("CREATE", "BELONG", belongId));
         return IdGenerator.of(belongId);
     }
 
@@ -860,6 +1058,7 @@ public class MetaManager {
         E.checkArgument(StringUtils.isNotEmpty(result),
                         "The belong name '%s' is not existed", id.asString());
         this.metaDriver.delete(belongKey(graphSpace, id.asString()));
+        this.putAuthEvent(new AuthEvent("DELETE", "BELONG", id.asString()));
         Map<String, Object> map = JsonUtil.fromJson(result, Map.class);
         return HugeBelong.fromMap(map);
     }
@@ -987,11 +1186,12 @@ public class MetaManager {
         E.checkArgument(StringUtils.isEmpty(result),
                         "The access name '%s' has existed", accessId);
         this.metaDriver.put(accessKey(graphSpace, accessId), serialize(access));
+        this.putAuthEvent(new AuthEvent("CREATE", "ACCESS", accessId));
         return IdGenerator.of(accessId);
     }
 
     public HugeAccess updateAccess(String graphSpace, HugeAccess access)
-                           throws IOException, ClassNotFoundException {
+                                   throws IOException, ClassNotFoundException {
         HugeGroup group = this.getGroup(graphSpace, access.source());
         E.checkArgument(group != null,
                         "The group name '%s' is not existed",
@@ -1029,6 +1229,7 @@ public class MetaManager {
         E.checkArgument(StringUtils.isNotEmpty(result),
                         "The access name '%s' is not existed", id.asString());
         this.metaDriver.delete(accessKey(graphSpace, id.asString()));
+        this.putAuthEvent(new AuthEvent("DELETE", "ACCESS", id.asString()));
         Map<String, Object> map = JsonUtil.fromJson(result, Map.class);
         return HugeAccess.fromMap(map);
     }
@@ -1184,6 +1385,63 @@ public class MetaManager {
                                                 Set.class);
         exists.addAll(serverUrls);
         this.metaDriver.put(key, JsonUtil.toJson(serverUrls));
+    }
+
+    public Map<String, Object> restProperties(String graphSpace,
+                                              String serviceId) {
+        Map<String, Object> map = null;
+        String result = this.metaDriver.get(restPropertiesKey(graphSpace,
+                                                              serviceId));
+        if (StringUtils.isNotEmpty(result)) {
+            map = JsonUtil.fromJson(result, Map.class);
+        }
+        return map;
+    }
+
+    public Map<String, Object> restProperties(String graphSpace,
+                                              String serviceId,
+                                              Map<String, Object> properties) {
+        Map<String, Object> map;
+        String result = this.metaDriver.get(restPropertiesKey(graphSpace,
+                                                              serviceId));
+        if (StringUtils.isNotEmpty(result)) {
+            map = JsonUtil.fromJson(result, Map.class);
+            for (Map.Entry<String, Object> item : properties.entrySet()) {
+                map.put(item.getKey(), item.getValue());
+            }
+        } else {
+            map = properties;
+        }
+        this.metaDriver.put(restPropertiesKey(graphSpace, serviceId),
+                            JsonUtil.toJson(map));
+        return map;
+    }
+
+    public Map<String, Object> deleteRestProperties(String graphSpace,
+                                                    String serviceId,
+                                                    String key) {
+        Map<String, Object> map = null;
+        String result = this.metaDriver.get(restPropertiesKey(graphSpace,
+                                                              serviceId));
+        if (StringUtils.isNotEmpty(result)) {
+            map = JsonUtil.fromJson(result, Map.class);
+            if (map.containsKey(key)) {
+                map.remove(key);
+            }
+            this.metaDriver.put(restPropertiesKey(graphSpace, serviceId),
+                                JsonUtil.toJson(map));
+        }
+        return map;
+    }
+
+    public String gremlinYaml(String graphSpace, String serviceId) {
+        return this.metaDriver.get(gremlinYamlKey(graphSpace, serviceId));
+    }
+
+    public String gremlinYaml(String graphSpace, String serviceId,
+                              String yaml) {
+        this.metaDriver.put(gremlinYamlKey(graphSpace, serviceId), yaml);
+        return yaml;
     }
 
     public enum MetaDriverType {

@@ -17,26 +17,37 @@
  * under the License.
  */
 
-package com.baidu.hugegraph.dist;
+package com.baidu.hugegraph.meta.lock;
 
-import com.baidu.hugegraph.config.HugeConfig;
-import org.slf4j.Logger;
+import java.util.concurrent.ScheduledExecutorService;
 
-import com.baidu.hugegraph.event.EventHub;
-import com.baidu.hugegraph.server.RestServer;
-import com.baidu.hugegraph.util.Log;
+public class LockResult {
 
-public class HugeRestServer {
+    private boolean lockSuccess;
+    private long leaseId;
+    private ScheduledExecutorService service;
 
-    private static final Logger LOG = Log.logger(HugeRestServer.class);
-
-    public static RestServer start(String conf, EventHub hub) throws Exception {
-        // Start RestServer
-        return RestServer.start(conf, hub);
+    public void lockSuccess(boolean isLockSuccess) {
+        this.lockSuccess = isLockSuccess;
     }
 
-    public static RestServer start(HugeConfig conf, EventHub hub) throws Exception {
-        // Start RestServer
-        return RestServer.start(conf, hub);
+    public void setLeaseId(long leaseId) {
+        this.leaseId = leaseId;
+    }
+
+    public void setService(ScheduledExecutorService service) {
+        this.service = service;
+    }
+
+    public boolean lockSuccess() {
+        return this.lockSuccess;
+    }
+
+    public long getLeaseId() {
+        return this.leaseId;
+    }
+
+    public ScheduledExecutorService getService() {
+        return this.service;
     }
 }

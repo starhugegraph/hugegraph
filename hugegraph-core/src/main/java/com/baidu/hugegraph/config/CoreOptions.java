@@ -96,6 +96,14 @@ public class CoreOptions extends OptionHolder {
                     "g"
             );
 
+    public static final ConfigOption<String> GRAPH_READ_MODE =
+            new ConfigOption<>(
+                    "graph.read_mode",
+                    "The graph read mode, which could be ALL | OLTP_ONLY | OLAP_ONLY.",
+                    disallowEmpty(),
+                    "OLTP_ONLY"
+            );
+
     public static final ConfigOption<String> SERIALIZER =
             new ConfigOption<>(
                     "serializer",
@@ -486,6 +494,14 @@ public class CoreOptions extends OptionHolder {
                     "include OUT and IN edges.",
                     rangeInt(1, Integer.MAX_VALUE),
                     20000000
+            );
+
+    public static final ConfigOption<String> SCHEMA_INIT_TEMPLATE =
+            new ConfigOption<>(
+                    "schema.init_template",
+                    "The template schema used to init graph",
+                    null,
+                    ""
             );
 
     /**

@@ -20,6 +20,7 @@
 package com.baidu.hugegraph.traversal.optimize;
 
 import java.util.function.BiPredicate;
+import java.util.regex.Pattern;
 
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 
@@ -36,6 +37,50 @@ public class ConditionP extends P<Object> {
 
     public static ConditionP textContains(Object value) {
         return new ConditionP(RelationType.TEXT_CONTAINS, value);
+    }
+
+    public static ConditionP textNotContains(Object value) {
+        return new ConditionP(RelationType.TEXT_NOT_CONTAINS, value);
+    }
+
+    public static ConditionP textMatchRegex(Object value) {
+        return new ConditionP(RelationType.TEXT_MATCH_REGEX, value);
+    }
+
+    public static ConditionP textMatchEditDistance(Object value) {
+        return new ConditionP(RelationType.TEXT_MATCH_EDIT_DISTANCE, value);
+    }
+
+    public static ConditionP prefix(Object value) {
+        return new ConditionP(RelationType.TEXT_PREFIX, value);
+    }
+
+    public static ConditionP notPrefix(Object value) {
+        return new ConditionP(RelationType.TEXT_NOT_PREFIX, value);
+    }
+
+    public static ConditionP suffix(Object value) {
+        return new ConditionP(RelationType.TEXT_SUFFIX, value);
+    }
+
+    public static ConditionP notSuffix(Object value) {
+        return new ConditionP(RelationType.TEXT_NOT_SUFFIX, value);
+    }
+
+    public static ConditionP containsFuzzy(Object value) {
+        return new ConditionP(RelationType.TEXT_CONTAINS_FUZZY, value);
+    }
+
+    public static ConditionP containsRegex(Object value) {
+        return new ConditionP(RelationType.TEXT_CONTAINS_REGEX, value);
+    }
+
+    public static ConditionP fuzzy(Object value) {
+        return new ConditionP(RelationType.TEXT_FUZZY, value);
+    }
+
+    public static ConditionP regex(Object value) {
+        return new ConditionP(RelationType.TEXT_REGEX, value);
     }
 
     public static ConditionP contains(Object value) {

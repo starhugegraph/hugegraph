@@ -21,11 +21,60 @@ package com.baidu.hugegraph.traversal.optimize;
 
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
+import com.baidu.hugegraph.util.E;
+
+import java.util.regex.Pattern;
 
 public class Text {
 
     public static ConditionP contains(String value) {
         return ConditionP.textContains(value);
+    }
+
+    public static ConditionP matchRegex(String value) {
+        return ConditionP.textMatchRegex(value);
+    }
+
+    public static ConditionP matchEditDistance(String value, int distance) {
+        E.checkArgument(distance >= 0, "The distance should be >= 0");
+        String prefix = String.valueOf(distance) + "#";
+        return ConditionP.textMatchEditDistance(prefix + value);
+    }
+
+    public static ConditionP notContains(String value) {
+        return ConditionP.textNotContains(value);
+    }
+
+    public static ConditionP prefix(String value) {
+        return ConditionP.prefix(value);
+    }
+
+    public static ConditionP notPrefix(String value) {
+        return ConditionP.notPrefix(value);
+    }
+
+    public static ConditionP suffix(String value) {
+        return ConditionP.suffix(value);
+    }
+
+    public static ConditionP notSuffix(String value) {
+        return ConditionP.notSuffix(value);
+    }
+
+    public static ConditionP containsFuzzy(String value) {
+        return ConditionP.containsFuzzy(value);
+    }
+
+    public static ConditionP containsRegex(String value) {
+        return ConditionP.containsRegex(value);
+    }
+
+    public static ConditionP fuzzy(String value) {
+        return ConditionP.fuzzy(value);
+    }
+
+    public static ConditionP regex(String value) {
+        return ConditionP.regex(value);
     }
 
     public static Id uuid(String id) {

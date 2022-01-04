@@ -193,7 +193,8 @@ public class StandardHugeGraph implements HugeGraph {
         this.started = false;
         this.closed = false;
         this.mode = GraphMode.NONE;
-        this.readMode = GraphReadMode.OLTP_ONLY;
+        this.readMode = GraphReadMode.valueOf(
+                        config.get(CoreOptions.GRAPH_READ_MODE));
 
         LockUtil.init(this.name);
 
@@ -296,7 +297,7 @@ public class StandardHugeGraph implements HugeGraph {
     @Override
     public void mode(GraphMode mode) {
         if (this.mode.loading() && mode == GraphMode.NONE &&
-            "rocksdb".equalsIgnoreCase(this.storeProvider.type())) {
+            "rocksdb".equalsIgnoreCase(this.backend())) {
             // Flush WAL to sst file after load data for rocksdb backend
             this.metadata(null, "flush");
         }
@@ -311,6 +312,9 @@ public class StandardHugeGraph implements HugeGraph {
 
     @Override
     public void readMode(GraphReadMode readMode) {
+        if (this.readMode == readMode) {
+            return;
+        }
         this.clearVertexCache();
         this.readMode = readMode;
     }
@@ -361,6 +365,16 @@ public class StandardHugeGraph implements HugeGraph {
         }
 
         LOG.info("Graph '{}' has been cleared", this.name);
+    }
+
+    @Override
+    public void truncateGraph() {
+        LockUtil.lock(this.name, LockUtil.GRAPH_LOCK);
+        try {
+            this.storeProvider.truncateGraph(this);
+        } finally {
+            LockUtil.unlock(this.name, LockUtil.GRAPH_LOCK);
+        }
     }
 
     @Override
@@ -897,6 +911,9 @@ public class StandardHugeGraph implements HugeGraph {
 
         LOG.info("Close graph {}", this);
         this.taskManager.closeScheduler(this.params);
+        if ("rocksdb".equalsIgnoreCase(this.backend())) {
+            this.metadata(null, "flush");
+        }
         try {
             this.closeTx();
         } finally {

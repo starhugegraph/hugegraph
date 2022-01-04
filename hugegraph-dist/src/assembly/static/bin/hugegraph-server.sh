@@ -10,7 +10,7 @@ abs_path() {
     echo "$(cd -P "$(dirname "$SOURCE")" && pwd)"
 }
 
-if [[ $# -lt 3 ]]; then
+if [[ $# -lt 13 ]]; then
     echo "USAGE: $0 GREMLIN_SERVER_CONF REST_SERVER_CONF OPEN_SECURITY_CHECK"
     echo " e.g.: $0 conf/gremlin-server.yaml conf/rest-server.properties true"
     exit 1;
@@ -24,23 +24,35 @@ EXT="$TOP/ext"
 PLUGINS="$TOP/plugins"
 LOGS="$TOP/logs"
 OUTPUT=${LOGS}/hugegraph-server.log
+## set jmx_export port for prometheus, 0 or unset represents not start jmx_export
+JMX_EXPORT_PORT=0
 
 export HUGEGRAPH_HOME="$TOP"
 . ${BIN}/util.sh
 
 GREMLIN_SERVER_CONF="$1"
 REST_SERVER_CONF="$2"
-OPEN_SECURITY_CHECK="$3"
+GRAPH_SPACE="$3"
+SERVICE_ID="$4"
+NODE_ID="$5"
+NODE_ROLE="$6"
+META_SERVERS="$7"
+CLUSTER="$8"
+WITH_CA="$9"
+CA_FILE="${10}"
+CLIENT_CA="${11}"
+CLIENT_KEY="${12}"
+OPEN_SECURITY_CHECK="${13}"
 
-if [[ $# -eq 3 ]]; then
+if [[ $# -eq 13 ]]; then
     USER_OPTION=""
     GC_OPTION=""
-elif [[ $# -eq 4 ]]; then
-    USER_OPTION="$4"
+elif [[ $# -eq 14 ]]; then
+    USER_OPTION="${14}"
     GC_OPTION=""
-elif [[ $# -eq 5 ]]; then
-    USER_OPTION="$4"
-    GC_OPTION="$5"
+elif [[ $# -eq 15 ]]; then
+    USER_OPTION="${14}"
+    GC_OPTION="${15}"
 fi
 
 ensure_path_writable $LOGS
@@ -116,6 +128,9 @@ case "$GC_OPTION" in
 esac
 
 JVM_OPTIONS="-Dlog4j.configurationFile=${CONF}/log4j2.xml"
+if [ "${JMX_EXPORT_PORT}" != "" ] && [ ${JMX_EXPORT_PORT} -ne 0 ] ; then
+  JAVA_OPTIONS="${JAVA_OPTIONS} -javaagent:${LIB}/jmx_prometheus_javaagent-0.16.1.jar=${JMX_EXPORT_PORT}:${CONF}/jmx_exporter.yml"
+fi
 if [[ ${OPEN_SECURITY_CHECK} == "true" ]]; then
     JVM_OPTIONS="${JVM_OPTIONS} -Djava.security.manager=com.baidu.hugegraph.security.HugeSecurityManager"
 fi
@@ -123,4 +138,5 @@ fi
 # Turn on security check
 exec ${JAVA} -Dname="HugeGraphServer" ${JVM_OPTIONS} ${JAVA_OPTIONS} \
      -cp ${CLASSPATH}: com.baidu.hugegraph.dist.HugeGraphServer ${GREMLIN_SERVER_CONF} ${REST_SERVER_CONF} \
-     >> ${OUTPUT} 2>&1
+     ${GRAPH_SPACE} ${SERVICE_ID} ${NODE_ID} ${NODE_ROLE} ${META_SERVERS} ${CLUSTER} ${WITH_CA} ${CA_FILE} \
+     ${CLIENT_CA} ${CLIENT_KEY} >> ${OUTPUT} 2>&1

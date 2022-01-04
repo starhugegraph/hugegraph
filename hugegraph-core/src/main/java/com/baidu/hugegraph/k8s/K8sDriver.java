@@ -21,6 +21,7 @@ package com.baidu.hugegraph.k8s;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,7 +29,6 @@ import java.util.Set;
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.space.GraphSpace;
 import com.baidu.hugegraph.space.Service;
-import com.google.common.collect.ImmutableSet;
 
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.ListOptions;
@@ -41,6 +41,7 @@ import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
 import io.fabric8.kubernetes.api.model.ResourceRequirementsBuilder;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
+import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.client.Config;
@@ -176,8 +177,13 @@ public class K8sDriver {
     }
 
     public Set<String> startOltpService(GraphSpace graphSpace,
-                                        Service service) {
-        this.createDeployment(graphSpace, service);
+                                        Service service,
+                                        List<String> metaServers,
+                                        String cluster, boolean useCa,
+                                        String ca, String clientCa,
+                                        String clientKey) {
+        this.createDeployment(graphSpace, service, metaServers, cluster,
+                              useCa, ca, clientCa, clientKey);
         return this.createService(graphSpace, service);
     }
 
@@ -188,8 +194,14 @@ public class K8sDriver {
                    .withName(deploymentName).delete();
     }
 
-    public Deployment createDeployment(GraphSpace graphSpace, Service service) {
-        Deployment deployment = this.constructDeployment(graphSpace, service);
+    public Deployment createDeployment(GraphSpace graphSpace, Service service,
+                                       List<String> metaServers, String cluster,
+                                       boolean useCa, String ca,
+                                       String clientCa, String clientKey) {
+        Deployment deployment = this.constructDeployment(graphSpace, service,
+                                                         metaServers, cluster,
+                                                         useCa, ca, clientCa,
+                                                         clientKey);
         String namespace = namespace(graphSpace, service);
         deployment = this.client.apps().deployments().inNamespace(namespace)
                                 .createOrReplace(deployment);
@@ -253,23 +265,40 @@ public class K8sDriver {
 
         this.client.services().inNamespace(namespace).create(service);
 
-        return ImmutableSet.of(this.client.services()
-                                          .inNamespace(namespace)
-                                          .withName(serviceName)
-                                          .getURL(portName));
+        service = this.client.services()
+                             .inNamespace(namespace)
+                             .withName(serviceName)
+                             .get();
+
+        return urlsOfService(service);
+    }
+
+    private static Set<String> urlsOfService(
+            io.fabric8.kubernetes.api.model.Service service) {
+        Set<String> urls = new HashSet<>();
+        String clusterIP = service.getSpec().getClusterIP();
+        for (ServicePort port : service.getSpec().getPorts()) {
+            urls.add(clusterIP + ":" + port.getPort());
+        }
+        return urls;
     }
 
     private Deployment constructDeployment(GraphSpace graphSpace,
-                                           Service service) {
-        String deploymentName = serviceName(graphSpace, service);
+                                           Service service,
+                                           List<String> metaServers,
+                                           String cluster, boolean useCa,
+                                           String ca, String clientCa,
+                                           String clientKey) {
+        String deploymentName = deploymentName(graphSpace, service);
         String containerName = String.join(DELIMETER, deploymentName,
                                            CONTAINER);
-        Quantity cpu = Quantity.parse((service.cpuLimit() * 100) + "m");
+        Quantity cpu = Quantity.parse((service.cpuLimit() * 1000) + "m");
         Quantity memory = Quantity.parse(service.memoryLimit() + "G");
         ResourceRequirements rr = new ResourceRequirementsBuilder()
                 .addToLimits("cpu", cpu)
                 .addToLimits("memory", memory)
                 .build();
+        String metaServersString = metaServers(metaServers);
 
         return new DeploymentBuilder()
                 .withNewMetadata()
@@ -290,6 +319,38 @@ public class K8sDriver {
                 .addNewPort()
                 .withContainerPort(HG_PORT)
                 .endPort()
+                .addNewEnv()
+                .withName("GRAPH_SPACE")
+                .withValue(graphSpace.name())
+                .endEnv()
+                .addNewEnv()
+                .withName("SERVICE_ID")
+                .withValue(service.name())
+                .endEnv()
+                .addNewEnv()
+                .withName("META_SERVERS")
+                .withValue(metaServersString)
+                .endEnv()
+                .addNewEnv()
+                .withName("CLUSTER")
+                .withValue(cluster)
+                .endEnv()
+                .addNewEnv()
+                .withName("WITH_CA")
+                .withValue(Boolean.toString(useCa))
+                .endEnv()
+                .addNewEnv()
+                .withName("CA_FILE")
+                .withValue(ca)
+                .endEnv()
+                .addNewEnv()
+                .withName("CLIENT_CA")
+                .withValue(clientCa)
+                .endEnv()
+                .addNewEnv()
+                .withName("CLIENT_KEY")
+                .withValue(clientKey)
+                .endEnv()
                 .endContainer()
                 .endSpec()
                 .endTemplate()
@@ -298,6 +359,17 @@ public class K8sDriver {
                 .endSelector()
                 .endSpec()
                 .build();
+    }
+
+    private static String metaServers(List<String> metaServers) {
+        StringBuilder builder = new StringBuilder().append("[");
+        for (int i = 0; i < metaServers.size(); i++) {
+            builder.append(metaServers.get(i));
+            if (i != metaServers.size() - 1) {
+                builder.append(",");
+            }
+        }
+        return builder.toString();
     }
 
     private static String namespace(GraphSpace graphSpace, Service service) {
@@ -335,6 +407,12 @@ public class K8sDriver {
                            service.type().name().toLowerCase(), service.name());
     }
 
+    private static String deploymentName(GraphSpace graphSpace,
+                                         Service service) {
+        return String.join(DELIMETER, graphSpace.name(),
+                           service.type().name().toLowerCase(), service.name());
+    }
+
     private static String serviceName(GraphSpace graphSpace,
                                       Service service) {
         return String.join(DELIMETER, graphSpace.name(),
@@ -347,5 +425,16 @@ public class K8sDriver {
         } catch (InterruptedException e) {
             // Ignore
         }
+    }
+
+    public int podsRunning(GraphSpace graphSpace, Service service) {
+        String deploymentName = deploymentName(graphSpace, service);
+        String namespace = namespace(graphSpace, service);
+        Deployment deployment;
+        deployment = this.client.apps().deployments()
+                         .inNamespace(namespace)
+                         .withName(deploymentName)
+                         .get();
+        return deployment.getStatus().getReadyReplicas();
     }
 }

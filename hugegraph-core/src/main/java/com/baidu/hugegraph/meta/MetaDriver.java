@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import com.baidu.hugegraph.meta.lock.LockResult;
+
 public interface MetaDriver {
 
     public void put(String key, String value);
@@ -36,4 +38,8 @@ public interface MetaDriver {
     public <T> void listen(String key, Consumer<T> consumer);
 
     public <T> List<String> extractValuesFromResponse(T response);
+
+    public LockResult lock(String key, long ttl);
+
+    public void unlock(String key, LockResult lockResult);
 }

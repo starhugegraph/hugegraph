@@ -31,6 +31,8 @@ import java.util.function.Consumer;
 import org.apache.commons.io.FileUtils;
 
 import com.baidu.hugegraph.HugeException;
+import com.baidu.hugegraph.meta.lock.DistributedLock;
+import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.type.define.CollectionType;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.collection.CollectionFactory;
@@ -53,6 +55,7 @@ import io.netty.handler.ssl.SslProvider;
 public class EtcdMetaDriver implements MetaDriver {
 
     private Client client;
+    private DistributedLock lock;
 
     public EtcdMetaDriver(String trustFile, String clientCertFile,
                           String clientKeyFile, Object... endpoints) {
@@ -61,11 +64,13 @@ public class EtcdMetaDriver implements MetaDriver {
         SslContext sslContext = openSslContext(trustFile, clientCertFile,
                                                clientKeyFile);
         this.client = builder.sslContext(sslContext).build();
+        this.lock = DistributedLock.getInstance(this.client);
     }
 
     public EtcdMetaDriver(Object... endpoints) {
         ClientBuilder builder = this.etcdMetaDriverBuilder(endpoints);
         this.client = builder.build();
+        this.lock = DistributedLock.getInstance(this.client);
     }
 
     public ClientBuilder etcdMetaDriverBuilder(Object... endpoints) {
@@ -106,7 +111,7 @@ public class EtcdMetaDriver implements MetaDriver {
             keyValues = kvClient.get(toByteSequence(key))
                                 .get().getKvs();
         } catch (InterruptedException | ExecutionException e) {
-            throw new HugeException("Failed to get key '%s' from etcd", key, e);
+            throw new HugeException("Failed to get key '%s' from etcd", e, key);
         }
 
         if (keyValues.size() > 0) {
@@ -125,8 +130,8 @@ public class EtcdMetaDriver implements MetaDriver {
             try {
                 kvClient.delete(toByteSequence(key)).get();
             } catch (Throwable t) {
-                throw new HugeException("Failed to put '%s:%s' to etcd",
-                                        key, value, e);
+                throw new HugeException("Failed to put '%s:%s' to etcd", e,
+                                        key, value);
             }
         }
     }
@@ -138,7 +143,7 @@ public class EtcdMetaDriver implements MetaDriver {
             kvClient.delete(toByteSequence(key)).get();
         } catch (InterruptedException | ExecutionException e) {
             throw new HugeException(
-                      "Failed to delete key '%s' from etcd", key, e);
+                      "Failed to delete key '%s' from etcd", e, key);
         }
     }
 
@@ -152,8 +157,8 @@ public class EtcdMetaDriver implements MetaDriver {
             response = this.client.getKVClient().get(toByteSequence(prefix),
                                                      getOption).get();
         } catch (InterruptedException | ExecutionException e) {
-            throw new HugeException("Failed to scan etcd with prefix " +
-                                    prefix, e);
+            throw new HugeException("Failed to scan etcd with prefix %s",
+                                    e, prefix);
         }
         int size = (int) response.getCount();
         Map<String, String> keyValues = CollectionFactory.newMap(
@@ -182,6 +187,16 @@ public class EtcdMetaDriver implements MetaDriver {
             values.add(value);
         }
         return values;
+    }
+
+    @Override
+    public LockResult lock(String key, long ttl) {
+        return this.lock.lock(key, ttl);
+    }
+
+    @Override
+    public void unlock(String key, LockResult lockResult) {
+        this.lock.unLock(key, lockResult);
     }
 
     @SuppressWarnings("unchecked")
@@ -227,4 +242,6 @@ public class EtcdMetaDriver implements MetaDriver {
         }
         return ssl;
     }
+
+
 }
