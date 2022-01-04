@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <!-- Config will be auto loaded every 60s -->
-<configuration status="error" monitorInterval="30">
+<configuration status="error" monitorInterval="60">
     <properties>
         <property name="LOG_PATH">logs</property>
         <property name="FILE_NAME">hugegraph-server</property>
@@ -20,6 +20,9 @@
             bufferedIO="true" bufferSize="524288" immediateFlush="false">
             <ThresholdFilter level="WARN" onMatch="ACCEPT" onMismatch="DENY"/>
             <PatternLayout pattern="%-d{yyyy-MM-dd HH:mm:ss} [%t] [%p] %c{1.} - %m%n"/>
+            <!--JsonLayout compact="false" eventEol="true" locationInfo="true">
+                <KeyValuePair key="timestamp" value="$${date:yyyy-MM-dd HH:mm:ss.SSS}"/>
+            </JsonLayout-->
             <!-- Trigger after exceeding 1day or 50MB -->
             <Policies>
                 <SizeBasedTriggeringPolicy size="128MB"/>
@@ -134,15 +137,8 @@
             <appender-ref ref="console"/>
             <appender-ref ref="audit"/>
         </AsyncLogger>
-        <AsyncLogger name="com.baidu.hugegraph.traversal" level="debug" additivity="false">
-            <appender-ref ref="console"/>
-            <appender-ref ref="audit"/>
-        </AsyncLogger>
         <AsyncLogger name="com.baidu.hugegraph.api.filter.AuthenticationFilter" level="INFO" additivity="false">
             <appender-ref ref="console"/>
-            <appender-ref ref="audit"/>
-        </AsyncLogger>
-        <AsyncLogger name="com.baidu.hugegraph.auth.HugeGraphAuthProxy" level="info" additivity="false">
             <appender-ref ref="audit"/>
         </AsyncLogger>
     </loggers>
