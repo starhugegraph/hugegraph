@@ -78,10 +78,14 @@ public class GraphsAPI extends API {
     @RolesAllowed({"admin", "$dynamic"})
     public Object list(@Context GraphManager manager,
                        @Context SecurityContext sc) {
+        LOG.debug("List graphs");
         Set<String> graphs = manager.graphs();
+        LOG.debug("Get graphs list from graph manager with size {}",
+                  graphs.size());
         // Filter by user role
         Set<String> filterGraphs = new HashSet<>();
         for (String graph : graphs) {
+            LOG.debug("Get graph {} and verify auth", graph);
             String role = RequiredPerm.roleFor(graph, HugePermission.READ);
             if (sc.isUserInRole(role)) {
                 try {
@@ -90,8 +94,11 @@ public class GraphsAPI extends API {
                 } catch (ForbiddenException ignored) {
                     // ignore
                 }
+            } else {
+                LOG.debug("The user not in role for graph {}", graph);
             }
         }
+        LOG.debug("Finish list graphs with size {}", filterGraphs.size());
         return ImmutableMap.of("graphs", filterGraphs);
     }
 
