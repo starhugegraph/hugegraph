@@ -980,7 +980,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         if (!(actionPerm == HugePermission.READ && ro.type().isSchema()) &&
             auditLimiter.tryAcquire()) {
             String status = result == null ? "denied" : "allowed";
-        //    LOG.info("User '{}' is {} to {} {}", username, status, action, ro);
+            LOG.info("User '{}' is {} to {} {}", username, status, action, ro);
         }
 
         // result = null means no permission, throw if needed
