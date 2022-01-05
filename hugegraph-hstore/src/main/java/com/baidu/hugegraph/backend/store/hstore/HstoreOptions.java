@@ -47,13 +47,16 @@ public class HstoreOptions extends OptionHolder {
                     "pd.fake", "Enable the fake PD service.",
                     disallowEmpty(), false);
     public static final ConfigOption<String> HSTORE_PEERS = new ConfigOption<>(
-            "hstore.peers", "The addresses of store nodes, separated with commas.",
+            "hstore.peers", "The addresses of store nodes, "
+            + "separated with commas.",
             disallowEmpty(), "localhost:9080");
     public static final ConfigOption<Integer> PARTITION_COUNT = new ConfigOption<>(
-            "hstore.partition_count", "Number of partitions, which PD controls partitions based on.",
+            "hstore.partition_count", "Number of partitions, "
+            + "which PD controls partitions based on.",
             disallowEmpty(), 0);
     public static final ConfigOption<Integer> SHARD_COUNT = new ConfigOption<>(
-            "hstore.shard_count", "Number of copies,which PD controls partition copies based on.",
+            "hstore.shard_count", "Number of copies,"
+            + "which PD controls partition copies based on.",
             disallowEmpty(), 0);
 
 }

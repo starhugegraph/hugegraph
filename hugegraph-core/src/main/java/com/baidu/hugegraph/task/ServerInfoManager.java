@@ -314,7 +314,7 @@ public class ServerInfoManager {
             return this.dbExecutor.submit(callable).get();
         } catch (Throwable e) {
             throw new HugeException("Failed to update/query server info: %s",
-                                     e, e.toString());
+                                    e, e.toString());
         }
     }
 

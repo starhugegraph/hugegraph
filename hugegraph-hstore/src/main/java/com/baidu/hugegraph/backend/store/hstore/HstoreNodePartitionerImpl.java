@@ -16,7 +16,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.baidu.hugegraph.store.client.util.HgStoreClientConst.ALL_PARTITION_OWNER;
 
-public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStoreNodeProvider, HgStoreNodeNotifier {
+public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner,
+                                                  HgStoreNodeProvider,
+                                                  HgStoreNodeNotifier {
 
     private PDClient pdClient;
     private HgStoreNodeManager nodeManager;
@@ -28,7 +30,8 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
         pdClient = HstoreSessionsImpl.getDefaultPdClient();
     }
 
-    public HstoreNodePartitionerImpl(HgStoreNodeManager nodeManager, String pdPeers) {
+    public HstoreNodePartitionerImpl(HgStoreNodeManager nodeManager,
+                                     String pdPeers) {
         this(pdPeers);
         this.nodeManager = nodeManager;
     }
@@ -37,7 +40,8 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
      * 查询分区信息，结果通过HgNodePartitionerBuilder返回
      */
     @Override
-    public int partition(HgNodePartitionerBuilder builder, String graphName, byte[] startKey, byte[] endKey) {
+    public int partition(HgNodePartitionerBuilder builder, String graphName,
+                         byte[] startKey, byte[] endKey) {
         try {
             if (HgStoreClientConst.ALL_PARTITION_OWNER == startKey) {
                 List<Metapb.Store> stores = pdClient.getActiveStores(graphName);
@@ -45,11 +49,13 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
                     builder.add(e.getId(), -1);
                 });
             } else if (startKey == endKey) {
-                HgPair<Metapb.Partition, Metapb.Shard> partShard = pdClient.getPartition(graphName, startKey);
+                HgPair<Metapb.Partition, Metapb.Shard> partShard =
+                       pdClient.getPartition(graphName, startKey);
                 Metapb.Shard leader = partShard.getValue();
                 builder.add(leader.getStoreId(), partShard.getKey().getId());
             } else {
-                pdClient.scanPartitions(graphName, startKey, endKey).forEach(e -> {
+                pdClient.scanPartitions(graphName, startKey, endKey)
+                        .forEach(e -> {
                     builder.add(e.getValue().getStoreId(), e.getKey().getId());
                 });
             }
@@ -92,7 +98,8 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner, HgStor
         return 0;
     }
 
-    public Metapb.GraphWorkMode setWorkMode(String graphName, Metapb.GraphWorkMode mode) {
+    public Metapb.GraphWorkMode setWorkMode(String graphName,
+                                            Metapb.GraphWorkMode mode) {
         try {
             Metapb.Graph graph = pdClient.setGraph(Metapb.Graph.newBuilder()
                     .setGraphName(graphName)
@@ -128,7 +135,8 @@ class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl {
             leaderMap.put(i, (long) storeMap.keySet().iterator().next());
     }
 
-    public FakeHstoreNodePartitionerImpl(HgStoreNodeManager nodeManager, String peers) {
+    public FakeHstoreNodePartitionerImpl(HgStoreNodeManager nodeManager,
+                                         String peers) {
 
         this(peers);
         this.nodeManager = nodeManager;
@@ -137,8 +145,10 @@ class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl {
 
 
     @Override
-    public int partition(HgNodePartitionerBuilder builder, String graphName, byte[] startKey, byte[] endKey) {
-        int id1 = Arrays.hashCode(startKey)  & Integer.MAX_VALUE % partitionCount;
+    public int partition(HgNodePartitionerBuilder builder, String graphName,
+                         byte[] startKey, byte[] endKey) {
+        int id1 = Arrays.hashCode(startKey)
+                  & Integer.MAX_VALUE % partitionCount;
         int id2 = Arrays.hashCode(endKey)  & Integer.MAX_VALUE % partitionCount;
         if (ALL_PARTITION_OWNER == startKey) {
             storeMap.forEach((k, v) -> {
@@ -161,19 +171,21 @@ class FakeHstoreNodePartitionerImpl extends HstoreNodePartitionerImpl {
 
     @Override
     public int notice(String graphName, HgStoreNotice storeNotice) {
-        if (storeNotice.getPartitionLeaders() != null && storeNotice.getPartitionLeaders().size() > 0) {
+        if (storeNotice.getPartitionLeaders() != null
+            && storeNotice.getPartitionLeaders().size() > 0) {
             leaderMap.putAll(storeNotice.getPartitionLeaders());
         }
         return 0;
     }
     public static class NodePartitionerFactory {
-      public static HstoreNodePartitionerImpl getNodePartitioner(HugeConfig config, HgStoreNodeManager nodeManager){
+      public static HstoreNodePartitionerImpl getNodePartitioner(
+             HugeConfig config, HgStoreNodeManager nodeManager){
           if ( config.get(HstoreOptions.PD_FAKE) ) // 无PD模式
               return new FakeHstoreNodePartitionerImpl(nodeManager,
-                      config.get(HstoreOptions.HSTORE_PEERS));
+                     config.get(HstoreOptions.HSTORE_PEERS));
           else
               return new HstoreNodePartitionerImpl(nodeManager,
-                                                   config.get(HstoreOptions.PD_PEERS)
+                         config.get(HstoreOptions.PD_PEERS)
               );
         }
     }

@@ -60,7 +60,7 @@ public abstract class SchemaElement implements Namifiable, Typifiable,
 
     public SchemaElement(final HugeGraph graph, Id id, String name) {
         E.checkArgumentNotNull(id, "SchemaElement id can't be null");
-//        E.checkArgumentNotNull(name, "SchemaElement name can't be null");
+        E.checkArgumentNotNull(name, "SchemaElement name can't be null");
         this.graph = graph;
         this.id = id;
         this.name = name;
@@ -69,8 +69,8 @@ public abstract class SchemaElement implements Namifiable, Typifiable,
     }
 
     public HugeGraph graph() {
-//        E.checkState(this.graph != null,
-//                     "Graph is null of schema '%s'", this.name);
+        E.checkState(this.graph != null,
+                     "Graph is null of schema '%s'", this.name);
         return this.graph;
     }
 
