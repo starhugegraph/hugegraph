@@ -783,7 +783,7 @@ public class GraphTransaction extends IndexableTransaction {
         query.resetActualOffset();
 
         Iterator<HugeVertex> results = this.queryVerticesFromBackend(query);
-//        results = this.filterUnmatchedRecords(results, query);
+        results = this.filterUnmatchedRecords(results, query);
 
         @SuppressWarnings("unchecked")
         Iterator<Vertex> r = (Iterator<Vertex>) joinTxVertices(query, results);
@@ -1339,8 +1339,11 @@ public class GraphTransaction extends IndexableTransaction {
 
             if (q == null) {
                 boolean sys = cq.syspropConditions().size() != 0;
-                Set<GraphIndexTransaction.MatchedIndex> indexes = this.indexTx.collectMatchedIndexes(cq);
-                if (!sys && CollectionUtils.isEmpty(indexes) ){
+                Set<GraphIndexTransaction.MatchedIndex> indexes = this.indexTx
+                                         .collectMatchedIndexes(cq);
+                if (!sys && CollectionUtils.isEmpty(indexes)
+                    && this.indexTx.store().features()
+                                   .supportsFilterInStore()){
                     queries.add(cq);
                     continue;
                 }
