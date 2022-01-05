@@ -658,7 +658,7 @@ public abstract class Condition {
     public static class UserpropRelation extends Relation {
 
         // Id of property key
-        private Id key;
+        private final Id key;
 
         public UserpropRelation(Id key, Object value) {
             this(key, RelationType.EQ, value);
