@@ -1339,15 +1339,15 @@ public class GraphTransaction extends IndexableTransaction {
 
             if (q == null) {
                 boolean sys = cq.syspropConditions().size() != 0;
-                Set<GraphIndexTransaction.MatchedIndex> indexes = this.indexTx
-                                         .collectMatchedIndexes(cq);
-                if (!sys && CollectionUtils.isEmpty(indexes)
-                    && this.indexTx.store().features()
-                                   .supportsFilterInStore()){
-                    queries.add(cq);
-                    continue;
+                if (this.indexTx.store().features().supportsFilterInStore()){
+                    Set<GraphIndexTransaction.MatchedIndex> indexes = this.indexTx
+                            .collectMatchedIndexes(cq);
+                    if (!sys && CollectionUtils.isEmpty(indexes)){
+                        queries.add(cq);
+                        continue;
+                    }
                 }
-                queries.add(this.indexQuery(cq,indexes), this.batchSize);
+                queries.add(this.indexQuery(cq), this.batchSize);
             } else if (!q.empty()) {
                 queries.add(q);
             }
@@ -1438,8 +1438,7 @@ public class GraphTransaction extends IndexableTransaction {
         return null;
     }
 
-    private IdHolderList indexQuery(ConditionQuery query,
-                                    Set<GraphIndexTransaction.MatchedIndex> indexes) {
+    private IdHolderList indexQuery(ConditionQuery query) {
         /*
          * Optimize by index-query
          * It will return a list of id (maybe empty) if success,
@@ -1447,7 +1446,7 @@ public class GraphTransaction extends IndexableTransaction {
          */
         this.beforeRead();
         try {
-            return this.indexTx.queryIndex(query, indexes);
+            return this.indexTx.queryIndex(query);
         } finally {
             this.afterRead();
         }

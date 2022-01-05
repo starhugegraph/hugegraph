@@ -372,7 +372,7 @@ public class GraphIndexTransaction extends AbstractTransaction {
      * @return      converted id query
      */
     @Watched(prefix = "index")
-    public IdHolderList queryIndex(ConditionQuery query, Set<MatchedIndex> indexes) {
+    public IdHolderList queryIndex(ConditionQuery query) {
         // Index query must have been flattened in Graph tx
         query.checkFlattened();
 
@@ -398,7 +398,7 @@ public class GraphIndexTransaction extends AbstractTransaction {
             return this.queryByLabel(query);
         } else {
             // Query by userprops (or userprops + label)
-            return this.queryByUserprop(query, indexes);
+            return this.queryByUserprop(query);
         }
     }
 
@@ -458,7 +458,7 @@ public class GraphIndexTransaction extends AbstractTransaction {
     }
 
     @Watched(prefix = "index")
-    private IdHolderList queryByUserprop(ConditionQuery query, Set<MatchedIndex> indexes) {
+    private IdHolderList queryByUserprop(ConditionQuery query) {
         // Get user applied label or collect all qualified labels with
         // related index labels
         if (!this.graph().readMode().showOlap()) {
@@ -472,8 +472,7 @@ public class GraphIndexTransaction extends AbstractTransaction {
                 }
             }
         }
-//        Set<MatchedIndex> indexes = this.collectMatchedIndexes(query);
-//        indexes = this.collectMatchedIndexes(query);
+        Set<MatchedIndex> indexes = this.collectMatchedIndexes(query);
         if (indexes.isEmpty()) {
             Id label = query.condition(HugeKeys.LABEL);
             throw noIndexException(this.graph(), query, label);
