@@ -51,7 +51,8 @@ public class HstoreTables {
         private static final int DELTA = 10000;
         private static final int times = 10000;
         private static final String DELIMITER="/";
-        private static ConcurrentHashMap<String, HgPair> IDS = new ConcurrentHashMap<>();
+        private static ConcurrentHashMap<String, HgPair> IDS =
+                                                 new ConcurrentHashMap<>();
 
 
         public Counters(String namespace) {
@@ -74,7 +75,7 @@ public class HstoreTables {
                             IDS.put(key, idPair);
                         } catch (Exception e) {
                             throw new BackendException(String.format(
-                                    "Failed to get the ID from pd,%s", e));
+                                  "Failed to get the ID from pd,%s", e));
                         }
                     }
                 }
@@ -87,35 +88,38 @@ public class HstoreTables {
                         return currentId.longValue();
                     if (currentId.longValue() > maxId.longValue()) {
                         try {
-                            PDClient pdClient = HstoreSessionsImpl.getDefaultPdClient();
-                            Pdpb.GetIdResponse idByKey = pdClient.getIdByKey(
-                                                                  key, DELTA);
+                            PDClient pdClient =
+                                     HstoreSessionsImpl.getDefaultPdClient();
+                            Pdpb.GetIdResponse idByKey =
+                                               pdClient.getIdByKey(key, DELTA);
                             idPair.getValue().getAndSet(idByKey.getId() +
                                                         idByKey.getDelta());
                             idPair.getKey().getAndSet(idByKey.getId());
                         } catch (Exception e) {
                             throw new BackendException(String.format(
-                                    "Failed to get the ID from pd,%s", e));
+                                  "Failed to get the ID from pd,%s", e));
                         }
                     }
                 }
             }
             E.checkArgument(false,
-                            "Having made too many attempts to get the ID for type '%s'",
+                            "Having made too many attempts to get the" +
+                            " ID for type '%s'",
                             type.name());
             return 0L;
         }
 
         private String toKey(String graphName, HugeType type){
             StringBuilder builder = new StringBuilder();
-            builder.append(graphName).append(DELIMITER)
-                    .append(type.code());
+            builder.append(graphName)
+                   .append(DELIMITER)
+                   .append(type.code());
             return builder.toString();
         }
 
         public long getCounter(Session session, HugeType type) {
-            byte[] key = new byte[]{type.code()};
-            byte[] value = session.get(this.table(),COUNTER_OWNER, key);
+            byte[] key = new byte[] { type.code() };
+            byte[] value = session.get(this.table(), COUNTER_OWNER, key);
             if (value.length != 0) {
                 return l(value);
             } else {
@@ -125,7 +129,8 @@ public class HstoreTables {
         //for Counter to use the specific key
         public  static  final byte[] COUNTER_OWNER = new byte[] { 'c' };
 
-        public synchronized void increaseCounter(Session session, HugeType type, long lowest) {
+        public synchronized void increaseCounter(Session session,
+                                                 HugeType type, long lowest) {
             String key = toKey(session.getGraphName(),type);
             getCounterFromPd(session,type);
             HgPair<AtomicLong,AtomicLong> idPair = IDS.get(key);
@@ -142,7 +147,8 @@ public class HstoreTables {
                     String conf = session.getConf()
                                          .get(HstoreOptions.PD_PEERS);
                     pdClient = PDClient.create(PDConfig.of(conf));
-                    pdClient.getIdByKey(key, (int)(lowest - maxId.longValue()));
+                    pdClient.getIdByKey(key,
+                                        (int) (lowest - maxId.longValue()));
                     IDS.remove(key);
                 } catch (Exception e) {
                     throw new BackendException("");
@@ -154,13 +160,13 @@ public class HstoreTables {
 
         private static byte[] b(long value) {
             return ByteBuffer.allocate(Long.BYTES).order(
-                    ByteOrder.nativeOrder()).putLong(value).array();
+                   ByteOrder.nativeOrder()).putLong(value).array();
         }
 
         private static long l(byte[] bytes) {
             assert bytes.length == Long.BYTES;
             return ByteBuffer.wrap(bytes).order(
-                    ByteOrder.nativeOrder()).getLong();
+                   ByteOrder.nativeOrder()).getLong();
         }
 
         public static void truncate(String graphName){
@@ -283,7 +289,8 @@ public class HstoreTables {
 
     public static class VertexLabelIndex extends IndexTable {
 
-        public static final String TABLE = HugeType.VERTEX_LABEL_INDEX.string();
+        public static final String TABLE =
+                                   HugeType.VERTEX_LABEL_INDEX.string();
 
         public VertexLabelIndex(String database) {
             super(database, TABLE);
@@ -324,7 +331,8 @@ public class HstoreTables {
         }
 
         @Override
-        protected BackendColumnIterator queryByCond(Session session, ConditionQuery query) {
+        protected BackendColumnIterator queryByCond(Session session,
+                                                    ConditionQuery query) {
             assert !query.conditions().isEmpty();
 
             List<Condition> conds = query.syspropConditions(HugeKeys.ID);
@@ -367,14 +375,15 @@ public class HstoreTables {
             byte[] ownerStart = this.ownerScanDelegate.get();
             byte[] ownerEnd = this.ownerScanDelegate.get();
             if (max == null) {
-                E.checkArgumentNotNull(prefix, "Range index prefix is missing");
+                E.checkArgumentNotNull(prefix,
+                                       "Range index prefix is missing");
                 return session.scan(this.table(),ownerStart,ownerEnd,begin,
                                     prefix.asBytes(),Session.SCAN_PREFIX_END);
             } else {
                 byte[] end = max.asBytes();
                 int type = maxEq ? Session.SCAN_LTE_END : Session.SCAN_LT_END;
-                return session.scan(this.table(),ownerStart,ownerEnd, begin,
-                                    end, type);
+                return session.scan(this.table(), ownerStart,
+                                    ownerEnd, begin, end, type);
             }
         }
     }
