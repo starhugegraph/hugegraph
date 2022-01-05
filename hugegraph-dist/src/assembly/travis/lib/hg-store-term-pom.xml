@@ -14,11 +14,11 @@
         <maven.compiler.target>8</maven.compiler.target>
     </properties>
 
-<!--    <distributionManagement>-->
-<!--        <repository>-->
-<!--            <id>Baidu_Local</id>-->
-<!--            <url>http://maven.baidu-int.com/nexus/content/repositories/Baidu_Local</url>-->
-<!--        </repository>-->
-<!--    </distributionManagement>-->
+    <!--    <distributionManagement>-->
+    <!--        <repository>-->
+    <!--            <id>Baidu_Local</id>-->
+    <!--            <url>http://maven.baidu-int.com/nexus/content/repositories/Baidu_Local</url>-->
+    <!--        </repository>-->
+    <!--    </distributionManagement>-->
 
 </project>
