@@ -131,7 +131,9 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         E.checkNotNull(config, "config");
 
         if (this.sessions == null) {
-            this.sessions = new HstoreSessionsImpl(config, this.namespace, this.store);
+            this.sessions = new HstoreSessionsImpl(config,
+                                                   this.namespace,
+                                                   this.store);
         }
 
         assert this.sessions != null;
@@ -146,7 +148,7 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
             this.sessions.open();
         } catch (Exception e) {
             LOG.error("Failed to open Hstore '{}'", this.store, e);
-//            throw new BackendException("Failed to open Hstore '{}'", e);
+            // throw new BackendException("Failed to open Hstore '{}'", e);
         }
 
         this.sessions.session();
@@ -175,7 +177,6 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
 
         this.checkOpened();
         Session session = this.sessions.session();
-
         for (Iterator<BackendAction> it = mutation.mutation(); it.hasNext(); ) {
             this.mutate(session, it.next());
         }
@@ -200,7 +201,7 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
                 break;
             default:
                 throw new AssertionError(String.format(
-                        "Unsupported mutate action: %s", item.action()));
+                      "Unsupported mutate action: %s", item.action()));
         }
     }
 
@@ -300,16 +301,15 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
 
             this.counters = new HstoreTables.Counters(namespace);
             registerTableManager(HugeType.VERTEX_LABEL,
-                    new HstoreTables.VertexLabel(namespace));
+                                 new HstoreTables.VertexLabel(namespace));
             registerTableManager(HugeType.EDGE_LABEL,
-                    new HstoreTables.EdgeLabel(namespace));
+                                 new HstoreTables.EdgeLabel(namespace));
             registerTableManager(HugeType.PROPERTY_KEY,
-                    new HstoreTables.PropertyKey(namespace));
+                                 new HstoreTables.PropertyKey(namespace));
             registerTableManager(HugeType.INDEX_LABEL,
-                    new HstoreTables.IndexLabel(namespace));
-
+                                 new HstoreTables.IndexLabel(namespace));
             registerTableManager(HugeType.SECONDARY_INDEX,
-                    new HstoreTables.SecondaryIndex(store));
+                                 new HstoreTables.SecondaryIndex(store));
         }
 
         @Override
@@ -323,13 +323,14 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         public void increaseCounter(HugeType type, long lowest) {
             super.checkOpened();
             this.counters.increaseCounter(super.sessions.session(),
-                    type, lowest);
+                                          type, lowest);
         }
 
         @Override
         public long getCounter(HugeType type) {
             super.checkOpened();
-            return this.counters.getCounterFromPd(super.sessions.session(), type);
+            return this.counters.getCounterFromPd(super.sessions.session(),
+                                                  type);
         }
 
         @Override
@@ -338,12 +339,9 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         }
 
         @Override
-        public void close(boolean force) {
-
-        }
+        public void close(boolean force) {}
     }
 
-    //
     public static class HstoreGraphStore extends HstoreStore {
 
         public HstoreGraphStore(BackendStoreProvider provider,
@@ -351,33 +349,31 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
             super(provider, namespace, store);
 
             registerTableManager(HugeType.VERTEX,
-                    new HstoreTables.Vertex(store));
-
+                                 new HstoreTables.Vertex(store));
             registerTableManager(HugeType.EDGE_OUT,
-                    HstoreTables.Edge.out(store));
+                                 HstoreTables.Edge.out(store));
             registerTableManager(HugeType.EDGE_IN,
-                    HstoreTables.Edge.in(store));
-
+                                 HstoreTables.Edge.in(store));
             registerTableManager(HugeType.SECONDARY_INDEX,
-                    new HstoreTables.SecondaryIndex(store));
+                                 new HstoreTables.SecondaryIndex(store));
             registerTableManager(HugeType.VERTEX_LABEL_INDEX,
-                    new HstoreTables.VertexLabelIndex(store));
+                                 new HstoreTables.VertexLabelIndex(store));
             registerTableManager(HugeType.EDGE_LABEL_INDEX,
-                    new HstoreTables.EdgeLabelIndex(store));
+                                 new HstoreTables.EdgeLabelIndex(store));
             registerTableManager(HugeType.RANGE_INT_INDEX,
-                    new HstoreTables.RangeIntIndex(store));
+                                 new HstoreTables.RangeIntIndex(store));
             registerTableManager(HugeType.RANGE_FLOAT_INDEX,
-                    new HstoreTables.RangeFloatIndex(store));
+                                 new HstoreTables.RangeFloatIndex(store));
             registerTableManager(HugeType.RANGE_LONG_INDEX,
-                    new HstoreTables.RangeLongIndex(store));
+                                 new HstoreTables.RangeLongIndex(store));
             registerTableManager(HugeType.RANGE_DOUBLE_INDEX,
-                    new HstoreTables.RangeDoubleIndex(store));
+                                 new HstoreTables.RangeDoubleIndex(store));
             registerTableManager(HugeType.SEARCH_INDEX,
-                    new HstoreTables.SearchIndex(store));
+                                 new HstoreTables.SearchIndex(store));
             registerTableManager(HugeType.SHARD_INDEX,
-                    new HstoreTables.ShardIndex(store));
+                                 new HstoreTables.ShardIndex(store));
             registerTableManager(HugeType.UNIQUE_INDEX,
-                    new HstoreTables.UniqueIndex(store));
+                                 new HstoreTables.UniqueIndex(store));
         }
 
         @Override
@@ -386,26 +382,24 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         }
 
         @Override
-        public void close(boolean force) {
-
-        }
+        public void close(boolean force) {}
 
         @Override
         public Id nextId(HugeType type) {
             throw new UnsupportedOperationException(
-                    "HstoreGraphStore.nextId()");
+                  "HstoreGraphStore.nextId()");
         }
 
         @Override
         public void increaseCounter(HugeType type, long num) {
             throw new UnsupportedOperationException(
-                    "HstoreGraphStore.increaseCounter()");
+                  "HstoreGraphStore.increaseCounter()");
         }
 
         @Override
         public long getCounter(HugeType type) {
             throw new UnsupportedOperationException(
-                    "HstoreGraphStore.getCounter()");
+                  "HstoreGraphStore.getCounter()");
         }
     }
 }

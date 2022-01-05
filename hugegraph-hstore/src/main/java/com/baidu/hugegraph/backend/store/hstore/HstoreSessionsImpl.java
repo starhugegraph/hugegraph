@@ -64,8 +64,10 @@ public class HstoreSessionsImpl extends HstoreSessions {
     private static volatile Boolean INITIALIZED_NODE = Boolean.FALSE;
     private static volatile PDClient defaultPdClient;
     private static volatile HstoreNodePartitionerImpl nodePartitioner = null;
-    private static volatile Set<String> INFO_INITIALIZED_GRAPH = Collections.synchronizedSet(new HashSet<>());
-    public HstoreSessionsImpl(HugeConfig config, String database, String store) {
+    private static volatile Set<String> INFO_INITIALIZED_GRAPH =
+                            Collections.synchronizedSet(new HashSet<>());
+    public HstoreSessionsImpl(HugeConfig config, String database,
+                              String store) {
         super(config, database, store);
         this.config = config;
         this.database = database;
@@ -80,10 +82,13 @@ public class HstoreSessionsImpl extends HstoreSessions {
         if (!INITIALIZED_NODE) {
             synchronized (INITIALIZED_NODE) {
                 if (!INITIALIZED_NODE) {
-                    HgStoreNodeManager nodeManager = HgStoreNodeManager.getInstance();
-                    defaultPdClient = PDClient.create(PDConfig.of(config.get(HstoreOptions.PD_PEERS)));
-                    nodePartitioner = FakeHstoreNodePartitionerImpl.
-                            NodePartitionerFactory.getNodePartitioner(config,nodeManager);
+                    HgStoreNodeManager nodeManager =
+                                       HgStoreNodeManager.getInstance();
+                    defaultPdClient = PDClient.create(PDConfig.of(
+                                      config.get(HstoreOptions.PD_PEERS)));
+                    nodePartitioner = FakeHstoreNodePartitionerImpl
+                                      .NodePartitionerFactory
+                                      .getNodePartitioner(config,nodeManager);
                     nodeManager.setNodeProvider(nodePartitioner);
                     nodeManager.setNodePartitioner(nodePartitioner);
                     nodeManager.setNodeNotifier(nodePartitioner);
@@ -101,15 +106,18 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
     @Override
     public void open() throws Exception {
-        if (!INFO_INITIALIZED_GRAPH.contains(this.graphName)){
+        if (!INFO_INITIALIZED_GRAPH.contains(this.graphName)) {
             synchronized (INITIALIZED_NODE){
-                if (!INFO_INITIALIZED_GRAPH.contains(this.graphName)){
-                    Integer partitionCount = this.config.get(HstoreOptions.PARTITION_COUNT);
-                    Assert.assertTrue("The value of hstore.partition_count cannot be less than 0.",
-                                      partitionCount >-1);
+                if (!INFO_INITIALIZED_GRAPH.contains(this.graphName)) {
+                    Integer partitionCount =
+                            this.config.get(HstoreOptions.PARTITION_COUNT);
+                    Assert.assertTrue("The value of hstore.partition_count" +
+                                      " cannot be less than 0.",
+                                      partitionCount > -1);
                     Integer shareCount = this.config.get(HstoreOptions.SHARD_COUNT);
-                    Assert.assertTrue("The value of hstore.shard_count cannot be less than 0.",
-                                      shareCount >-1);
+                    Assert.assertTrue("The value of hstore.shard_count" +
+                                      " cannot be less than 0.",
+                                      shareCount > -1);
                     defaultPdClient.setGraph(Metapb.Graph.newBuilder()
                                    .setGraphName(this.graphName)
                                    .setPartitionCount(partitionCount)
@@ -192,11 +200,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
         private Map<String, Map<HgOwnerKey, byte[]>> putBatch;
         private Map<String, Set<HgOwnerKey>> deleteBatch;
         private Map<String, List<HgOwnerKey>> deletePrefixBatch;
-        private Map<String, MutablePair<HgOwnerKey, HgOwnerKey>> deleteRangeBatch;
+        private Map<String, MutablePair<HgOwnerKey,
+                                        HgOwnerKey>> deleteRangeBatch;
         private HgStoreSession graph;
-
-
-
 
         public HstoreSession(HugeConfig conf, String graphName) {
             resetBuffer();
@@ -231,7 +237,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
             this.deleteBatch = new HashMap<String, Set<HgOwnerKey>>();
             this.deletePrefixBatch = new HashMap<String, List<HgOwnerKey>>();
             this.deleteRangeBatch = new HashMap<String,
-                                        MutablePair<HgOwnerKey, HgOwnerKey>>();
+                                    MutablePair<HgOwnerKey, HgOwnerKey>>();
         }
 
         /**
@@ -359,9 +365,8 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public byte[] get(String table, byte[] key) {
-            return this.graph.get(table, HgOwnerKey.of(
-                                         HgStoreClientConst.ALL_PARTITION_OWNER,
-                                         key));
+            return this.graph.get(table,
+                   HgOwnerKey.of(HgStoreClientConst.ALL_PARTITION_OWNER, key));
         }
 
         @Override
@@ -379,51 +384,62 @@ public class HstoreSessionsImpl extends HstoreSessions {
         }
 
         @Override
-        public BackendColumnIterator scan(String table, byte[] conditionQueryToByte) {
+        public BackendColumnIterator scan(String table,
+                                          byte[] conditionQueryToByte) {
             assert !this.hasChanges();
-            HgKvIterator results =  this.graph.scanIterator(table,conditionQueryToByte);
+            HgKvIterator results =
+                         this.graph.scanIterator(table, conditionQueryToByte);
             return new ColumnIterator<HgKvIterator>(table, results);
         }
 
         @Override
-        public BackendColumnIterator scan(String table,byte[] ownerKey,
+        public BackendColumnIterator scan(String table, byte[] ownerKey,
                                           byte[] prefix) {
             assert !this.hasChanges();
-            HgKvIterator result=this.graph.scanIterator(table, HgOwnerKey.of(ownerKey, prefix));
+            HgKvIterator result = this.graph.scanIterator(table,
+                                  HgOwnerKey.of(ownerKey, prefix));
             return new ColumnIterator<HgKvIterator>(table, result);
         }
 
         @Override
-        public BackendColumnIterator scan(String table,byte[] ownerKeyFrom,
+        public BackendColumnIterator scan(String table, byte[] ownerKeyFrom,
                                           byte[] ownerKeyTo, byte[] keyFrom,
                                           byte[] keyTo, int scanType) {
             assert !this.hasChanges();
-            HgKvIterator result=this.graph.scanIterator(table,
-                                        HgOwnerKey.of(ownerKeyFrom,keyFrom),
-                                        HgOwnerKey.of(ownerKeyTo,keyTo),
-                                        scanType);
-            return new ColumnIterator<HgKvIterator>(table, result, keyFrom, keyTo, scanType);
+            HgKvIterator result = this.graph.scanIterator(table,
+                                  HgOwnerKey.of(ownerKeyFrom,keyFrom),
+                                  HgOwnerKey.of(ownerKeyTo,keyTo),
+                                  scanType);
+            return new ColumnIterator<HgKvIterator>(table, result, keyFrom,
+                                                    keyTo, scanType);
         }
 
         @Override
-        public BackendColumnIterator scan(String table, byte[] ownerKeyFrom, byte[] ownerKeyTo, byte[] keyFrom, byte[] keyTo, int scanType, byte[] query) {
+        public BackendColumnIterator scan(String table, byte[] ownerKeyFrom,
+                                          byte[] ownerKeyTo, byte[] keyFrom,
+                                          byte[] keyTo, int scanType,
+                                          byte[] query) {
             assert !this.hasChanges();
-            HgKvIterator result=this.graph.scanIterator(table,
-                                                        HgOwnerKey.of(ownerKeyFrom,keyFrom),
-                                                        HgOwnerKey.of(ownerKeyTo,keyTo),
-                                                        scanType,query);
-            return new ColumnIterator<HgKvIterator>(table, result, keyFrom, keyTo, scanType);
+            HgKvIterator result = this.graph.scanIterator(table,
+                                  HgOwnerKey.of(ownerKeyFrom,keyFrom),
+                                  HgOwnerKey.of(ownerKeyTo,keyTo),
+                                  scanType,query);
+            return new ColumnIterator<HgKvIterator>(table, result, keyFrom,
+                                                    keyTo, scanType);
         }
 
         @Override
-        public void merge(String table, byte[] ownerKey, byte[] key, byte[] value) {
+        public void merge(String table, byte[] ownerKey,
+                          byte[] key, byte[] value) {
             this.graph.merge(table,HgOwnerKey.of(ownerKey,key),value);
         }
 
         @Override
         public void setMode(GraphMode mode) {
             /*
-            HgStoreNodePartitioner partitioner = HgStoreNodeManager.getInstance().getNodePartitioner();
+            HgStoreNodePartitioner partitioner =
+                                   HgStoreNodeManager.getInstance()
+                                                     .getNodePartitioner();
             if (partitioner instanceof HgStoreNodePartitioner) {
                 ((HstoreNodePartitionerImpl) partitioner).setWorkMode(this.getGraphName(), mode.equals(GraphMode.LOADING) ?
                         Metapb.GraphWorkMode.Batch_Import :
@@ -435,13 +451,16 @@ public class HstoreSessionsImpl extends HstoreSessions {
         @Override
         public void truncate() throws Exception {
             this.graph.truncate();
-            HstoreSessionsImpl.getDefaultPdClient().resetIdByKey(this.getGraphName());
+            HstoreSessionsImpl.getDefaultPdClient()
+                              .resetIdByKey(this.getGraphName());
             HstoreTables.Counters.truncate(this.getGraphName());
         }
 
         private int size() {
-            return this.putBatch.size() + this.deleteBatch.size() +
-                   this.deletePrefixBatch.size() + this.deleteRangeBatch.size();
+            return this.putBatch.size() +
+                   this.deleteBatch.size() +
+                   this.deletePrefixBatch.size() +
+                   this.deleteRangeBatch.size();
         }
     }
 
@@ -466,7 +485,8 @@ public class HstoreSessionsImpl extends HstoreSessions {
             return iter;
         }
 
-        public ColumnIterator(String table, T results, byte[] keyBegin, byte[] keyEnd, int scanType) {
+        public ColumnIterator(String table, T results, byte[] keyBegin,
+                              byte[] keyEnd, int scanType) {
             E.checkNotNull(results, "results");
             this.table = table;
             this.iter = results;
@@ -483,43 +503,43 @@ public class HstoreSessionsImpl extends HstoreSessions {
         private void checkArguments() {
             E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
                             this.match(Session.SCAN_PREFIX_END)),
-                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
+                            "Can't set SCAN_PREFIX_WITH_BEGIN and " +
                             "SCAN_PREFIX_WITH_END at the same time");
 
             E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
                             this.match(Session.SCAN_GT_BEGIN)),
-                    "Can't set SCAN_PREFIX_WITH_BEGIN and " +
+                            "Can't set SCAN_PREFIX_WITH_BEGIN and " +
                             "SCAN_GT_BEGIN/SCAN_GTE_BEGIN at the same time");
 
             E.checkArgument(!(this.match(Session.SCAN_PREFIX_END) &&
                             this.match(Session.SCAN_LT_END)),
-                    "Can't set SCAN_PREFIX_WITH_END and " +
+                            "Can't set SCAN_PREFIX_WITH_END and " +
                             "SCAN_LT_END/SCAN_LTE_END at the same time");
 
             if (this.match(Session.SCAN_PREFIX_BEGIN)) {
                 E.checkArgument(this.keyBegin != null,
-                        "Parameter `keyBegin` can't be null " +
+                                "Parameter `keyBegin` can't be null " +
                                 "if set SCAN_PREFIX_WITH_BEGIN");
                 E.checkArgument(this.keyEnd == null,
-                        "Parameter `keyEnd` must be null " +
+                                "Parameter `keyEnd` must be null " +
                                 "if set SCAN_PREFIX_WITH_BEGIN");
             }
 
             if (this.match(Session.SCAN_PREFIX_END)) {
                 E.checkArgument(this.keyEnd != null,
-                        "Parameter `keyEnd` can't be null " +
+                                "Parameter `keyEnd` can't be null " +
                                 "if set SCAN_PREFIX_WITH_END");
             }
 
             if (this.match(Session.SCAN_GT_BEGIN)) {
                 E.checkArgument(this.keyBegin != null,
-                        "Parameter `keyBegin` can't be null " +
+                                "Parameter `keyBegin` can't be null " +
                                 "if set SCAN_GT_BEGIN or SCAN_GTE_BEGIN");
             }
 
             if (this.match(Session.SCAN_LT_END)) {
                 E.checkArgument(this.keyEnd != null,
-                        "Parameter `keyEnd` can't be null " +
+                                "Parameter `keyEnd` can't be null " +
                                 "if set SCAN_LT_END or SCAN_LTE_END");
             }
         }
@@ -564,9 +584,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
                     return Bytes.compare(key, this.keyEnd) < 0;
                 }
             } else {
-                assert this.match(Session.SCAN_ANY) || this.match(
-                        Session.SCAN_GT_BEGIN) || this.match(
-                        Session.SCAN_GTE_BEGIN) : "Unknow scan type";
+                assert this.match(Session.SCAN_ANY) ||
+                       this.match(Session.SCAN_GT_BEGIN) ||
+                       this.match(Session.SCAN_GTE_BEGIN) : "Unknow scan type";
                 return true;
             }
         }
@@ -578,7 +598,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
             }
             this.iter.next();
             BackendEntry.BackendColumn col = BackendEntry.BackendColumn.of(
-                    this.iter.key(), this.iter.value());
+                                       this.iter.key(), this.iter.value());
             this.matched = false;
             return col;
         }
@@ -601,7 +621,6 @@ public class HstoreSessionsImpl extends HstoreSessions {
         }
 
         @Override
-        public void close() {
-        }
+        public void close() {}
     }
 }

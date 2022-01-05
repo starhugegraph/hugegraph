@@ -116,9 +116,10 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
     };
 
     Function<Id,byte[]> ownerByIdDelegate = (id) -> getOwnerId(id);
-    BiFunction<HugeType,Id,byte[]> ownerByQueryDelegate = (type,id) ->
-                                                        getOwnerId(type, id);
-    Supplier<byte[]> ownerScanDelegate = () -> HgStoreClientConst.ALL_PARTITION_OWNER;
+    BiFunction<HugeType,Id,byte[]> ownerByQueryDelegate =
+                                   (type,id) -> getOwnerId(type, id);
+    Supplier<byte[]> ownerScanDelegate =
+                     () -> HgStoreClientConst.ALL_PARTITION_OWNER;
 
     public Supplier<byte[]> getOwnerScanDelegate() {
         return ownerScanDelegate;
@@ -138,7 +139,8 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         if (id.edge()) {
             id = ((EdgeId) id).ownerVertexId();
         }
-        return id != null ? id.asBytes() : HgStoreClientConst.ALL_PARTITION_OWNER;
+        return id != null ? id.asBytes() :
+               HgStoreClientConst.ALL_PARTITION_OWNER;
     }
     /**
      * 返回Id所属的点ID
@@ -146,12 +148,12 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
      * @return
      */
     protected byte[] getOwnerId(HugeType type,Id id) {
-        if (type.equals(HugeType.VERTEX) || type.equals(HugeType.EDGE)
-        || type.equals(HugeType.EDGE_OUT) || type.equals(HugeType.EDGE_IN)
-        || type.equals(HugeType.COUNTER)) {
+        if (type.equals(HugeType.VERTEX) || type.equals(HugeType.EDGE) ||
+            type.equals(HugeType.EDGE_OUT) || type.equals(HugeType.EDGE_IN) ||
+            type.equals(HugeType.COUNTER)) {
             return getOwnerId(id);
         } else{
-        return  HgStoreClientConst.ALL_PARTITION_OWNER;
+            return  HgStoreClientConst.ALL_PARTITION_OWNER;
         }
     }
 
@@ -238,7 +240,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
             assert !query.ids().isEmpty();
             // NOTE: this will lead to lazy create rocksdb iterator
             return new BackendColumnIteratorWrapper(new FlatMapperIterator<>(
-                    query.ids().iterator(), id -> this.queryById(session, id)
+                   query.ids().iterator(), id -> this.queryById(session, id)
             ));
         }
 
@@ -255,18 +257,20 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
             byte[] ownerKey = this.getOwnerScanDelegate().get();
             if (!ArrayUtils.isEmpty(begin))
             return query instanceof ConditionQuery ?
-                   session.scan(this.table(),ownerKey,ownerKey,begin, null,
-                                Session.SCAN_ANY,((ConditionQuery) query).bytes()) :
-                   session.scan(this.table(),ownerKey,ownerKey,begin, null, Session.SCAN_ANY);
+                   session.scan(this.table(), ownerKey, ownerKey, begin,
+                                null, Session.SCAN_ANY,
+                                ((ConditionQuery) query).bytes()) :
+                   session.scan(this.table(), ownerKey, ownerKey, begin,
+                                null, Session.SCAN_ANY);
         }
-        return query instanceof ConditionQuery? session.scan(this.table(),
-                                                             ((ConditionQuery) query).bytes()) :
-                  session.scan(this.table());
+        return query instanceof ConditionQuery ?
+               session.scan(this.table(), ((ConditionQuery) query).bytes()) :
+               session.scan(this.table());
     }
 
     protected BackendColumnIterator queryById(Session session, Id id) {
         // TODO: change to get() after vertex and schema don't use id prefix
-        return session.scan(this.table(),this.ownerByIdDelegate.apply(id),
+        return session.scan(this.table(), this.ownerByIdDelegate.apply(id),
                             id.asBytes());
     }
 
@@ -288,9 +292,9 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         type |= Session.SCAN_PREFIX_END;
         return session.scan(this.table(),
                             this.ownerByQueryDelegate.apply(query.resultType(),
-                                                       query.start()),
+                                                            query.start()),
                             this.ownerByQueryDelegate.apply(query.resultType(),
-                                                       query.prefix()),
+                                                            query.prefix()),
                             query.start().asBytes(),
                             query.prefix().asBytes(), type);
     }
@@ -305,18 +309,20 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
             type |= query.inclusiveEnd() ?
                     Session.SCAN_LTE_END : Session.SCAN_LT_END;
         }
-        ConditionQuery cq=null;
-        Query origin=query.originQuery();
+        ConditionQuery cq = null;
+        Query origin = query.originQuery();
         byte[] ownerStart = this.ownerByQueryDelegate.apply(query.resultType(),
-                                                             query.start());
+                                                            query.start());
         byte[] ownerEnd = this.ownerByQueryDelegate.apply(query.resultType(),
                                                           query.end());
-        if (origin!= null && origin instanceof ConditionQuery
-            && (query.resultType().isEdge() || query.resultType().isVertex())) {
-            cq= (ConditionQuery) query.originQuery();
-            return session.scan(this.table(),ownerStart,ownerEnd,start, end, type,cq.bytes());
+        if (origin != null && origin instanceof ConditionQuery &&
+            (query.resultType().isEdge() || query.resultType().isVertex())) {
+            cq = (ConditionQuery) query.originQuery();
+            return session.scan(this.table(), ownerStart,
+                                ownerEnd, start, end, type,cq.bytes());
         }
-        return session.scan(this.table(),ownerStart,ownerEnd,start, end, type);
+        return session.scan(this.table(), ownerStart,
+                            ownerEnd, start, end, type);
     }
 
     protected BackendColumnIterator queryByCond(Session session,
@@ -326,10 +332,10 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
                             "Invalid scan with multi conditions: %s", query);
             Relation scan = query.relations().iterator().next();
             Shard shard = (Shard) scan.value();
-            return this.queryByRange(session, shard, query.page(),query);
+            return this.queryByRange(session, shard, query.page(), query);
         }
-//        throw new NotSupportException("query: %s", query);
-        return this.queryAll(session,query);
+        // throw new NotSupportException("query: %s", query);
+        return this.queryAll(session, query);
     }
 
 
@@ -358,8 +364,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
     }
 
     protected static final BackendEntryIterator newEntryIterator(
-            BackendColumnIterator cols,
-            Query query) {
+                           BackendColumnIterator cols, Query query) {
         return new BinaryEntryIterator<>(cols, query, (entry, col) -> {
             if (entry == null || !entry.belongToMe(col)) {
                 HugeType type = query.resultType();
