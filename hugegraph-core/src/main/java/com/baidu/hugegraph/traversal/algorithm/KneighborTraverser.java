@@ -121,6 +121,7 @@ public class KneighborTraverser extends OltpTraverser {
                                             int maxDepth, long limit,
                                             boolean withEdge) {
         E.checkNotNull(sources, "source vertices");
+        E.checkArgument(sources.size() > 0, "source vertices can't be empty");
         for (Id source : sources) {
             E.checkNotNull(source, "source vertex id");
             this.checkVertexExist(source, "source vertex");
@@ -133,7 +134,7 @@ public class KneighborTraverser extends OltpTraverser {
         // Construct a multi sources start layer
         KneighborRecords records = new KneighborRecords(RecordType.INT,
                                                         concurrent,
-                                                        sources.iterator().next(),
+                                                        sources,
                                                         true);
 
         Consumer<Id> consumer = v -> {
@@ -148,16 +149,12 @@ public class KneighborTraverser extends OltpTraverser {
                 Id target = edge.id().otherVertexId();
                 records.addPath(v, target);
                 if (withEdge) {
-                    // for breadth, we have to collect all edge during
-                    // traversal,
+                    // for breadth, we have to collect all edge during traversal
                     // to avoid over occupy for memory, we collect edgeId only.
                     records.addEdgeId(edge.id());
                 }
             }
         };
-        records.startOneLayer(true);
-        traverseIds(sources.iterator(), consumer, concurrent);
-        records.finishOneLayer();
 
         while (maxDepth-- > 0) {
             records.startOneLayer(true);

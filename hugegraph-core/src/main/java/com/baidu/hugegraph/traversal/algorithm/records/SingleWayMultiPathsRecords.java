@@ -76,6 +76,23 @@ public abstract class SingleWayMultiPathsRecords extends AbstractRecords {
                                 new IntHashSet();
     }
 
+    public SingleWayMultiPathsRecords(RecordType type, boolean concurrent,
+                                      Set<Id> sources, boolean nearest) {
+        super(type, concurrent);
+        this.nearest = nearest;
+
+        Record firstRecord = this.newRecord();
+        this.sourceCode = this.code(sources.iterator().next());
+        for (Id source : sources) {
+            firstRecord.addPath(this.code(source), 0);
+        }
+        this.records = new Stack<>();
+        this.records.push(firstRecord);
+
+        this.accessedVertices = concurrent ? new IntHashSet().asSynchronized() :
+                                new IntHashSet();
+    }
+
     @Override
     public void startOneLayer(boolean forward) {
         Record parentRecord = this.records.peek();

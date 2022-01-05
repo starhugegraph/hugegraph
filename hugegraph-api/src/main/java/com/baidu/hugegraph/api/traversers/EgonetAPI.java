@@ -130,7 +130,6 @@ public class EgonetAPI extends TraverserAPI {
         }
 
         Steps steps = steps(g, request.steps);
-        //multiNeighbors.addAll(sourcesId);
 
         KneighborRecords results;
         try (KneighborTraverser traverser = new KneighborTraverser(g)) {
@@ -140,12 +139,13 @@ public class EgonetAPI extends TraverserAPI {
                                                 request.withEdge);
         }
 
-        long size = results.size();
+        long size = results.size() + sourcesId.size();
         if (size > request.limit) {
             size = request.limit;
         }
         List<Id> neighbors = request.countOnly ?
                              ImmutableList.of() : results.ids(request.limit);
+        neighbors.addAll(sourcesId);
 
         HugeTraverser.PathSet paths = new HugeTraverser.PathSet();
         if (request.withPath) {
@@ -183,101 +183,6 @@ public class EgonetAPI extends TraverserAPI {
                       .writeNodesWithPath("egonet", neighbors, size,
                                           paths, verticesIter, edgesIter, null);
     }
-
-    /**@POST
-    @Timed
-    @Consumes(APPLICATION_JSON)
-    @Produces(APPLICATION_JSON_WITH_CHARSET)
-    public String post(@Context GraphManager manager,
-                       @PathParam("graph") String graph,
-                       Request request) {
-        E.checkArgumentNotNull(request, "The request body can't be null");
-        E.checkArgumentNotNull(request.sources,
-                               "The sources of request can't be null");
-        E.checkArgument(request.steps != null,
-                        "The steps of request can't be null");
-        if (request.countOnly) {
-            E.checkArgument(!request.withVertex && !request.withPath,
-                            "Can't return vertex or path when count only");
-        }
-
-        LOG.debug("Graph [{}] get egonet from source vertex '{}', " +
-                  "with steps '{}', limit '{}', count_only '{}', " +
-                  "with_vertex '{}', with_path '{}' and with_edge '{}'",
-                  graph, request.sources, request.steps, request.limit,
-                  request.countOnly, request.withVertex, request.withPath,
-                  request.withEdge);
-
-        HugeGraph g = graph(manager, graph);
-        Set<Id> sourcesId = new HashSet<>(8);
-        for (Object source : request.sources) {
-            sourcesId.add(HugeVertex.getIdValue(source));
-        }
-
-        Steps steps = steps(g, request.steps);
-        Set<Id> multiNeighbors = new HashSet<>(sourcesId.size() * 5);
-        multiNeighbors.addAll(sourcesId);
-
-        Iterator<Vertex> verticesIter = QueryResults.emptyIterator();
-        Iterator<Edge> edgesIter = QueryResults.emptyIterator();
-        HugeTraverser.PathSet paths = null;
-        long size = 0;
-
-        for (Id sourceId : sourcesId) {
-            KneighborRecords results;
-            try (KneighborTraverser traverser = new KneighborTraverser(g)) {
-                results = traverser.multiKneighbors(sourcesId, steps,
-                                                    request.maxDepth,
-                                                    request.limit,
-                                                    request.withEdge);
-            }
-
-            size = results.size();
-            if (size > request.limit) {
-                size = request.limit;
-            }
-            List<Id> neighbors = request.countOnly ?
-                                 ImmutableList.of() : results.ids(request.limit);
-            multiNeighbors.addAll(neighbors);
-
-            paths = new HugeTraverser.PathSet();
-            if (request.withPath) {
-                paths.addAll(results.paths(request.limit));
-            }
-
-            if (request.withVertex && !request.countOnly) {
-                Set<Id> ids = new HashSet<>(neighbors);
-                if (request.withPath) {
-                    for (HugeTraverser.Path p : paths) {
-                        ids.addAll(p.vertices());
-                    }
-                }
-            }
-
-            if (request.withEdge && !request.countOnly) {
-                Iterator<Edge> edges = results.getEdges();
-                if (edges == null) {
-                    Set<Id> ids = results.getEdgeIds();
-                    if (!ids.isEmpty()) {
-                        edges = g.edges(ids.toArray());
-                    }
-                }
-                if (edges != null) {
-                    edgesIter = edges;
-                }
-            }
-        }
-        verticesIter = g.vertices(multiNeighbors.toArray());
-
-        if (request.withEdge && !request.countOnly) {
-
-        }
-
-        List<Id> ids = new ArrayList<>(multiNeighbors);
-        return manager.serializer(g)
-                      .writeNodesWithPath("egonet", ids, size, paths,
-                                          verticesIter, edgesIter, null);
-    }*/
 
     private static class Request {
 
