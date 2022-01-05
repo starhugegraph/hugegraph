@@ -64,13 +64,16 @@ public abstract class HstoreSessions extends BackendSessionPool {
 
         public abstract Pair<byte[], byte[]> keyRange(String table);
 
-        public abstract void put(String table, byte[] ownerKey, byte[] key, byte[] value);
+        public abstract void put(String table, byte[] ownerKey, byte[] key,
+                                 byte[] value);
 
-        public abstract void increase(String table, byte[] ownerKey, byte[] key, byte[] value);
+        public abstract void increase(String table, byte[] ownerKey,
+                                      byte[] key, byte[] value);
 
         public abstract void delete(String table, byte[] ownerKey, byte[] key);
 
-        public abstract void deletePrefix(String table, byte[] ownerKey, byte[] key);
+        public abstract void deletePrefix(String table, byte[] ownerKey,
+                                          byte[] key);
 
         public abstract void deleteRange(String table,byte[] ownerKeyFrom,
                                          byte[] ownerKeyTo,byte[] keyFrom,
@@ -81,21 +84,25 @@ public abstract class HstoreSessions extends BackendSessionPool {
 
         public abstract BackendColumnIterator scan(String table);
 
-        public abstract BackendColumnIterator scan(String table,byte[] ownerKey,
+        public abstract BackendColumnIterator scan(String table,
+                                                   byte[] ownerKey,
                                                    byte[] prefix);
 
         public BackendColumnIterator scan(String table,byte[] ownerKeyFrom,
                                           byte[] ownerKeyTo,byte[] keyFrom,
                                           byte[] keyTo) {
-            return this.scan(table,ownerKeyFrom,ownerKeyTo, keyFrom, keyTo, SCAN_LT_END);
+            return this.scan(table,ownerKeyFrom,ownerKeyTo, keyFrom, keyTo,
+                             SCAN_LT_END);
         }
 
-        public abstract BackendColumnIterator scan(String table,byte[] ownerKeyFrom,
+        public abstract BackendColumnIterator scan(String table,
+                                                   byte[] ownerKeyFrom,
                                                    byte[] ownerKeyTo,
                                                    byte[] keyFrom,
                                                    byte[] keyTo,
                                                    int scanType);
-        public abstract BackendColumnIterator scan(String table,byte[] ownerKeyFrom,
+        public abstract BackendColumnIterator scan(String table,
+                                                   byte[] ownerKeyFrom,
                                                    byte[] ownerKeyTo,
                                                    byte[] keyFrom,
                                                    byte[] keyTo,
@@ -104,10 +111,12 @@ public abstract class HstoreSessions extends BackendSessionPool {
         public static boolean matchScanType(int expected, int actual) {
             return (expected & actual) == expected;
         }
-        public abstract void merge(String table, byte[] ownerKey, byte[] key, byte[] value);
+        public abstract void merge(String table, byte[] ownerKey,
+                                   byte[] key, byte[] value);
         public abstract void setMode(GraphMode mode);
         public abstract void truncate() throws Exception;
-        public abstract BackendColumnIterator scan(String table, byte[] conditionQueryToByte);
+        public abstract BackendColumnIterator scan(String table,
+                                                   byte[] conditionQueryToByte);
 
         public HugeConfig getConf() {
             return conf;

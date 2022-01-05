@@ -532,7 +532,7 @@ public class GraphTransaction extends IndexableTransaction {
             LOG.debug("Query{final:{}}", query);
             return super.query(query);
         }
-         QueryList<BackendEntry> queries = this.optimizeQueries(query,
+        QueryList<BackendEntry> queries = this.optimizeQueries(query,
                                                                super::query);
         LOG.debug("{}", queries);
         return queries.empty() ? QueryResults.empty() :
@@ -1444,7 +1444,7 @@ public class GraphTransaction extends IndexableTransaction {
          */
         this.beforeRead();
         try {
-            return this.indexTx.queryIndex(query,indexes);
+            return this.indexTx.queryIndex(query, indexes);
         } finally {
             this.afterRead();
         }
@@ -1651,10 +1651,10 @@ public class GraphTransaction extends IndexableTransaction {
                                                 Iterator<T> results,
                                                 Query query) {
         // Filter unused or incorrect records
-            return new FilterIterator<T>(results, elem -> {
+        return new FilterIterator<T>(results, elem -> {
             // TODO: Left vertex/edge should to be auto removed via async task
-                return filterElement(query, elem);
-            });
+            return filterElement(query, elem);
+        });
     }
 
     private <T extends HugeElement> Boolean filterElement(Query query, T elem) {
