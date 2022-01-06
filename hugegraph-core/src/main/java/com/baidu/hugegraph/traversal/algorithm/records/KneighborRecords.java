@@ -52,13 +52,13 @@ public class KneighborRecords extends SingleWayMultiPathsRecords {
 
     public List<Id> ids(long limit) {
         List<Id> ids = CollectionFactory.newList(CollectionType.EC);
-        getRecords(limit, ids);
+        this.getRecords(limit, ids);
         return ids;
     }
 
     public Set<Id> idSet(long limit) {
         Set<Id> ids = CollectionFactory.newSet(CollectionType.EC);
-        getRecords(limit, ids);
+        this.getRecords(limit, ids);
         return ids;
     }
 
