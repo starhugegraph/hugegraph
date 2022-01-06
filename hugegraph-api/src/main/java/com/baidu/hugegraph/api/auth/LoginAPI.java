@@ -67,7 +67,7 @@ public class LoginAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String login(@Context GraphManager manager,
                         JsonLogin jsonLogin) {
-        LOG.debug("User login: {}", jsonLogin);
+        LOGGER.logCustomDebug("User login: {}", "system", jsonLogin);
         checkCreatingBody(jsonLogin);
 
         try {
@@ -92,7 +92,7 @@ public class LoginAPI extends API {
                        @HeaderParam(HttpHeaders.AUTHORIZATION) String auth) {
         E.checkArgument(StringUtils.isNotEmpty(auth),
                         "Request header Authorization must not be null");
-        LOG.debug("User logout: {}", auth);
+        LOGGER.logCustomDebug("User logout: {}", "system", auth);
 
         if (!auth.startsWith(AuthenticationFilter.BEARER_TOKEN_PREFIX)) {
             throw new BadRequestException(
@@ -116,7 +116,7 @@ public class LoginAPI extends API {
                               String token) {
         E.checkArgument(StringUtils.isNotEmpty(token),
                         "Request header Authorization must not be null");
-        LOG.debug("verify token: {}", token);
+        LOGGER.logCustomDebug("verify token: {}", "system", token);
 
         if (!token.startsWith(AuthenticationFilter.BEARER_TOKEN_PREFIX)) {
             throw new BadRequestException(

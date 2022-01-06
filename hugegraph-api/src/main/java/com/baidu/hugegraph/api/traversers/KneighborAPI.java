@@ -55,7 +55,6 @@ import com.baidu.hugegraph.structure.HugeVertex;
 import com.baidu.hugegraph.traversal.algorithm.HugeTraverser;
 import com.baidu.hugegraph.traversal.algorithm.KneighborTraverser;
 import com.baidu.hugegraph.traversal.algorithm.records.KneighborRecords;
-import com.baidu.hugegraph.traversal.algorithm.steps.EdgeStep;
 import com.baidu.hugegraph.type.define.Directions;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
@@ -158,7 +157,7 @@ public class KneighborAPI extends TraverserAPI {
         if (request.withPath) {
             paths.addAll(results.paths(request.limit));
         }
-        Iterator<Vertex> iterVertice = QueryResults.emptyIterator();
+        Iterator<Vertex> iterVertices = QueryResults.emptyIterator();
         Iterator<Edge> iterEdge = QueryResults.emptyIterator();
         if (request.withVertex && !request.countOnly) {
             Set<Id> ids = new HashSet<>(neighbors);
@@ -168,7 +167,7 @@ public class KneighborAPI extends TraverserAPI {
                 }
             }
             if (!ids.isEmpty()) {
-                iterVertice = g.vertices(ids.toArray());
+                iterVertices = g.vertices(ids.toArray());
                 measure.addIterCount(ids.size(), 0);
             }
         }
@@ -187,7 +186,7 @@ public class KneighborAPI extends TraverserAPI {
         }
         return manager.serializer(g, measure.getResult())
                       .writeNodesWithPath("kneighbor", neighbors, size,
-                                          paths, iterVertice, iterEdge, null);
+                                          paths, iterVertices, iterEdge, null);
     }
 
     private static class Request {
