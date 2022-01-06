@@ -139,13 +139,13 @@ public class EgonetAPI extends TraverserAPI {
                                                 request.withEdge);
         }
 
-        long size = results.size() + sourcesId.size();
-        if (size > request.limit) {
-            size = request.limit;
-        }
         Set<Id> neighbors = request.countOnly ?
                             ImmutableSet.of() : results.idSet(request.limit);
         neighbors.addAll(sourcesId);
+        long size = neighbors.size();
+        if (size > request.limit) {
+            size = request.limit;
+        }
 
         HugeTraverser.PathSet paths = new HugeTraverser.PathSet();
         if (request.withPath) {
