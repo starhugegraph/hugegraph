@@ -68,7 +68,7 @@ public class AccessAPI extends API {
                          @PathParam("graphspace") String graphSpace,
                          JsonAccess jsonAccess) {
         LOGGER.logCustomDebug("Graph space [{}] create access: {}",
-                "system", graphSpace, jsonAccess);
+                RestServer.EXECUTOR, graphSpace, jsonAccess);
         checkCreatingBody(jsonAccess);
 
         HugeAccess access = jsonAccess.build(graphSpace);
@@ -87,7 +87,7 @@ public class AccessAPI extends API {
                          @PathParam("id") String id,
                          JsonAccess jsonAccess) {
         LOGGER.logCustomDebug("Graph space [{}] update access: {}",
-                "system", graphSpace, jsonAccess);
+                RestServer.EXECUTOR, graphSpace, jsonAccess);
         checkUpdatingBody(jsonAccess);
 
         HugeAccess access;
@@ -113,7 +113,7 @@ public class AccessAPI extends API {
                        @QueryParam("target") String target,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
         LOGGER.logCustomDebug("Graph space [{}] list belongs by group {} or target {}",
-                "system", graphSpace, group, target);
+                RestServer.EXECUTOR, graphSpace, group, target);
         E.checkArgument(group == null || target == null,
                         "Can't pass both group and target at the same time");
 
@@ -141,7 +141,7 @@ public class AccessAPI extends API {
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("id") String id) {
         LOGGER.logCustomDebug("Graph space [{}] get access: {}",
-                "system", graphSpace, id);
+                RestServer.EXECUTOR, graphSpace, id);
 
         AuthManager authManager = manager.authManager();
         HugeAccess access = authManager.getAccess(graphSpace,
@@ -158,7 +158,7 @@ public class AccessAPI extends API {
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("id") String id) {
         LOGGER.logCustomDebug("Graph space [{}] delete access: {}",
-                "system", graphSpace, id);
+                RestServer.EXECUTOR, graphSpace, id);
 
         try {
             AuthManager authManager = manager.authManager();
