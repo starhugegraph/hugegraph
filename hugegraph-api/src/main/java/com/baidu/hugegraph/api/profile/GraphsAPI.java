@@ -19,6 +19,8 @@
 
 package com.baidu.hugegraph.api.profile;
 
+import static com.baidu.hugegraph.config.OptionChecker.disallowEmpty;
+
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -48,6 +50,9 @@ import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
 import com.baidu.hugegraph.auth.HugeAuthenticator.RequiredPerm;
 import com.baidu.hugegraph.auth.HugePermission;
+import com.baidu.hugegraph.config.ConfigOption;
+import com.baidu.hugegraph.config.CoreOptions;
+import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.server.RestServer;
@@ -81,10 +86,14 @@ public class GraphsAPI extends API {
     public Object list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @Context SecurityContext sc) {
+        LOGGER.logCustomDebug("List graphs in graph space {}", RestServer.EXECUTOR, graphSpace);
         Set<String> graphs = manager.graphs(graphSpace);
+        LOGGER.logCustomDebug("Get graphs list from graph manager with size {}",
+            RestServer.EXECUTOR, graphs.size());
         // Filter by user role
         Set<String> filterGraphs = new HashSet<>();
         for (String graph : graphs) {
+            LOGGER.logCustomDebug("Get graph {} and verify auth", RestServer.EXECUTOR, graph);
             String role = RequiredPerm.roleFor(graphSpace, graph,
                                                HugePermission.READ);
             if (sc.isUserInRole(role)) {
@@ -94,8 +103,11 @@ public class GraphsAPI extends API {
                 } catch (ForbiddenException ignored) {
                     // ignore
                 }
+            } else {
+                LOGGER.logCustomDebug("The user not in role for graph {}", RestServer.EXECUTOR, graph);
             }
         }
+        LOGGER.logCustomDebug("Finish list graphs with size {}", RestServer.EXECUTOR, filterGraphs.size());
         return ImmutableMap.of("graphs", filterGraphs);
     }
 
