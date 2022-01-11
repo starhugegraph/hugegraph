@@ -7,7 +7,7 @@
 
     <groupId>com.baidu.hugegraph</groupId>
     <artifactId>hg-pd-client</artifactId>
-    <version>3.1.0</version>
+    <version>3.0.0</version>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
@@ -38,7 +38,7 @@
         <dependency>
             <groupId>com.baidu.hugegraph</groupId>
             <artifactId>hg-store-term</artifactId>
-            <version>1.0.1</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
