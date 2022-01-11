@@ -19,45 +19,29 @@
 
 package com.baidu.hugegraph.api.auth;
 
-import java.util.List;
-
 import javax.annotation.security.RolesAllowed;
 import javax.inject.Singleton;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
 import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
 import com.baidu.hugegraph.api.filter.StatusFilter;
 import com.baidu.hugegraph.auth.AuthManager;
-import com.baidu.hugegraph.auth.HugeGroup;
 import com.baidu.hugegraph.auth.HugePermission;
-import com.baidu.hugegraph.space.GraphSpace;
 import com.google.common.collect.ImmutableMap;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.api.API;
-import com.baidu.hugegraph.api.filter.StatusFilter.Status;
-import com.baidu.hugegraph.auth.HugeUser;
-import com.baidu.hugegraph.backend.id.Id;
-import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.define.Checkable;
-import com.baidu.hugegraph.exception.NotFoundException;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
-import com.baidu.hugegraph.util.StringEncoding;
 import com.codahale.metrics.annotation.Timed;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Path("auth/managers")
