@@ -1192,6 +1192,8 @@ public class StandardAuthManager implements AuthManager {
 
     @Override
     public void processEvent(MetaManager.AuthEvent event) {
+        this.invalidateUserCache();
+        this.invalidatePasswordCache(IdGenerator.of(event.id()));
         if (event.op().equals("DELETE") && event.type().equals("USER")) {
 
         } else if (event.op().equals("DELETE") && event.type().equals("GROUP")) {

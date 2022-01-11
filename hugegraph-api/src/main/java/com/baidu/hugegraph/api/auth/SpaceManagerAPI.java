@@ -40,6 +40,7 @@ import com.baidu.hugegraph.auth.AuthManager;
 import com.baidu.hugegraph.auth.HugeGroup;
 import com.baidu.hugegraph.auth.HugePermission;
 import com.baidu.hugegraph.space.GraphSpace;
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
@@ -65,10 +66,6 @@ public class SpaceManagerAPI extends API {
 
     private static final Logger LOG = Log.logger(RestServer.class);
 
-    public static final String ALL_GRAPH_SPACES = "*";
-    public static final String DEFAULT_SPACE_GROUP_KEY = "DEFAULT_GROUP";
-    public static final String DEFAULT_SPACE_TARGET_KEY = "DEFAULT_TARGET";
-
     @POST
     @Timed
     @StatusFilter.Status(StatusFilter.Status.CREATED)
@@ -77,30 +74,55 @@ public class SpaceManagerAPI extends API {
     @RolesAllowed({"admin"})
     public String createSpaceManager(@Context GraphManager manager,
                                      JsonManager jsonManager) {
-        LOG.debug("Create graph space manager: {}", jsonManager);
-        E.checkArgument(jsonManager.type == HugePermission.SPACE ||
-                        jsonManager.type == HugePermission.OP,
-                        "The type could be 'SPACE' or 'OP'");
+        LOG.debug("Create graph manager: {}", jsonManager);
 
-        GraphSpace graphSpace = manager.graphSpace(jsonManager.graphSpace);
-        E.checkArgument(graphSpace != null,
-                        "The graph space is not exist");
-
+        String user = jsonManager.user;
+        HugePermission type = jsonManager.type;
+        String graphSpace = jsonManager.graphSpace;
         AuthManager authManager = manager.authManager();
-        HugeUser hugeUser = authManager.findUser(jsonManager.user, false);
-        E.checkArgument(hugeUser != null,
+        E.checkArgument(type == HugePermission.SPACE ||
+                        type == HugePermission.OP,
+                        "The type could be 'SPACE' or 'OP'");
+        E.checkArgument(manager.graphSpace(graphSpace) != null,
+                        "The graph space is not exist");
+        E.checkArgument(authManager.findUser(user, false) != null,
                         "The user is not exist");
 
-        if (jsonManager.type == HugePermission.SPACE) {
-            authManager.createSpaceManager(jsonManager.graphSpace,
-                                           hugeUser.name());
+        if (type == HugePermission.SPACE) {
+            authManager.createSpaceManager(graphSpace, user);
         } else {
-            authManager.createSpaceOpManager(jsonManager.graphSpace,
-                                             hugeUser.name());
-
+            authManager.createSpaceOpManager(graphSpace, user);
         }
 
-        return null;
+        return manager.serializer()
+                      .writeMap(ImmutableMap.of("user", user, "type", type,
+                                                "graphspace", graphSpace));
+    }
+
+    @DELETE
+    @Timed
+    @Consumes(APPLICATION_JSON)
+    @RolesAllowed({"admin"})
+    public void delete(@Context GraphManager manager,
+                       @QueryParam("user") String user,
+                       @QueryParam("type") HugePermission type,
+                       @QueryParam("graphspace") String graphSpace) {
+        LOG.debug("Delete graph manager: {} {} {}", user, type, graphSpace);
+
+        AuthManager authManager = manager.authManager();
+        E.checkArgument(type == HugePermission.SPACE ||
+                        type == HugePermission.OP,
+                        "The type could be 'SPACE' or 'OP'");
+        E.checkArgument(manager.graphSpace(graphSpace) != null,
+                        "The graph space is not exist");
+        E.checkArgument(authManager.findUser(user, false) != null,
+                        "The user is not exist");
+
+        if (type == HugePermission.SPACE) {
+            authManager.deleteSpaceManager(graphSpace, user);
+        } else {
+            authManager.deleteSpaceOpManager(graphSpace, user);
+        }
     }
 
     private static class JsonManager implements Checkable {
