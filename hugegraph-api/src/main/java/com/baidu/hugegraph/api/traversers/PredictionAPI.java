@@ -42,6 +42,7 @@ import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.traversal.algorithm.PredictionTraverser;
 import com.baidu.hugegraph.type.define.Directions;
+import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.JsonUtil;
 import com.baidu.hugegraph.util.Log;
 import com.codahale.metrics.annotation.Timed;
@@ -78,6 +79,8 @@ public class PredictionAPI extends API {
 
         Id sourceId = VertexAPI.checkAndParseVertexId(current);
         Id targetId = VertexAPI.checkAndParseVertexId(other);
+        E.checkArgument(!current.equals(other),
+                        "The source & target vertex id can't be same");
         Directions dir = Directions.convert(EdgeAPI.parseDirection(direction));
 
         HugeGraph g = graph(manager, graph);
@@ -108,6 +111,8 @@ public class PredictionAPI extends API {
 
         Id sourceId = VertexAPI.checkAndParseVertexId(current);
         Id targetId = VertexAPI.checkAndParseVertexId(other);
+        E.checkArgument(!current.equals(other),
+                        "The source & target vertex id can't be same");
         Directions dir = Directions.convert(EdgeAPI.parseDirection(direction));
 
         HugeGraph g = graph(manager, graph);
