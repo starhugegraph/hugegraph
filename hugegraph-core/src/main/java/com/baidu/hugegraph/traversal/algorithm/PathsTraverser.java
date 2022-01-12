@@ -156,7 +156,7 @@ public class PathsTraverser extends HugeTraverser {
                     continue;
                 }
 
-                edges = edgesOfVertex(vid, direction, this.label, this.degree, false);
+                edges = edgesOfVertex(vid, direction, this.label, this.degree);
 
                 while (edges.hasNext()) {
                     HugeEdge edge = (HugeEdge) edges.next();
