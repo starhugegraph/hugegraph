@@ -100,7 +100,6 @@ public final class TaskManager {
                     TaskScheduler scheduler = 
                         new EtcdTaskScheduler(
                             graph,
-                            this.taskExecutor,
                             this.backupForLoadTaskExecutor,
                             this.serverInfoDbExecutor,
                             this.taskDbExecutor,
