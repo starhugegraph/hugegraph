@@ -353,6 +353,7 @@ public final class GraphManager {
             String name = (String) event.args()[0];
             HugeGraph graph = (HugeGraph) event.args()[1];
             this.graphs.putIfAbsent(name, graph);
+            graph.switchAuthManager(this.authManager);
             return null;
         });
         this.eventHub.listen(Events.GRAPH_DROP, event -> {
@@ -440,6 +441,7 @@ public final class GraphManager {
             try {
                 HugeGraph graph = (HugeGraph) g;
                 graph.waitStarted();
+                graph.switchAuthManager(this.authManager);
             } catch (HugeException e) {
                 if (!this.startIgnoreSingleGraphError) {
                     throw e;
@@ -589,6 +591,7 @@ public final class GraphManager {
             this.metaManager.notifyGraphAdd(graphSpace, name);
         }
         this.graphs.put(graphName, graph);
+        graph.switchAuthManager(this.authManager);
         this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
         // Let gremlin server and rest server context add graph
         this.eventHub.notify(Events.GRAPH_CREATE, graphName, graph);
@@ -887,6 +890,7 @@ public final class GraphManager {
         String graphName = graphName(DEFAULT_GRAPH_SPACE_NAME, name);
         graph.graphSpace(DEFAULT_GRAPH_SPACE_NAME);
         this.graphs.put(graphName, graph);
+        graph.switchAuthManager(this.authManager);
         LOG.info("Graph '{}' was successfully configured via '{}'", name, path);
 
         if (this.requireAuthentication() &&
@@ -903,18 +907,6 @@ public final class GraphManager {
                 HugeGraph hugegraph = (HugeGraph) g;
                 if (!hugegraph.backendStoreFeatures().supportsPersistence()) {
                     hugegraph.initBackend();
-                    if (this.requireAuthentication()) {
-                        String token =
-                               config.get(ServerOptions.AUTH_ADMIN_TOKEN);
-                        try {
-                            // this.authenticator.initAdminUser(token);
-                        } catch (Exception e) {
-                            throw new BackendException(
-                                      "The backend store of '%s' can't " +
-                                      "initialize admin user",
-                                      hugegraph.name());
-                        }
-                    }
                 }
                 BackendStoreSystemInfo info = hugegraph.backendStoreSystemInfo();
                 if (!info.exists()) {
