@@ -27,10 +27,9 @@
 #fi
 
 TRAVIS_DIR=./hugegraph-dist/src/assembly/travis/lib
-mvn install:install-file -Dfile=$TRAVIS_DIR/hg-pd-client-1.0-SNAPSHOT.jar -DgroupId=com.baidu.hugegraph -DartifactId=hg-pd-client -Dversion=1.0-SNAPSHOT -Dpackaging=jar  -DpomFile=$TRAVIS_DIR/hg-pd-client-pom.xml
-mvn install:install-file -Dfile=$TRAVIS_DIR/hg-pd-common-1.0-SNAPSHOT.jar -DgroupId=com.baidu.hugegraph -DartifactId=hg-pd-common -Dversion=1.0-SNAPSHOT -Dpackaging=jar -DpomFile=$TRAVIS_DIR/hg-pd-common-pom.xml
-mvn install:install-file -Dfile=$TRAVIS_DIR/hg-pd-grpc-1.0-SNAPSHOT.jar -DgroupId=com.baidu.hugegraph -DartifactId=hg-pd-grpc -Dversion=1.0-SNAPSHOT -Dpackaging=jar -DpomFile=$TRAVIS_DIR/hg-pd-grpc-pom.xml
-mvn install:install-file -Dfile=$TRAVIS_DIR/hg-store-client-1.0-SNAPSHOT.jar -DgroupId=com.baidu.hugegraph -DartifactId=hg-store-client -Dversion=1.0-SNAPSHOT -Dpackaging=jar -DpomFile=$TRAVIS_DIR/hg-store-client-pom.xml
-mvn install:install-file -Dfile=$TRAVIS_DIR/hg-store-grpc-1.0-SNAPSHOT.jar -DgroupId=com.baidu.hugegraph -DartifactId=hg-store-grpc -Dversion=1.0-SNAPSHOT -Dpackaging=jar -DpomFile=$TRAVIS_DIR/hg-store-grpc-pom.xml
-mvn install:install-file -Dfile=$TRAVIS_DIR/hg-store-term-1.0.1.jar -DgroupId=com.baidu.hugegraph -DartifactId=hg-store-term -Dversion=1.0.1 -Dpackaging=jar -DpomFile=$TRAVIS_DIR/hg-store-term-pom.xml
-
+mvn install:install-file -Dfile=$TRAVIS_DIR/hg-pd-client-3.0.0.jar -DgroupId=com.baidu.hugegraph -DartifactId=hg-pd-client -Dversion=3.0.0 -Dpackaging=jar  -DpomFile=$TRAVIS_DIR/hg-pd-client-pom.xml
+mvn install:install-file -Dfile=$TRAVIS_DIR/hg-pd-common-3.0.0.jar -DgroupId=com.baidu.hugegraph -DartifactId=hg-pd-common -Dversion=3.0.0 -Dpackaging=jar -DpomFile=$TRAVIS_DIR/hg-pd-common-pom.xml
+mvn install:install-file -Dfile=$TRAVIS_DIR/hg-pd-grpc-3.0.0.jar -DgroupId=com.baidu.hugegraph -DartifactId=hg-pd-grpc -Dversion=3.0.0 -Dpackaging=jar -DpomFile=$TRAVIS_DIR/hg-pd-grpc-pom.xml
+mvn install:install-file -Dfile=$TRAVIS_DIR/hg-store-client-3.0.0.jar -DgroupId=com.baidu.hugegraph -DartifactId=hg-store-client -Dversion=3.0.0 -Dpackaging=jar -DpomFile=$TRAVIS_DIR/hg-store-client-pom.xml
+mvn install:install-file -Dfile=$TRAVIS_DIR/hg-store-grpc-3.0.0.jar -DgroupId=com.baidu.hugegraph -DartifactId=hg-store-grpc -Dversion=3.0.0 -Dpackaging=jar -DpomFile=$TRAVIS_DIR/hg-store-grpc-pom.xml
+mvn install:install-file -Dfile=$TRAVIS_DIR/hg-store-term-3.0.0.jar -DgroupId=com.baidu.hugegraph -DartifactId=hg-store-term -Dversion=3.0.0 -Dpackaging=jar -DpomFile=$TRAVIS_DIR/hg-store-term-pom.xml
