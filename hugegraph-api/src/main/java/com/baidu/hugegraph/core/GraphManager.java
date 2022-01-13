@@ -1309,4 +1309,9 @@ public final class GraphManager {
             LOG.warn("The graph not exist or local graph");
         }
     }
+
+    public Map<String, Object> graphConfig(String graphSpace,
+                                           String graphName) {
+        return this.metaManager.getGraphConfig(graphSpace, graphName);
+    }
 }
