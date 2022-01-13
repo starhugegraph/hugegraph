@@ -266,7 +266,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
             if (this.deleteBatch.size() > 0) {
                 this.graph.batchDeleteOwner(this.deleteBatch);
-                this.deletePrefixBatch.clear();
+                this.deleteBatch.clear();
             }
 
             if (this.deletePrefixBatch.size() > 0) {
