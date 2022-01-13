@@ -19,6 +19,7 @@
 
 package com.baidu.hugegraph.task;
 
+import java.util.Date;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.Callable;
@@ -28,12 +29,12 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import com.baidu.hugegraph.util.DateUtil;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.HugeGraphParams;
 import com.baidu.hugegraph.concurrent.PausableScheduledThreadPool;
-import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.util.Consumers;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.ExecutorUtil;
@@ -56,8 +57,8 @@ public final class TaskManager {
     public static final String TASK_SCHEDULER = "task-scheduler-%d";
 
     protected static final int SCHEDULE_PERIOD = 3; // Unit second
-    private static final int THREADS = CoreOptions.CPUS / 2;
-    private static final TaskManager MANAGER = new TaskManager(THREADS);
+    private static int THREADS;
+    private static TaskManager MANAGER;
 
     private final Map<HugeGraphParams, TaskScheduler> schedulers;
 
@@ -66,6 +67,14 @@ public final class TaskManager {
     private final ExecutorService taskDbExecutor;
     private final ExecutorService serverInfoDbExecutor;
     private final PausableScheduledThreadPool schedulerExecutor;
+
+    public static TaskManager instance(int threads) {
+        THREADS = threads;
+        if (MANAGER == null) {
+            MANAGER = new TaskManager(THREADS);
+        }
+        return MANAGER;
+    }
 
     public static TaskManager instance() {
         return MANAGER;
@@ -122,6 +131,7 @@ public final class TaskManager {
 
     public void closeScheduler(HugeGraphParams graph) {
         TaskScheduler scheduler = this.schedulers.get(graph);
+        long tid = Thread.currentThread().getId();
         if (scheduler != null) {
             /*
              * Synch close+remove scheduler and iterate scheduler, details:
@@ -134,11 +144,19 @@ public final class TaskManager {
              * graph tx. As a result, graph tx will mistakenly not be closed
              * after 'graph.close()'.
              */
+            Date currentTime = DateUtil.now();
+            LOG.debug("Entering scheduler lock of closeScheduler(), trying to remove graphs, with tid {}, time {} ...", tid, currentTime);
+            int poolActivateCount = this.schedulerExecutor.getActiveCount();
+            int poolQueueSize = this.schedulerExecutor.getQueue().size();
+            long taskCount = this.schedulerExecutor.getTaskCount();
+            LOG.debug("current pool thread usage: activateCount {} , queueSize {} , taskCount {}", poolActivateCount, poolQueueSize, taskCount);
+
             synchronized (scheduler) {
                 if (scheduler.close()) {
                     this.schedulers.remove(graph);
                 }
             }
+            LOG.debug("exit scheduler lock with tid {} , consumed {} ms", tid, DateUtil.now().getTime() - currentTime.getTime());
         }
 
         if (!this.taskExecutor.isTerminated()) {
@@ -319,13 +337,21 @@ public final class TaskManager {
     private void scheduleOrExecuteJob() {
         // Called by scheduler timer
         try {
+            Long tid = Thread.currentThread().getId();
             for (TaskScheduler entry : this.schedulers.values()) {
 
                 TaskScheduler scheduler = entry;
                 // Maybe other thread close&remove scheduler at the same time
+                Date currentTime = DateUtil.now();
+                LOG.debug("Entering scheduler lock of scheduleOrExecuteJob(), with tid {}, time {}", tid, currentTime);
+                int poolActivateCount = this.schedulerExecutor.getActiveCount();
+                int poolQueueSize = this.schedulerExecutor.getQueue().size();
+                long taskCount = this.schedulerExecutor.getTaskCount();
+                LOG.debug("current pool thread usage: activateCount {} , queueSize {} , taskCount {}", poolActivateCount, poolQueueSize, taskCount);
                 synchronized (scheduler) {
                     this.scheduleOrExecuteJobForGraph(scheduler);
                 }
+                LOG.debug("exit scheduler lock with tid {} , time {}", tid, DateUtil.now().getTime() - currentTime.getTime());
             }
         } catch (Throwable e) {
             LOG.error("Exception occurred when schedule job", e);

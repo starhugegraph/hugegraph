@@ -204,6 +204,8 @@ public class AuthenticationFilter implements ContainerRequestFilter {
             return this.user.role();
         }
 
+        public String userId() { return this.user.userId().asString(); }
+
         @Override
         public Principal getUserPrincipal() {
             return this.principal;

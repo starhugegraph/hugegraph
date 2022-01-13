@@ -19,10 +19,10 @@
 
 package com.baidu.hugegraph.traversal.algorithm.records;
 
-import static com.baidu.hugegraph.backend.query.Query.NO_LIMIT;
-
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Stack;
 
 import com.baidu.hugegraph.backend.id.Id;
@@ -40,6 +40,11 @@ public class KneighborRecords extends SingleWayMultiPathsRecords {
         super(type, concurrent, source, nearest);
     }
 
+    public KneighborRecords(RecordType type, boolean concurrent,
+                            Set<Id> sources, boolean nearest) {
+        super(type, concurrent, sources, nearest);
+    }
+
     @Override
     public int size() {
         return (int) this.accessed();
@@ -47,16 +52,26 @@ public class KneighborRecords extends SingleWayMultiPathsRecords {
 
     public List<Id> ids(long limit) {
         List<Id> ids = CollectionFactory.newList(CollectionType.EC);
+        this.getRecords(limit, ids);
+        return ids;
+    }
+
+    public Set<Id> idSet(long limit) {
+        Set<Id> ids = CollectionFactory.newSet(CollectionType.EC);
+        this.getRecords(limit, ids);
+        return ids;
+    }
+
+    private void getRecords(long limit, Collection<Id> ids) {
         Stack<Record> records = this.records();
         // Not include record(i=0) to ignore source vertex
         for (int i = 1; i < records.size(); i++) {
             IntIterator iterator = records.get(i).keys();
-            while ((limit == NO_LIMIT || limit > 0L) && iterator.hasNext()) {
+            while ((limit > 0L) && iterator.hasNext()) {
                 ids.add(this.id(iterator.next()));
                 limit--;
             }
         }
-        return ids;
     }
 
     public PathSet paths(long limit) {
@@ -64,7 +79,7 @@ public class KneighborRecords extends SingleWayMultiPathsRecords {
         Stack<Record> records = this.records();
         for (int i = 1; i < records.size(); i++) {
             IntIterator iterator = records.get(i).keys();
-            while ((limit == NO_LIMIT || limit > 0L) && iterator.hasNext()) {
+            while ((limit > 0L) && iterator.hasNext()) {
                 paths.add(this.getPath(i, iterator.next()));
                 limit--;
             }
@@ -80,7 +95,7 @@ public class KneighborRecords extends SingleWayMultiPathsRecords {
         Stack<Record> records = this.records();
         for (int i = 1; i < records.size(); i++) {
             IntIterator iterator = records.get(i).keys();
-            while ((limit == NO_LIMIT || limit > 0L) && iterator.hasNext()) {
+            while ((limit > 0L) && iterator.hasNext()) {
                 addEdgeToCodePair(codePairs, i, iterator.next());
                 limit--;
             }
