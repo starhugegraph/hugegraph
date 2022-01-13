@@ -335,6 +335,14 @@ public final class GraphManager {
                                   entry.getValue());
             }
         }
+        if (!this.services.containsKey(this.serviceID)) {
+            Service service = new Service(this.serviceID,
+                                          Service.ServiceType.OLTP,
+                                          Service.DeploymentType.MANUAL);
+            this.metaManager.addServiceConfig(this.serviceGraphSpace, service);
+            this.metaManager.notifyServiceAdd(this.serviceGraphSpace,
+                                              this.serviceID);
+        }
     }
 
     private synchronized Map<String, Map<String, Object>> graphConfigs() {
