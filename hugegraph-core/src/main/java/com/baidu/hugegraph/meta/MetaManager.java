@@ -1636,6 +1636,7 @@ public class MetaManager {
         try {
             HugeTask<V> task = TaskSerializer.fromJson(jsonStr);
             task.progress(this.getTaskProgress(graphSpace, task));
+            task.retries(this.getTaskRetry(graphSpace, task));
             return task;
         } catch (Throwable e) {
             // get task error
@@ -1718,6 +1719,20 @@ public class MetaManager {
     }
 
     /**
+     * Get task retry
+     * @param <V>
+     * @param taskKey
+     * @return
+     */
+    public <V> int getTaskRetry(String taskKey) {
+        String value = this.metaDriver.get(taskKey);
+        if (null == value) {
+            return 0;
+        }
+        return Integer.valueOf(value);
+    }
+
+    /**
      * Get task progress
      * @param <V>
      * @param graphSpace
@@ -1727,6 +1742,18 @@ public class MetaManager {
     public <V> int getTaskProgress(String graphSpace, HugeTask<V> task) {
         String key = this.taskPropertyKey(graphSpace, task.id().asString(), "Progress");
         return this.getTaskProgress(key);
+    }
+
+    /**
+     * Get task retry
+     * @param <V>
+     * @param graphSpace
+     * @param task
+     * @return
+     */
+    public <V> int getTaskRetry(String graphSpace, HugeTask<V> task) {
+        String key = this.taskPropertyKey(graphSpace, task.id().asString(), "Retry");
+        return this.getTaskRetry(key);
     }
 
     /**
@@ -1764,8 +1791,14 @@ public class MetaManager {
     public <V> void updateTaskProgress(String graphSpace, HugeTask<V> task) {
         synchronized(task) {
             String key = taskPropertyKey(graphSpace, task.id().asString(), "Progress");
-            System.out.println("====> Going to update task " + task.id().asString() + " progress = " + task.progress());
             this.metaDriver.put(key, String.valueOf(task.progress()));
+        }
+    }
+
+    public <V> void updateTaskRetry(String graphSpace, HugeTask<V> task) {
+        synchronized(task) {
+            String key = taskPropertyKey(graphSpace, task.id().asString(), "Retry");
+            this.metaDriver.put(key ,String.valueOf(task.retries()));
         }
     }
 
@@ -1780,7 +1813,6 @@ public class MetaManager {
      */
     private <V> void updateTaskStatus(String graphSpace, HugeTask<V> task) {
         String key = taskPropertyKey(graphSpace, task.id().asString(), "Status");
-        System.out.println(String.format("--------> Update Task %d Status %s <---------", task.id().asLong(), task.status().name()));
         this.metaDriver.put(key, task.status().string());
     }
 
@@ -1818,6 +1850,7 @@ public class MetaManager {
             try {
                 HugeTask<V> task = TaskSerializer.fromJson(taskJson);
                 task.progress(this.getTaskProgress(graphSpace, task));
+                task.retries(this.getTaskRetry(graphSpace, task));
                 taskList.add(task);
             } catch (Throwable e) {
                 // get task error
