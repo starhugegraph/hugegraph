@@ -304,7 +304,8 @@ public final class GraphManager {
                                            DEFAULT_GRAPH_SPACE_DESCRIPTION,
                                            Integer.MAX_VALUE, Integer.MAX_VALUE,
                                            Integer.MAX_VALUE, Integer.MAX_VALUE,
-                                           Integer.MAX_VALUE, ImmutableMap.of());
+                                           Integer.MAX_VALUE, false,
+                                           ImmutableMap.of());
         boolean useK8s = config.get(ServerOptions.SERVER_USE_K8S);
         if (!useK8s) {
             return;
@@ -458,12 +459,13 @@ public final class GraphManager {
                                         int storageLimit,
                                         int maxGraphNumber,
                                         int maxRoleNumber,
+                                        boolean auth,
                                         Map<String, Object> configs) {
         checkGraphSpaceName(name);
         GraphSpace space = new GraphSpace(name, description, cpuLimit,
                                           memoryLimit, storageLimit,
                                           maxGraphNumber, maxRoleNumber,
-                                          configs);
+                                          auth, configs);
         return this.createGraphSpace(space);
     }
 
@@ -578,11 +580,19 @@ public final class GraphManager {
                         "The graph name '%s' has existed", name);
 
         configs.put(ServerOptions.PD_PEERS.name(), this.pdPeers);
+        boolean auth = this.metaManager.graphSpace(graphSpace).auth();
+        if (DEFAULT_GRAPH_SPACE_NAME.equals(graphSpace) || !auth) {
+            configs.put("gremlin.graph", "com.baidu.hugegraph.HugeFactory");
+        } else {
+            configs.put("gremlin.graph", "com.baidu.hugegraph.auth.HugeFactoryAuthProxy");
+        }
+
         Configuration propConfig = this.buildConfig(configs);
         String storeName = propConfig.getString(CoreOptions.STORE.name());
         E.checkArgument(name.equals(storeName),
                         "The store name '%s' not match url name '%s'",
                         storeName, name);
+
         HugeConfig config = new HugeConfig(propConfig);
         this.checkOptions(config);
         HugeGraph graph = this.createGraph(graphSpace, config, init);
