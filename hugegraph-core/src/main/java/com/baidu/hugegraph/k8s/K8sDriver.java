@@ -327,7 +327,7 @@ public class K8sDriver {
         Set<String> urls = new HashSet<>();
         String clusterIP = service.getSpec().getClusterIP();
         for (ServicePort port : service.getSpec().getPorts()) {
-            urls.add(clusterIP + COLON + port.getPort());
+            urls.add(clusterIP + COLON + port.getNodePort());
         }
         return urls;
     }
