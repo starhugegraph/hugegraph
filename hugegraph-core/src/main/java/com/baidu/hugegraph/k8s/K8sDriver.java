@@ -228,10 +228,9 @@ public class K8sDriver {
                                         Service service,
                                         List<String> metaServers,
                                         String cluster) {
-        this.createDeployment(graphSpace, service, metaServers, cluster);
-        Set<String> urls = this.createService(graphSpace, service);
         this.createServcieAccountIfNeeded(graphSpace, service);
-        return urls;
+        this.createDeployment(graphSpace, service, metaServers, cluster);
+        return this.createService(graphSpace, service);
     }
 
     public void stopOltpService(GraphSpace graphSpace, Service service) {
