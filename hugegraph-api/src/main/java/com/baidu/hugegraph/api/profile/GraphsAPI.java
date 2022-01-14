@@ -120,9 +120,10 @@ public class GraphsAPI extends API {
 
         HugeGraph g = graph(manager, graphSpace, graph);
         Map<String, Object> configs = manager.graphConfig(graphSpace, graph);
-        String description = configs.containsKey(GRAPH_DESCRIPTION) ?
-                             (String) configs.get(GRAPH_DESCRIPTION) :
-                             Strings.EMPTY;
+        String description = (String) configs.get(GRAPH_DESCRIPTION);
+        if (description == null) {
+            description = Strings.EMPTY;
+        }
         return ImmutableMap.of("name", g.name(), "backend", g.backend(),
                                "description", description);
     }
@@ -143,9 +144,10 @@ public class GraphsAPI extends API {
         HugeGraph graph = manager.createGraph(graphSpace, name,
                                               configs, true);
         graph.tx().close();
-        String description = configs.containsKey(GRAPH_DESCRIPTION) ?
-                             (String) configs.get(GRAPH_DESCRIPTION) :
-                             Strings.EMPTY;
+        String description = (String) configs.get(GRAPH_DESCRIPTION);
+        if (description == null) {
+            description = Strings.EMPTY;
+        }
         return ImmutableMap.of("name", name, "backend", graph.backend(),
                                "description", description);
     }
