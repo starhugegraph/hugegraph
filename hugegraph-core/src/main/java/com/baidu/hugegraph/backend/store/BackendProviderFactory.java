@@ -29,7 +29,6 @@ import org.slf4j.Logger;
 import com.baidu.hugegraph.HugeGraphParams;
 import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.backend.store.memory.InMemoryDBStoreProvider;
-import com.baidu.hugegraph.backend.store.raft.RaftBackendStoreProvider;
 import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.util.Log;
@@ -53,11 +52,6 @@ public class BackendProviderFactory {
         boolean raftMode = config.get(CoreOptions.RAFT_MODE);
 
         BackendStoreProvider provider = newProvider(config);
-        if (raftMode) {
-            LOG.info("Opening backend store '{}' in raft mode for graph '{}'",
-                     backend, graph);
-            provider = new RaftBackendStoreProvider(provider, params);
-        }
         provider.open(graph);
         return provider;
     }

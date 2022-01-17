@@ -46,8 +46,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.NullOutputStream;
 
-import com.baidu.hugegraph.backend.store.raft.RaftSharedContext;
-
 import net.jpountz.lz4.LZ4BlockInputStream;
 import net.jpountz.lz4.LZ4BlockOutputStream;
 import net.jpountz.lz4.LZ4Compressor;
@@ -56,6 +54,9 @@ import net.jpountz.lz4.LZ4FastDecompressor;
 
 public final class CompressUtil {
 
+    // compress block size
+    public static final int BLOCK_SIZE = (int) (Bytes.KB * 8);
+
     /**
      * Reference: https://mkyong.com/java/how-to-create-tar-gz-in-java/
      */
@@ -63,7 +64,7 @@ public final class CompressUtil {
                                    Checksum checksum) throws IOException {
         LZ4Factory factory = LZ4Factory.fastestInstance();
         LZ4Compressor compressor = factory.fastCompressor();
-        int blockSize = RaftSharedContext.BLOCK_SIZE;
+        int blockSize = BLOCK_SIZE;
         try (FileOutputStream fos = new FileOutputStream(outputFile);
              CheckedOutputStream cos = new CheckedOutputStream(fos, checksum);
              BufferedOutputStream bos = new BufferedOutputStream(cos);

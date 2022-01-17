@@ -36,10 +36,7 @@ import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.query.Query;
 import com.baidu.hugegraph.backend.store.BackendFeatures;
 import com.baidu.hugegraph.backend.store.BackendStoreSystemInfo;
-import com.baidu.hugegraph.backend.store.raft.RaftGroupManager;
 import com.baidu.hugegraph.config.TypedOption;
-import com.baidu.hugegraph.rpc.RpcServiceConfig4Client;
-import com.baidu.hugegraph.rpc.RpcServiceConfig4Server;
 import com.baidu.hugegraph.schema.EdgeLabel;
 import com.baidu.hugegraph.schema.IndexLabel;
 import com.baidu.hugegraph.schema.PropertyKey;
@@ -167,7 +164,6 @@ public interface HugeGraph extends Graph {
     public AuthManager authManager();
     public void switchAuthManager(AuthManager authManager);
     public TaskScheduler taskScheduler();
-    public RaftGroupManager raftGroupManager(String group);
 
     public void proxy(HugeGraph graph);
 

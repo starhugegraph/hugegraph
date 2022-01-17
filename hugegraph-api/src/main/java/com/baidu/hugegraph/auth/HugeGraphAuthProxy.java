@@ -64,7 +64,6 @@ import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.query.Query;
 import com.baidu.hugegraph.backend.store.BackendFeatures;
 import com.baidu.hugegraph.backend.store.BackendStoreSystemInfo;
-import com.baidu.hugegraph.backend.store.raft.RaftGroupManager;
 import com.baidu.hugegraph.config.AuthOptions;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.config.TypedOption;
@@ -694,12 +693,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     @Override
     public void switchAuthManager(AuthManager authManager) {
         this.authManager = authManager;
-    }
-
-    @Override
-    public RaftGroupManager raftGroupManager(String group) {
-        this.verifyAdminPermission();
-        return this.hugegraph.raftGroupManager(group);
     }
 
     @Override

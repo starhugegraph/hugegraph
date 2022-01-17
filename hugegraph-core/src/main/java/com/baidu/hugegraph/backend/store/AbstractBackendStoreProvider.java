@@ -28,7 +28,6 @@ import org.slf4j.Logger;
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.backend.id.Id;
-import com.baidu.hugegraph.backend.store.raft.StoreSnapshotFile;
 import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.event.EventHub;
 import com.baidu.hugegraph.event.EventListener;
@@ -40,6 +39,9 @@ public abstract class AbstractBackendStoreProvider
                 implements BackendStoreProvider {
 
     protected static final Logger LOG = Log.logger(BackendStoreProvider.class);
+
+    public static final String SNAPSHOT_DIR = "snapshot";
+    private static final String TAR = ".tar";
 
     private String graph = null;
 
@@ -190,7 +192,7 @@ public abstract class AbstractBackendStoreProvider
 
     @Override
     public void createSnapshot() {
-        String snapshotPrefix = StoreSnapshotFile.SNAPSHOT_DIR;
+        String snapshotPrefix = SNAPSHOT_DIR;
         for (BackendStore store : this.stores.values()) {
             store.createSnapshot(snapshotPrefix);
         }
@@ -198,7 +200,7 @@ public abstract class AbstractBackendStoreProvider
 
     @Override
     public void resumeSnapshot() {
-        String snapshotPrefix = StoreSnapshotFile.SNAPSHOT_DIR;
+        String snapshotPrefix = SNAPSHOT_DIR;
         for (BackendStore store : this.stores.values()) {
             store.resumeSnapshot(snapshotPrefix, true);
         }
