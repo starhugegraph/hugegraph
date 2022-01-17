@@ -23,7 +23,6 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import com.baidu.hugegraph.traversal.algorithm.steps.Steps;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 
 import com.baidu.hugegraph.HugeGraph;
@@ -31,6 +30,7 @@ import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.structure.HugeEdge;
 import com.baidu.hugegraph.traversal.algorithm.records.KneighborRecords;
 import com.baidu.hugegraph.traversal.algorithm.records.record.RecordType;
+import com.baidu.hugegraph.traversal.algorithm.steps.Steps;
 import com.baidu.hugegraph.type.define.Directions;
 import com.baidu.hugegraph.util.E;
 
@@ -70,8 +70,9 @@ public class KneighborTraverser extends OltpTraverser {
         return all;
     }
 
-    public KneighborRecords customizedKneighbor(Id source, Steps steps, int maxDepth,
-                                                long limit, boolean withEdge) {
+    public KneighborRecords customizedKneighbor(Id source, Steps steps,
+                                                int maxDepth, long limit,
+                                                boolean withEdge) {
         E.checkNotNull(source, "source vertex id");
         this.checkVertexExist(source, "source vertex");
         checkPositive(maxDepth, "k-neighbor max_depth");
@@ -87,15 +88,16 @@ public class KneighborTraverser extends OltpTraverser {
             if (this.reachLimit(limit, records.size())) {
                 return;
             }
-            Iterator<Edge> edges = edgesOfVertexAF(v, steps);
-            while (!this.reachLimit(limit, records.size())
-                   && edges.hasNext()) {
+            Iterator<Edge> edges = edgesOfVertexAF(v, steps, false);
+
+            while (!this.reachLimit(limit, records.size()) && edges.hasNext()) {
                 HugeEdge edge = (HugeEdge) edges.next();
+                this.edgeIterCounter++;
                 Id target = edge.id().otherVertexId();
                 records.addPath(v, target);
                 if(withEdge) {
                     // for breadth, we have to collect all edge during traversal,
-                    // to avoid over occupy for memery, we collect edgeid only.
+                    // to avoid over occupy for memory, we collect edgeId only.
                     records.addEdgeId(edge.id());
                 }
             }
@@ -108,7 +110,60 @@ public class KneighborTraverser extends OltpTraverser {
         }
 
         if (withEdge) {
-            // we should filter out unused-edge for breadth first algorithm.
+            // we should filter out unused-edges for breadth first algorithm.
+            records.filterUnusedEdges(limit);
+        }
+
+        return records;
+    }
+
+    public KneighborRecords multiKneighbors(Set<Id> sources, Steps steps,
+                                            int maxDepth, long limit,
+                                            boolean withEdge) {
+        E.checkNotNull(sources, "source vertices");
+        E.checkArgument(sources.size() > 0, "source vertices can't be empty");
+        for (Id source : sources) {
+            E.checkNotNull(source, "source vertex id");
+            this.checkVertexExist(source, "source vertex");
+        }
+        checkPositive(maxDepth, "egonet max_depth");
+        checkLimit(limit);
+
+        boolean concurrent = maxDepth >= this.concurrentDepth();
+
+        // Construct a multi sources start layer
+        KneighborRecords records = new KneighborRecords(RecordType.INT,
+                                                        concurrent,
+                                                        sources,
+                                                        true);
+
+        Consumer<Id> consumer = v -> {
+            if (this.reachLimit(limit, records.size())) {
+                return;
+            }
+            Iterator<Edge> edges = edgesOfVertexAF(v, steps, false);
+
+            while (!this.reachLimit(limit, records.size()) && edges.hasNext()) {
+                HugeEdge edge = (HugeEdge) edges.next();
+                this.edgeIterCounter++;
+                Id target = edge.id().otherVertexId();
+                records.addPath(v, target);
+                if (withEdge) {
+                    // for breadth, we have to collect all edge during traversal
+                    // to avoid over occupy for memory, we collect edgeId only.
+                    records.addEdgeId(edge.id());
+                }
+            }
+        };
+
+        while (maxDepth-- > 0) {
+            records.startOneLayer(true);
+            traverseIds(records.keys(), consumer, concurrent);
+            records.finishOneLayer();
+        }
+
+        if (withEdge) {
+            // we should filter out unused-edges for breadth first algorithm.
             records.filterUnusedEdges(limit);
         }
 

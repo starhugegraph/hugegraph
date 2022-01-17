@@ -41,17 +41,19 @@ if [ -z "$PD_PEERS" ];then
   PD_PEERS="127.0.0.1:8686"
 fi
 if [ -z "$WITH_CA" ];then
-  WITH_CA="false"
+  WITH_CA="true"
 fi
 if [ -z "$CA_FILE" ];then
-  CA_FILE="conf/ca.perm"
+  CA_FILE="/hg-ca/ca.pem"
 fi
 if [ -z "$CLIENT_CA" ];then
-  CLIENT_CA="conf/client_ca.perm"
+  CLIENT_CA="/hg-ca/kubernetes.pem"
 fi
 if [ -z "$CLIENT_KEY" ];then
-  CLIENT_KEY="conf/client.key"
+  CLIENT_KEY="/hg-ca/kubernetes-key8.pem"
 fi
+mkdir ~/.kube
+cat /hg-ca/config > ~/.kube/config
 
 while getopts "g:m:s:j:G:S:N:R:M:E:W:C:A:K:P:v" arg; do
     case ${arg} in
@@ -126,7 +128,7 @@ if [ ! -d "$LOGS" ]; then
     mkdir -p "$LOGS"
 fi
 
-"$BIN"/init-store.sh
+"$BIN"/k8s-init-store.sh
 
 echo "Starting HugeGraphServer..."
 

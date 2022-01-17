@@ -122,11 +122,13 @@ public final class GraphManager {
     private final String serviceID;
     private final String nodeId;
     private final String nodeRole;
+    private final String pdPeers;
 
     private final EventHub eventHub;
 
     private final Id serverId;
     private final NodeRole serverRole;
+    private final String url;
 
     private HugeConfig config;
 
@@ -135,6 +137,7 @@ public final class GraphManager {
         this.config = conf;
         String server = conf.get(ServerOptions.SERVER_ID);
         String role = conf.get(ServerOptions.SERVER_ROLE);
+        this.url = conf.get(ServerOptions.REST_SERVER_URL);
         this.startIgnoreSingleGraphError = conf.get(
                 ServerOptions.SERVER_START_IGNORE_SINGLE_GRAPH_ERROR);
         E.checkArgument(server != null && !server.isEmpty(),
@@ -155,6 +158,7 @@ public final class GraphManager {
         this.serviceID = conf.get(ServerOptions.SERVICE_ID);
         this.nodeId = conf.get(ServerOptions.NODE_ID);
         this.nodeRole = conf.get(ServerOptions.NODE_ROLE);
+        this.pdPeers = conf.get(ServerOptions.PD_PEERS);
         this.eventHub = hub;
         this.listenChanges();
 
@@ -302,7 +306,8 @@ public final class GraphManager {
                                            DEFAULT_GRAPH_SPACE_DESCRIPTION,
                                            Integer.MAX_VALUE, Integer.MAX_VALUE,
                                            Integer.MAX_VALUE, Integer.MAX_VALUE,
-                                           Integer.MAX_VALUE, ImmutableMap.of());
+                                           Integer.MAX_VALUE, false,
+                                           ImmutableMap.of());
         boolean useK8s = config.get(ServerOptions.SERVER_USE_K8S);
         if (!useK8s) {
             return;
@@ -335,6 +340,16 @@ public final class GraphManager {
                                   entry.getValue());
             }
         }
+        if (!this.services.containsKey(this.serviceID)) {
+            Service service = new Service(this.serviceID,
+                                          Service.ServiceType.OLTP,
+                                          Service.DeploymentType.MANUAL);
+            service.description(service.name());
+            service.url(this.url);
+            this.metaManager.addServiceConfig(this.serviceGraphSpace, service);
+            this.metaManager.notifyServiceAdd(this.serviceGraphSpace,
+                                              this.serviceID);
+        }
     }
 
     private synchronized Map<String, Map<String, Object>> graphConfigs() {
@@ -352,6 +367,7 @@ public final class GraphManager {
             event.checkArgs(String.class, HugeGraph.class);
             String name = (String) event.args()[0];
             HugeGraph graph = (HugeGraph) event.args()[1];
+            graph.switchAuthManager(this.authManager);
             this.graphs.putIfAbsent(name, graph);
             return null;
         });
@@ -439,6 +455,7 @@ public final class GraphManager {
         this.graphs.values().forEach(g -> {
             try {
                 HugeGraph graph = (HugeGraph) g;
+                graph.switchAuthManager(this.authManager);
                 graph.waitStarted();
             } catch (HugeException e) {
                 if (!this.startIgnoreSingleGraphError) {
@@ -454,12 +471,13 @@ public final class GraphManager {
                                         int storageLimit,
                                         int maxGraphNumber,
                                         int maxRoleNumber,
+                                        boolean auth,
                                         Map<String, Object> configs) {
         checkGraphSpaceName(name);
         GraphSpace space = new GraphSpace(name, description, cpuLimit,
                                           memoryLimit, storageLimit,
                                           maxGraphNumber, maxRoleNumber,
-                                          configs);
+                                          auth, configs);
         return this.createGraphSpace(space);
     }
 
@@ -532,6 +550,11 @@ public final class GraphManager {
                                          ServerOptions.META_ENDPOINTS);
                 Set<String> urls = this.k8sManager.startService(
                                    gs, service, endpoints, this.cluster);
+                if (!urls.isEmpty()) {
+                    String url = urls.iterator().next();
+                    String[] parts = url.split(":");
+                    service.port(Integer.valueOf(parts[parts.length - 1]));
+                }
                 service.urls(urls);
             }
             this.metaManager.addServiceConfig(graphSpace, service);
@@ -573,11 +596,20 @@ public final class GraphManager {
         E.checkArgument(!this.graphs(graphSpace).contains(name),
                         "The graph name '%s' has existed", name);
 
+        configs.put(ServerOptions.PD_PEERS.name(), this.pdPeers);
+        boolean auth = this.metaManager.graphSpace(graphSpace).auth();
+        if (DEFAULT_GRAPH_SPACE_NAME.equals(graphSpace) || !auth) {
+            configs.put("gremlin.graph", "com.baidu.hugegraph.HugeFactory");
+        } else {
+            configs.put("gremlin.graph", "com.baidu.hugegraph.auth.HugeFactoryAuthProxy");
+        }
+
         Configuration propConfig = this.buildConfig(configs);
         String storeName = propConfig.getString(CoreOptions.STORE.name());
         E.checkArgument(name.equals(storeName),
                         "The store name '%s' not match url name '%s'",
                         storeName, name);
+
         HugeConfig config = new HugeConfig(propConfig);
         this.checkOptions(config);
         HugeGraph graph = this.createGraph(graphSpace, config, init);
@@ -588,6 +620,7 @@ public final class GraphManager {
             this.metaManager.addGraphConfig(graphSpace, name, configs);
             this.metaManager.notifyGraphAdd(graphSpace, name);
         }
+        graph.switchAuthManager(this.authManager);
         this.graphs.put(graphName, graph);
         this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
         // Let gremlin server and rest server context add graph
@@ -886,6 +919,7 @@ public final class GraphManager {
         final HugeGraph graph = (HugeGraph) GraphFactory.open(path);
         String graphName = graphName(DEFAULT_GRAPH_SPACE_NAME, name);
         graph.graphSpace(DEFAULT_GRAPH_SPACE_NAME);
+        graph.switchAuthManager(this.authManager);
         this.graphs.put(graphName, graph);
         LOG.info("Graph '{}' was successfully configured via '{}'", name, path);
 
@@ -903,18 +937,6 @@ public final class GraphManager {
                 HugeGraph hugegraph = (HugeGraph) g;
                 if (!hugegraph.backendStoreFeatures().supportsPersistence()) {
                     hugegraph.initBackend();
-                    if (this.requireAuthentication()) {
-                        String token =
-                               config.get(ServerOptions.AUTH_ADMIN_TOKEN);
-                        try {
-                            // this.authenticator.initAdminUser(token);
-                        } catch (Exception e) {
-                            throw new BackendException(
-                                      "The backend store of '%s' can't " +
-                                      "initialize admin user",
-                                      hugegraph.name());
-                        }
-                    }
                 }
                 BackendStoreSystemInfo info = hugegraph.backendStoreSystemInfo();
                 if (!info.exists()) {
@@ -1316,5 +1338,10 @@ public final class GraphManager {
         } catch (Exception e) {
             LOG.warn("The graph not exist or local graph");
         }
+    }
+
+    public Map<String, Object> graphConfig(String graphSpace,
+                                           String graphName) {
+        return this.metaManager.getGraphConfig(graphSpace, graphName);
     }
 }

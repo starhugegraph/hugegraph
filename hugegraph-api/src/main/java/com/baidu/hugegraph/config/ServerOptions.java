@@ -92,6 +92,14 @@ public class ServerOptions extends OptionHolder {
                     64
             );
 
+    public static final ConfigOption<Integer> TASK_THREADS =
+            new ConfigOption<>(
+                    "restserver.task_threads",
+                    "The task threads of rest server.",
+                    rangeInt(1, Math.max(4, CoreOptions.CPUS * 2)),
+                    Math.max(4, CoreOptions.CPUS / 2)
+            );
+
     public static final ConfigOption<Integer> REQUEST_TIMEOUT =
             new ConfigOption<>(
                     "restserver.request_timeout",
@@ -189,6 +197,14 @@ public class ServerOptions extends OptionHolder {
                     "The cluster name.",
                     disallowEmpty(),
                     "hg-test"
+            );
+
+    public static final ConfigOption<String> PD_PEERS =
+            new ConfigOption<>(
+                    "pd.peers",
+                    "The pd server peers.",
+                    disallowEmpty(),
+                    "127.0.0.1:8686"
             );
 
     public static final ConfigOption<Boolean> SERVER_USE_K8S =
@@ -341,8 +357,7 @@ public class ServerOptions extends OptionHolder {
             new ConfigOption<>(
                     "auth.authenticator",
                     "The class path of authenticator implementation. " +
-                    "e.g., com.baidu.hugegraph.auth.StandardAuthenticator, " +
-                    "or com.baidu.hugegraph.auth.ConfigAuthenticator.",
+                    "e.g., com.baidu.hugegraph.auth.StandardAuthenticator.",
                     null,
                     ""
             );

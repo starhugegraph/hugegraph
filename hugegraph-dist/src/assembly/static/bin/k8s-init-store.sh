@@ -79,6 +79,7 @@ else
     JAVA=java
     EXT="$LIB:$PLUGINS"
 fi
+JAVA="/root/jdk1.8.0_271/bin/java -server"
 
 cd ${TOP}
 

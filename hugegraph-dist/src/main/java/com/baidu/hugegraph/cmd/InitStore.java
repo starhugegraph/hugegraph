@@ -38,6 +38,7 @@ import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.config.ServerOptions;
 import com.baidu.hugegraph.dist.RegisterUtil;
+import com.baidu.hugegraph.task.TaskManager;
 import com.baidu.hugegraph.util.ConfigUtil;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
@@ -63,7 +64,7 @@ public class InitStore {
     }
 
     public static void main(String[] args) throws Exception {
-        E.checkArgument(args.length == 11,
+        E.checkArgument(args.length == 12,
                         "HugeGraph init-store need to pass the config file " +
                         "of RestServer, like: conf/rest-server.properties");
         E.checkArgument(args[0].endsWith(".properties"),
@@ -84,6 +85,14 @@ public class InitStore {
                      ServerOptions.GRAPH_LOAD_FROM_LOCAL_CONFIG.name());
             return;
         }
+
+        int num;
+        try {
+            num = restServerConfig.getInt(ServerOptions.TASK_THREADS.name());
+        } catch (NoSuchElementException e) {
+            num = 4;
+        }
+        TaskManager.instance(num);
 
         RegisterUtil.registerBackends();
         RegisterUtil.registerPlugins();
@@ -107,10 +116,10 @@ public class InitStore {
         }
 
         List<String> metaEndpoints = Arrays.asList(args[5].split(","));
-        Boolean withCa = args[7].equals("true") ? true : false;
+        Boolean withCa = args[8].equals("true") ? true : false;
         StandardAuthenticator.initAdminUserIfNeeded(restConf, metaEndpoints,
-                                                    args[6], withCa, args[8],
-                                                    args[9], args[10]);
+                                                    args[6], withCa, args[9],
+                                                    args[10], args[11]);
 
         HugeFactory.shutdown(30L);
     }

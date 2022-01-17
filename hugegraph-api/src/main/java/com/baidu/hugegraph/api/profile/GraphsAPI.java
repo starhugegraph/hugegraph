@@ -41,6 +41,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
 
+import org.apache.logging.log4j.util.Strings;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
@@ -72,8 +73,7 @@ public class GraphsAPI extends API {
     private static final String CLEAR_SCHEMA = "clear_schema";
     private static final String GRAPH_ACTION_CLEAR = "clear";
     private static final String GRAPH_ACTION_RELOAD = "reload";
-
-    private static final String CONFIRM_DROP = "I'm sure to drop the graph";
+    private static final String GRAPH_DESCRIPTION = "description";
 
     @GET
     @Timed
@@ -119,7 +119,13 @@ public class GraphsAPI extends API {
                   graphSpace, graph);
 
         HugeGraph g = graph(manager, graphSpace, graph);
-        return ImmutableMap.of("name", g.name(), "backend", g.backend());
+        Map<String, Object> configs = manager.graphConfig(graphSpace, graph);
+        String description = (String) configs.get(GRAPH_DESCRIPTION);
+        if (description == null) {
+            description = Strings.EMPTY;
+        }
+        return ImmutableMap.of("name", g.name(), "backend", g.backend(),
+                               "description", description);
     }
 
     @POST
@@ -138,7 +144,12 @@ public class GraphsAPI extends API {
         HugeGraph graph = manager.createGraph(graphSpace, name,
                                               configs, true);
         graph.tx().close();
-        return ImmutableMap.of("name", name, "backend", graph.backend());
+        String description = (String) configs.get(GRAPH_DESCRIPTION);
+        if (description == null) {
+            description = Strings.EMPTY;
+        }
+        return ImmutableMap.of("name", name, "backend", graph.backend(),
+                               "description", description);
     }
 
     @GET
@@ -202,11 +213,8 @@ public class GraphsAPI extends API {
     @RolesAllowed({"admin", "$dynamic"})
     public void delete(@Context GraphManager manager,
                        @PathParam("name") String name,
-                       @PathParam("graphspace") String graphSpace,
-                       @QueryParam("confirm_message") String message) {
+                       @PathParam("graphspace") String graphSpace) {
         LOG.debug("Remove graph by name '{}'", name);
-        E.checkArgument(CONFIRM_DROP.equals(message),
-                        "Please take the message: %s", CONFIRM_DROP);
         manager.dropGraph(graphSpace, name, true);
     }
 
