@@ -80,46 +80,11 @@ public class HugeSecurityManager extends SecurityManager {
             ImmutableSet.of("asyncRemoveIndexLeft")
     );
 
-    private static final Map<String, Set<String>> BACKEND_SOCKET = ImmutableMap.of(
-            // Fixed #758
-            "com.baidu.hugegraph.backend.store.mysql.MysqlStore",
-            ImmutableSet.of("open", "init", "clear", "opened", "initialized")
-    );
-
-    private static final Map<String, Set<String>> BACKEND_THREAD = ImmutableMap.of(
-            // Fixed #758
-            "com.baidu.hugegraph.backend.store.cassandra.CassandraStore",
-            ImmutableSet.of("open", "opened", "init"),
-            // Fixed https://github.com/hugegraph/hugegraph/pull/892#issuecomment-598545072
-            "com.datastax.driver.core.AbstractSession",
-            ImmutableSet.of("execute")
-    );
-
     private static final Map<String, Set<String>> BACKEND_SNAPSHOT = ImmutableMap.of(
             "com.baidu.hugegraph.backend.store.AbstractBackendStoreProvider",
             ImmutableSet.of("createSnapshot", "resumeSnapshot"),
             "com.baidu.hugegraph.backend.store.raft.RaftBackendStoreProvider",
             ImmutableSet.of("createSnapshot", "resumeSnapshot")
-    );
-
-    private static final Set<String> HBASE_CLASSES = ImmutableSet.of(
-            // Fixed #758
-            "com.baidu.hugegraph.backend.store.hbase.HbaseStore",
-            "com.baidu.hugegraph.backend.store.hbase.HbaseStore$HbaseSchemaStore",
-            "com.baidu.hugegraph.backend.store.hbase.HbaseStore$HbaseGraphStore",
-            "com.baidu.hugegraph.backend.store.hbase.HbaseSessions$RowIterator"
-    );
-
-    private static final Set<String> RAFT_CLASSES = ImmutableSet.of(
-            "com.baidu.hugegraph.backend.store.raft.RaftNode",
-            "com.baidu.hugegraph.backend.store.raft.StoreStateMachine",
-            "com.baidu.hugegraph.backend.store.raft.rpc.RpcForwarder"
-    );
-
-
-    private static final Set<String> SOFA_RPC_CLASSES = ImmutableSet.of(
-            "com.alipay.sofa.rpc.tracer.sofatracer.RpcSofaTracer",
-            "com.alipay.sofa.rpc.client.AbstractCluster"
     );
 
     private static final Map<String, Set<String>> NEW_SECURITY_EXCEPTION = ImmutableMap.of(
@@ -166,9 +131,7 @@ public class HugeSecurityManager extends SecurityManager {
     @Override
     public void checkAccess(Thread thread) {
         if (callFromGremlin() && !callFromCaffeine() &&
-            !callFromAsyncTasks() && !callFromEventHubNotify() &&
-            !callFromBackendThread() && !callFromBackendHbase() &&
-            !callFromRaft() && !callFromSofaRpc()) {
+            !callFromAsyncTasks() && !callFromEventHubNotify()) {
             throw newSecurityException(
                   "Not allowed to access thread via Gremlin");
         }
@@ -178,9 +141,7 @@ public class HugeSecurityManager extends SecurityManager {
     @Override
     public void checkAccess(ThreadGroup threadGroup) {
         if (callFromGremlin() && !callFromCaffeine() &&
-            !callFromAsyncTasks() && !callFromEventHubNotify() &&
-            !callFromBackendThread() && !callFromBackendHbase() &&
-            !callFromRaft() && !callFromSofaRpc()) {
+            !callFromAsyncTasks() && !callFromEventHubNotify()) {
             throw newSecurityException(
                   "Not allowed to access thread group via Gremlin");
         }
@@ -207,8 +168,7 @@ public class HugeSecurityManager extends SecurityManager {
 
     @Override
     public void checkRead(FileDescriptor fd) {
-        if (callFromGremlin() && !callFromBackendSocket() &&
-            !callFromRaft() && !callFromSofaRpc()) {
+        if (callFromGremlin()) {
             throw newSecurityException("Not allowed to read fd via Gremlin");
         }
         super.checkRead(fd);
@@ -217,9 +177,7 @@ public class HugeSecurityManager extends SecurityManager {
     @Override
     public void checkRead(String file) {
         if (callFromGremlin() && !callFromCaffeine() &&
-            !readGroovyInCurrentDir(file) && !callFromBackendHbase() &&
-            !callFromSnapshot() && !callFromRaft() &&
-            !callFromSofaRpc()) {
+            !readGroovyInCurrentDir(file) && !callFromSnapshot()) {
             throw newSecurityException(
                   "Not allowed to read file via Gremlin: %s", file);
         }
@@ -228,7 +186,7 @@ public class HugeSecurityManager extends SecurityManager {
 
     @Override
     public void checkRead(String file, Object context) {
-        if (callFromGremlin() && !callFromRaft() && !callFromSofaRpc()) {
+        if (callFromGremlin()) {
             throw newSecurityException(
                   "Not allowed to read file via Gremlin: %s", file);
         }
@@ -237,8 +195,7 @@ public class HugeSecurityManager extends SecurityManager {
 
     @Override
     public void checkWrite(FileDescriptor fd) {
-        if (callFromGremlin() && !callFromBackendSocket() &&
-            !callFromRaft() && !callFromSofaRpc()) {
+        if (callFromGremlin()) {
             throw newSecurityException("Not allowed to write fd via Gremlin");
         }
         super.checkWrite(fd);
@@ -246,8 +203,7 @@ public class HugeSecurityManager extends SecurityManager {
 
     @Override
     public void checkWrite(String file) {
-        if (callFromGremlin() && !callFromSnapshot() &&
-            !callFromRaft() && !callFromSofaRpc()) {
+        if (callFromGremlin() && !callFromSnapshot()) {
             throw newSecurityException("Not allowed to write file via Gremlin");
         }
         super.checkWrite(file);
@@ -282,8 +238,7 @@ public class HugeSecurityManager extends SecurityManager {
 
     @Override
     public void checkConnect(String host, int port) {
-        if (callFromGremlin() && !callFromBackendSocket() &&
-            !callFromBackendHbase() && !callFromRaft() && !callFromSofaRpc()) {
+        if (callFromGremlin()) {
             throw newSecurityException(
                   "Not allowed to connect socket via Gremlin");
         }
@@ -327,8 +282,7 @@ public class HugeSecurityManager extends SecurityManager {
 
     @Override
     public void checkPropertiesAccess() {
-        if (callFromGremlin() && !callFromSofaRpc() &&
-            !callFromNewSecurityException()) {
+        if (callFromGremlin() && !callFromNewSecurityException()) {
             throw newSecurityException(
                   "Not allowed to access system properties via Gremlin");
         }
@@ -338,9 +292,7 @@ public class HugeSecurityManager extends SecurityManager {
     @Override
     public void checkPropertyAccess(String key) {
         if (!callFromAcceptClassLoaders() && callFromGremlin() &&
-            !WHITE_SYSTEM_PROPERTYS.contains(key) && !callFromBackendHbase() &&
-            !callFromSnapshot() && !callFromRaft() &&
-            !callFromSofaRpc()) {
+            !WHITE_SYSTEM_PROPERTYS.contains(key) && !callFromSnapshot()) {
             throw newSecurityException(
                   "Not allowed to access system property(%s) via Gremlin", key);
         }
@@ -434,16 +386,6 @@ public class HugeSecurityManager extends SecurityManager {
         return callFromWorkerWithClass(CAFFEINE_CLASSES);
     }
 
-    private static boolean callFromBackendSocket() {
-        // Fixed issue #758
-        return callFromMethods(BACKEND_SOCKET);
-    }
-
-    private static boolean callFromBackendThread() {
-        // Fixed issue #758
-        return callFromMethods(BACKEND_THREAD);
-    }
-
     private static boolean callFromEventHubNotify() {
         // Fixed issue #758
         // notify() will create thread when submit task to executor
@@ -455,21 +397,8 @@ public class HugeSecurityManager extends SecurityManager {
         return callFromMethods(ASYNC_TASKS);
     }
 
-    private static boolean callFromBackendHbase() {
-        // TODO: remove this unsafe entrance
-        return callFromWorkerWithClass(HBASE_CLASSES);
-    }
-
     private static boolean callFromSnapshot() {
         return callFromMethods(BACKEND_SNAPSHOT);
-    }
-
-    private static boolean callFromRaft() {
-        return callFromWorkerWithClass(RAFT_CLASSES);
-    }
-
-    private static boolean callFromSofaRpc() {
-        return callFromWorkerWithClass(SOFA_RPC_CLASSES);
     }
 
     private static boolean callFromNewSecurityException() {
