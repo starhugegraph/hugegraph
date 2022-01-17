@@ -49,7 +49,6 @@ public class BackendProviderFactory {
         String graph = (StringUtils.isEmpty(params.graph().graphSpace()) ?
                         GraphSpace.DEFAULT_GRAPH_SPACE_NAME : params.graph().graphSpace())
                        + "/" + config.get(CoreOptions.STORE);
-        boolean raftMode = config.get(CoreOptions.RAFT_MODE);
 
         BackendStoreProvider provider = newProvider(config);
         provider.open(graph);

@@ -823,19 +823,11 @@ public class RocksDBStdSessions extends RocksDBSessions {
         private WriteOptions writeOptions;
 
         public StdSession(HugeConfig conf) {
-            boolean raftMode = conf.get(CoreOptions.RAFT_MODE);
             boolean pipeline_write = conf.get(RocksDBOptions.ENABLE_PIPELINE_WRITE);
 
             this.batch = new WriteBatch();
             this.writeOptions = new WriteOptions();
-            /*
-             * When work under raft mode. if store crashed, the state-machine
-             * can restore by snapshot + raft log, doesn't need wal and sync
-             */
-            if (raftMode) {
-                this.writeOptions.setDisableWAL(true);
-                this.writeOptions.setSync(false);
-            } else if (!pipeline_write) {
+            if (!pipeline_write) {
                 // donot apply disableWal when pipeline_write is true
                 boolean disableWal = conf.get(RocksDBOptions.DISABLE_WAL);
                 this.writeOptions.setDisableWAL(disableWal);
