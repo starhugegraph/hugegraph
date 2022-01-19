@@ -97,6 +97,8 @@
         <slf4j.version>1.7.5</slf4j.version>
         <log4j.version>1.2.17</log4j.version>
         <log4j2.version>2.17.0</log4j2.version>
+        <log4jappenders.version>1.5.2</log4jappenders.version>
+        <jest.version>6.3.1</jest.version>
         <disruptor.version>3.4.4</disruptor.version>
         <junit.version>4.12</junit.version>
         <tinkerpop.version>3.4.3</tinkerpop.version>
@@ -142,6 +144,11 @@
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-slf4j-impl</artifactId>
                 <version>${log4j2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.appenders.log4j</groupId>
+                <artifactId>log4j2-elasticsearch-jest</artifactId>
+                <version>${log4jappenders.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.lmax</groupId>
