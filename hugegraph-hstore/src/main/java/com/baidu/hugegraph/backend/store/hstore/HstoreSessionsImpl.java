@@ -265,7 +265,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
             if (this.deleteBatch.size() > 0) {
                 this.graph.batchDeleteOwner(this.deleteBatch);
-                this.deletePrefixBatch.clear();
+                this.deleteBatch.clear();
             }
 
             if (this.deletePrefixBatch.size() > 0) {
@@ -404,7 +404,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public BackendColumnIterator scan(String table, byte[] ownerKeyFrom,
                                           byte[] ownerKeyTo, byte[] keyFrom,
                                           byte[] keyTo, int scanType) {
-            //assert !this.hasChanges();
+            if (this.hasChanges()){
+                System.out.println("1111");
+            }
             HgKvIterator result = this.graph.scanIterator(table,
                                   HgOwnerKey.of(ownerKeyFrom,keyFrom),
                                   HgOwnerKey.of(ownerKeyTo,keyTo),
