@@ -442,7 +442,7 @@ public class HstoreTables {
             return this.getById(session, id);
         }
 
-        @Override
+        //@Override
         public boolean isOlap() {
             return true;
         }

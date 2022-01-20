@@ -120,9 +120,6 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                                            .setPartitionCount(partitionCount)
                                                            .build());
                     INFO_INITIALIZED_GRAPH.add(this.graphName);
-                    List<Metapb.Partition> partitionsByStore = DEFAULT_PD_CLIENT.getPartitionsByStore(
-                            0);
-                    System.out.println(1111);
                 }
             }
         }
@@ -430,7 +427,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                                     keyTo, scanType);
         }
 
-        @Override
+        //@Override
         public BackendColumnIterator scan(String table, int codeFrom, int codeTo,
                                           int scanType, byte[] query) {
             assert !this.hasChanges();
