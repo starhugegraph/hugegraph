@@ -404,9 +404,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public BackendColumnIterator scan(String table, byte[] ownerKeyFrom,
                                           byte[] ownerKeyTo, byte[] keyFrom,
                                           byte[] keyTo, int scanType) {
-            if (this.hasChanges()){
-                System.out.println("1111");
-            }
+            assert !this.hasChanges();
             HgKvIterator result = this.graph.scanIterator(table,
                                   HgOwnerKey.of(ownerKeyFrom,keyFrom),
                                   HgOwnerKey.of(ownerKeyTo,keyTo),
