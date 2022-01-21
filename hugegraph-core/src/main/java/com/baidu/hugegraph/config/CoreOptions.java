@@ -745,4 +745,12 @@ public class CoreOptions extends OptionHolder {
                     rangeInt(0, Integer.MAX_VALUE),
                     100000
             );
+
+    public static final ConfigOption<Integer> VIRTUAL_GRAPH_BATCHER_TASK_THREADS =
+            new ConfigOption<>(
+                    "graph.virtual_graph_batcher_task_threads",
+                    "The task threads of virtual graph batcher.",
+                    rangeInt(1, Math.max(4, CoreOptions.CPUS * 2)),
+                    Math.max(4, CoreOptions.CPUS / 2)
+            );
 }

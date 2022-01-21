@@ -47,10 +47,11 @@ public class VirtualGraphBatcher {
         this.batchBufferSize = this.graphParams.configuration().get(CoreOptions.VIRTUAL_GRAPH_BATCH_BUFFER_SIZE);
         this.batchSize = this.graphParams.configuration().get(CoreOptions.VIRTUAL_GRAPH_BATCH_SIZE);
         this.batchTimeMS = this.graphParams.configuration().get(CoreOptions.VIRTUAL_GRAPH_BATCH_TIME_MS);
+        int threads = this.graphParams.configuration().get(CoreOptions.VIRTUAL_GRAPH_BATCHER_TASK_THREADS);
         this.batchTimer = new Timer();
         this.batchQueue = new LinkedBlockingQueue<>(batchBufferSize);
         this.batchExecutor = ExecutorUtil.newFixedThreadPool(
-                1, "virtual-graph-batch-worker-" + this.graphParams.graph().name());
+                threads, "virtual-graph-batch-worker-" + this.graphParams.graph().name());
         this.start();
     }
 
@@ -150,7 +151,7 @@ public class VirtualGraphBatcher {
                 List<VirtualGraphQueryTask> taskList = new ArrayList<>(batchSize);
                 batchQueue.drainTo(taskList, batchSize);
                 if (taskList.size() > 0) {
-                    batchProcess(taskList);
+                    batchExecutor.submit(() ->batchProcess(taskList));
                 }
             }
         }

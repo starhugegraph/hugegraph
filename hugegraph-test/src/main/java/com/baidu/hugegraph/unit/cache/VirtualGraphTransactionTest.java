@@ -25,6 +25,7 @@ import com.baidu.hugegraph.HugeGraphParams;
 import com.baidu.hugegraph.backend.cache.VirtualGraphTransaction;
 import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.schema.SchemaManager;
+import com.baidu.hugegraph.task.TaskManager;
 import com.baidu.hugegraph.testutil.Assert;
 import com.baidu.hugegraph.testutil.Whitebox;
 import com.baidu.hugegraph.type.HugeType;
@@ -39,6 +40,7 @@ import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 
@@ -51,6 +53,11 @@ public class VirtualGraphTransactionTest extends BaseUnitTest {
 
     private VirtualGraphTransaction vgraph;
     private HugeGraphParams params;
+
+    @BeforeClass
+    public static void initTaskManager() {
+        TaskManager.instance(4);
+    }
 
     @Before
     public void setup() {

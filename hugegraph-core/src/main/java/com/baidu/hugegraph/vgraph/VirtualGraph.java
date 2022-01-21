@@ -32,6 +32,7 @@ import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Events;
 import com.baidu.hugegraph.util.Log;
+import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
@@ -60,16 +61,18 @@ public class VirtualGraph {
     private VirtualGraphBatcher batcher;
 
     private final HugeGraphParams graphParams;
-    private final List<String> metricsNames;
+    private final String metricsNamePrefix;
     private final Meter hits;
     private final Timer calls;
+    private Gauge<Long> vertexCountGauge;
+    private Gauge<Long> edgeCountGauge;
 
     public VirtualGraph(HugeGraphParams graphParams) {
         assert graphParams != null;
         this.graphParams = graphParams;
         this.hits = new Meter();
         this.calls = new Timer();
-        this.metricsNames = new ArrayList<>();
+        this.metricsNamePrefix = MetricRegistry.name(this.getClass(), this.graphParams.name());
         this.init();
     }
 
@@ -79,23 +82,33 @@ public class VirtualGraph {
                                 CoreOptions.VIRTUAL_GRAPH_VERTEX_INIT_CAPACITY))
                 .maximumSize(this.graphParams.configuration().get(
                         CoreOptions.VIRTUAL_GRAPH_VERTEX_MAX_SIZE))
+                .recordStats(() ->
+                        new MetricsStatsCounter(MetricManager.INSTANCE.getRegistry(),
+                                MetricRegistry.name(this.metricsNamePrefix, "vertex")))
                 .build();
         this.edgeCache = Caffeine.newBuilder()
                 .initialCapacity(this.graphParams.configuration().get(
                         CoreOptions.VIRTUAL_GRAPH_EDGE_INIT_CAPACITY))
                 .maximumSize(this.graphParams.configuration().get(
                         CoreOptions.VIRTUAL_GRAPH_EDGE_MAX_SIZE))
+                .recordStats(() ->
+                        new MetricsStatsCounter(MetricManager.INSTANCE.getRegistry(),
+                                MetricRegistry.name(this.metricsNamePrefix, "edge")))
                 .build();
+
         this.batcher = new VirtualGraphBatcher(this.graphParams, this);
 
-        String hitsName = MetricRegistry.name(this.getClass(),
-                "virtual_graph_hits_" + this.graphParams.name());
-        MetricManager.INSTANCE.getRegistry().register(hitsName, this.hits);
-        String callsName = MetricRegistry.name(this.getClass(),
-                "virtual_graph_calls_" + this.graphParams.name());
-        MetricManager.INSTANCE.getRegistry().register(callsName, this.calls);
-        this.metricsNames.add(hitsName);
-        this.metricsNames.add(callsName);
+        this.vertexCountGauge = this.vertexCache::estimatedSize;
+        this.edgeCountGauge = this.edgeCache::estimatedSize;
+
+        MetricManager.INSTANCE.getRegistry().register(
+                MetricRegistry.name(this.metricsNamePrefix, "vertex", "count"), this.vertexCountGauge);
+        MetricManager.INSTANCE.getRegistry().register(
+                MetricRegistry.name(this.metricsNamePrefix, "edge", "count"), this.edgeCountGauge);
+        MetricManager.INSTANCE.getRegistry().register(
+                MetricRegistry.name(this.metricsNamePrefix, "hits"), this.hits);
+        MetricManager.INSTANCE.getRegistry().register(
+                MetricRegistry.name(this.metricsNamePrefix, "calls"), this.calls);
 
         this.listenChanges();
     }
@@ -257,7 +270,8 @@ public class VirtualGraph {
         this.batcher.close();
         this.unlistenChanges();
         this.clear();
-        this.metricsNames.forEach(MetricManager.INSTANCE.getRegistry()::remove);
+        MetricManager.INSTANCE.getRegistry().removeMatching(
+                (name, metric) -> name.startsWith(this.metricsNamePrefix));
     }
 
     private VirtualVertex queryVertexById(Id vId, VirtualVertexStatus status) {
@@ -342,7 +356,7 @@ public class VirtualGraph {
         if (outEdges != null) {
             List<VirtualEdge> outEdgeList = new ArrayList<>();
             outEdges.forEach(e -> {
-                VirtualEdge edge = this.putEdge(e);
+                VirtualEdge edge = toVirtual(null, e);  // give up to refresh edge cache due to memory cost
                 assert edge != null;
                 outEdgeList.add(edge);
             });
@@ -363,7 +377,7 @@ public class VirtualGraph {
         if (inEdges != null) {
             List<VirtualEdge> inEdgeList = new ArrayList<>();
             inEdges.forEachRemaining(e -> {
-                VirtualEdge edge = this.putEdge(e);
+                VirtualEdge edge = toVirtual(null, e);  // give up to refresh edge cache due to memory cost
                 assert edge != null;
                 inEdgeList.add(edge);
             });

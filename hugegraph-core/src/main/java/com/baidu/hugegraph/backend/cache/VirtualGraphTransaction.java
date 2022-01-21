@@ -164,6 +164,7 @@ public final class VirtualGraphTransaction extends GraphTransaction {
                         else if (vertex != e.ownerVertex()){
                             // backend supportsQueryByPage (rocksdb/hbase/cassandra,...) does not fill
                             // all edges into one same ownerVertex.
+                            e.vertices(vertex, e.otherVertex());
                             vertex.addEdge(e);
                         }
                     }
@@ -201,8 +202,14 @@ public final class VirtualGraphTransaction extends GraphTransaction {
                     // query all edges of this vertex from backend
                     ConditionQuery vertexAllEdgeQuery = constructEdgesQuery(vId, BOTH);
                     Iterator<HugeEdge> allEdges = super.queryEdgesFromBackend(vertexAllEdgeQuery);
-                    putEdgesToVirtualGraph(vertexAllEdgeQuery, allEdges);
-                    this.getQueryEdgesFromVirtualGraph(vId, conditionQuery, results);
+                    List<HugeEdge> allEdgeList = new ArrayList<>();
+                    allEdges.forEachRemaining(e -> {
+                        allEdgeList.add(e);
+                        if (query.test(e)) {
+                            results.add(e);
+                        }
+                    });
+                    putEdgesToVirtualGraph(vertexAllEdgeQuery, allEdgeList.listIterator());
                 }
                 return null;
             }
