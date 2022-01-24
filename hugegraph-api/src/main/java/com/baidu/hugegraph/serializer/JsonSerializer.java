@@ -55,8 +55,6 @@ import com.baidu.hugegraph.util.JsonUtil;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
-import afu.org.checkerframework.checker.oigj.qual.O;
-
 public class JsonSerializer implements Serializer {
 
     private static final int LBUF_SIZE = 1024;
