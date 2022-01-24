@@ -36,7 +36,6 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
@@ -44,15 +43,13 @@ import javax.ws.rs.core.SecurityContext;
 import com.baidu.hugegraph.config.ConfigOption;
 import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.config.HugeConfig;
-import static com.baidu.hugegraph.config.OptionChecker.disallowEmpty;
+import org.apache.logging.log4j.util.Strings;
+
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
 import com.baidu.hugegraph.auth.HugeAuthenticator.RequiredPerm;
 import com.baidu.hugegraph.auth.HugePermission;
-import com.baidu.hugegraph.config.ConfigOption;
-import com.baidu.hugegraph.config.CoreOptions;
-import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.server.RestServer;
@@ -76,8 +73,7 @@ public class GraphsAPI extends API {
     private static final String CLEAR_SCHEMA = "clear_schema";
     private static final String GRAPH_ACTION_CLEAR = "clear";
     private static final String GRAPH_ACTION_RELOAD = "reload";
-
-    private static final String CONFIRM_DROP = "I'm sure to drop the graph";
+    private static final String GRAPH_DESCRIPTION = "description";
 
     @GET
     @Timed
@@ -124,7 +120,13 @@ public class GraphsAPI extends API {
                         graphSpace, graph);
 
         HugeGraph g = graph(manager, graphSpace, graph);
-        return ImmutableMap.of("name", g.name(), "backend", g.backend());
+        Map<String, Object> configs = manager.graphConfig(graphSpace, graph);
+        String description = (String) configs.get(GRAPH_DESCRIPTION);
+        if (description == null) {
+            description = Strings.EMPTY;
+        }
+        return ImmutableMap.of("name", g.name(), "backend", g.backend(),
+                               "description", description);
     }
 
     @POST
@@ -143,9 +145,13 @@ public class GraphsAPI extends API {
         HugeGraph graph = manager.createGraph(graphSpace, name,
                                               configs, true);
         graph.tx().close();
-        Object result = ImmutableMap.of("name", name, "backend", graph.backend());
+        String description = (String) configs.get(GRAPH_DESCRIPTION);
+        if (description == null) {
+            description = Strings.EMPTY;
+        }
         LOGGER.getServerLogger().logCreateGraph(name, graph.configuration().toString());
-        return result;
+        return ImmutableMap.of("name", name, "backend", graph.backend(),
+                               "description", description);
     }
 
     @GET
@@ -213,12 +219,9 @@ public class GraphsAPI extends API {
     @RolesAllowed({"admin", "$dynamic"})
     public void delete(@Context GraphManager manager,
                        @PathParam("name") String name,
-                       @PathParam("graphspace") String graphSpace,
-                       @QueryParam("confirm_message") String message) {
-
-        E.checkArgument(CONFIRM_DROP.equals(message),
-                        "Please take the message: %s", CONFIRM_DROP);
+                       @PathParam("graphspace") String graphSpace) {
         manager.dropGraph(graphSpace, name, true);
+        LOGGER.getServerLogger().logRemoveGraph(name);
     }
 
     @PUT
@@ -289,9 +292,11 @@ public class GraphsAPI extends API {
         HugeGraph g = graph(manager, graphSpace, graph);
         return JsonUtil.toJson(g.metadata(null, "compact"));
     }
+    /*
    private static final ConfigOption<String> PD_PEERS = new ConfigOption<>(
             "pd.peers", "The addresses of pd nodes",disallowEmpty(),
             "localhost");
+    */
 
     @PUT
     @Timed
@@ -368,6 +373,9 @@ public class GraphsAPI extends API {
 
         E.checkArgument(readMode != null,
                         "Graph-read-mode can't be null");
+        E.checkArgument(readMode == GraphReadMode.ALL ||
+                        readMode == GraphReadMode.OLTP_ONLY,
+                        "Graph-read-mode could be ALL or OLTP_ONLY");
         HugeGraph g = graph(manager, graphSpace, graph);
         manager.graphReadMode(graphSpace, graph, readMode);
         g.readMode(readMode);

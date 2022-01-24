@@ -86,6 +86,7 @@ public class MetaManager {
     public static final String META_PATH_SCHEMA_TEMPLATE = "SCHEMA_TEMPLATE";
     public static final String META_PATH_TASK = "TASK";
     public static final String META_PATH_TASK_LOCK = "TASK_LOCK";
+    private static final String META_PATH_PD_PEERS = "HSTORE_PD_PEERS";
 
     public static final String META_PATH_AUTH_EVENT = "AUTH_EVENT";
     public static final String META_PATH_EVENT = "EVENT";
@@ -276,6 +277,9 @@ public class MetaManager {
                                          String schemaTemplate) {
         String s = this.metaDriver.get(this.schemaTemplateKey(graphSpace,
                                                               schemaTemplate));
+        if (s == null) {
+            return null;
+        }
         return SchemaTemplate.fromMap(JsonUtil.fromJson(s, Map.class));
     }
 
@@ -307,6 +311,9 @@ public class MetaManager {
 
     public GraphSpace getGraphSpaceConfig(String graphSpace) {
         String gs = this.metaDriver.get(this.graphSpaceConfKey(graphSpace));
+        if (gs == null) {
+            return null;
+        }
         return JsonUtil.fromJson(gs, GraphSpace.class);
     }
 
@@ -796,6 +803,12 @@ public class MetaManager {
         // HUGEGRAPH/{cluster}/GRAPHSPACE_LIST
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
                            this.cluster, META_PATH_GRAPHSPACE_LIST);
+    }
+
+    private String hstorePDPeersKey() {
+        // HUGEGRAPH/{cluster}/META_PATH_PD_PEERS
+        return String.join(META_PATH_DELIMETER, META_PATH_HUGEGRAPH,
+                           this.cluster, META_PATH_PD_PEERS);
     }
 
     private String graphName(String graphSpace, String name) {
@@ -1915,6 +1928,10 @@ public class MetaManager {
                               String yaml) {
         this.metaDriver.put(gremlinYamlKey(graphSpace, serviceId), yaml);
         return yaml;
+    }
+
+    public String hstorePDPeers() {
+        return this.metaDriver.get(hstorePDPeersKey());
     }
 
     public enum MetaDriverType {

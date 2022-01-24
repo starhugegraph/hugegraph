@@ -1,0 +1,22 @@
+FROM ubuntu:xenial
+
+LABEL maintainer="HugeGraph Docker Maintainers"
+
+# Install needed dependencies of GraphServer & RocksDB
+RUN set -x \
+    && apt-get -q update \
+    && apt-get -q install -y --no-install-recommends --no-install-suggests \
+       curl \
+       lsof \
+       g++ \
+       gcc \
+    && apt-get clean
+
+ADD ./jdk1.8.0_271.tar.gz /root
+ADD ./hugegraph-3.0.0.tar.gz /root/hugegraph-server
+
+EXPOSE 8080
+WORKDIR /root
+VOLUME /root
+
+ENTRYPOINT ["/root/hugegraph-server/hugegraph-3.0.0/bin/k8s-start-hugegraph.sh"]
