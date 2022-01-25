@@ -34,6 +34,8 @@ import java.util.function.Function;
 
 import javax.ws.rs.ForbiddenException;
 
+import com.baidu.hugegraph.exception.NotAllowException;
+import com.baidu.hugegraph.type.define.GraphReadMode;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Element;
@@ -1337,12 +1339,14 @@ public class GraphTransaction extends IndexableTransaction {
              * and with no index, using hstore for Predicate in StoreNode
              */
 
+            allowedOlapQuery(cq);
             if (q == null) {
                 boolean sys = cq.syspropConditions().size() != 0;
                 if (this.indexTx.store().features().supportsFilterInStore()){
                     Set<GraphIndexTransaction.MatchedIndex> indexes = this.indexTx
                             .collectMatchedIndexes(cq);
-                    if (!sys && CollectionUtils.isEmpty(indexes)){
+                    if (!sys && CollectionUtils.isEmpty(indexes) &&
+                        GraphReadMode.OLTP_ONLY.equals(this.graph().readMode())){
                         queries.add(cq);
                         continue;
                     }
@@ -1353,6 +1357,19 @@ public class GraphTransaction extends IndexableTransaction {
             }
         }
         return queries;
+    }
+    private void allowedOlapQuery(ConditionQuery query) {
+        if (!this.graph().readMode().showOlap()) {
+            for (Id pkId : query.userpropKeys()) {
+                PropertyKey propertyKey = this.graph().propertyKey(pkId);
+                if (propertyKey.olap()) {
+                    throw new NotAllowException(
+                            "Not allowed to query by olap property key '%s'" +
+                            " when graph-read-mode is '%s'",
+                            propertyKey, this.graph().readMode());
+                }
+            }
+        }
     }
 
     private Query optimizeQuery(ConditionQuery query) {
