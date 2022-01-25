@@ -512,7 +512,7 @@ public final class GraphManager {
         try {
             pdClient.setGraphSpace(space.name(), storageLimit);
         } catch (Exception e) {
-            throw new HugeException("Exception occur when set storage limit!", e);
+            LOG.error("Exception occur when set storage limit!", e);
         }
     }
 
