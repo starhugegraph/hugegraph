@@ -38,7 +38,7 @@ if [ -z "$CLUSTER" ];then
   CLUSTER="hg"
 fi
 if [ -z "$PD_PEERS" ];then
-  PD_PEERS="http://127.0.0.1:8686"
+  PD_PEERS="127.0.0.1:8686"
 fi
 if [ -z "$WITH_CA" ];then
   WITH_CA="false"
@@ -71,7 +71,7 @@ while getopts "g:m:s:j:G:S:N:R:M:E:W:C:A:K:P:v" arg; do
         A) CLIENT_CA="$OPTARG" ;;
         K) CLIENT_KEY="$OPTARG" ;;
         v) VERBOSE="verbose" ;;
-        ?) echo "USAGE: $0 [-g g1] [-m true|false] [-s true|false] [-j xxx] [-v] [-G graphspace] [-S serviceId] [-N nodeId] [-R nodeRole] [-M metaServer] [-E cluster] [-W true|false] [-C caFile] [-A clientCa] [-K clientKey]" && exit 1 ;;
+        ?) echo "USAGE: $0 [-g g1] [-m true|false] [-s true|false] [-j xxx] [-v] [-G graphspace] [-S serviceId] [-N nodeId] [-R nodeRole] [-M metaServer] [-E cluster] [-P pdAddress] [-W true|false] [-C caFile] [-A clientCa] [-K clientKey]" && exit 1 ;;
     esac
 done
 
@@ -126,8 +126,6 @@ if [ ! -d "$LOGS" ]; then
     mkdir -p "$LOGS"
 fi
 
-"$BIN"/init-store.sh
-
 echo "Starting HugeGraphServer..."
 
 ${BIN}/hugegraph-server.sh ${CONF}/gremlin-server.yaml ${CONF}/rest-server.properties \
@@ -141,6 +139,7 @@ echo "$PID" > "$PID_FILE"
 
 trap 'kill $PID; exit' SIGHUP SIGINT SIGQUIT SIGTERM
 
+REST_SERVER_URL=(${REST_SERVER_URL//0.0.0.0/localhost})
 wait_for_startup ${PID} 'HugeGraphServer' "$REST_SERVER_URL/graphs" ${SERVER_STARTUP_TIMEOUT_S} || {
     echo "See $LOGS/hugegraph-server.log for HugeGraphServer log output." >&2
     exit 1

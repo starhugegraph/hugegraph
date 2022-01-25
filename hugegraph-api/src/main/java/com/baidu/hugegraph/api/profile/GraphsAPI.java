@@ -36,11 +36,11 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
 
+import org.apache.logging.log4j.util.Strings;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
@@ -119,8 +119,12 @@ public class GraphsAPI extends API {
 
         HugeGraph g = graph(manager, graphSpace, graph);
         Map<String, Object> configs = manager.graphConfig(graphSpace, graph);
+        String description = (String) configs.get(GRAPH_DESCRIPTION);
+        if (description == null) {
+            description = Strings.EMPTY;
+        }
         return ImmutableMap.of("name", g.name(), "backend", g.backend(),
-                               "description", configs.get(GRAPH_DESCRIPTION));
+                               "description", description);
     }
 
     @POST
@@ -139,8 +143,12 @@ public class GraphsAPI extends API {
         HugeGraph graph = manager.createGraph(graphSpace, name,
                                               configs, true);
         graph.tx().close();
+        String description = (String) configs.get(GRAPH_DESCRIPTION);
+        if (description == null) {
+            description = Strings.EMPTY;
+        }
         return ImmutableMap.of("name", name, "backend", graph.backend(),
-                               "description", configs.get(GRAPH_DESCRIPTION));
+                               "description", description);
     }
 
     @GET
@@ -352,6 +360,9 @@ public class GraphsAPI extends API {
 
         E.checkArgument(readMode != null,
                         "Graph-read-mode can't be null");
+        E.checkArgument(readMode == GraphReadMode.ALL ||
+                        readMode == GraphReadMode.OLTP_ONLY,
+                        "Graph-read-mode could be ALL or OLTP_ONLY");
         HugeGraph g = graph(manager, graphSpace, graph);
         manager.graphReadMode(graphSpace, graph, readMode);
         g.readMode(readMode);
