@@ -68,6 +68,8 @@ public class TargetAPI extends API {
                          JsonTarget jsonTarget) {
         LOG.debug("Graph space [{}] create target: {}", graphSpace, jsonTarget);
         checkCreatingBody(jsonTarget);
+        E.checkArgument(manager.graphSpace(graphSpace) != null,
+                        "The graph space '%s' is not exist", graphSpace);
 
         HugeTarget target = jsonTarget.build(graphSpace);
         AuthManager authManager = manager.authManager();
@@ -86,6 +88,8 @@ public class TargetAPI extends API {
                          JsonTarget jsonTarget) {
         LOG.debug("Graph space [{}] update target: {}", graphSpace, jsonTarget);
         checkUpdatingBody(jsonTarget);
+        E.checkArgument(manager.graphSpace(graphSpace) != null,
+                        "The graph space '%s' is not exist", graphSpace);
 
         HugeTarget target;
         AuthManager authManager = manager.authManager();
@@ -107,6 +111,8 @@ public class TargetAPI extends API {
                        @PathParam("graphspace") String graphSpace,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
         LOG.debug("Graph space [{}] list targets", graphSpace);
+        E.checkArgument(manager.graphSpace(graphSpace) != null,
+                        "The graph space '%s' is not exist", graphSpace);
 
         AuthManager authManager = manager.authManager();
         List<HugeTarget> targets = authManager.listAllTargets(graphSpace,
@@ -122,6 +128,8 @@ public class TargetAPI extends API {
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("id") String id) {
         LOG.debug("Graph space [{}] get target: {}", graphSpace, id);
+        E.checkArgument(manager.graphSpace(graphSpace) != null,
+                        "The graph space '%s' is not exist", graphSpace);
 
         AuthManager authManager = manager.authManager();
         HugeTarget target = authManager.getTarget(graphSpace,
@@ -137,6 +145,8 @@ public class TargetAPI extends API {
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("id") String id) {
         LOG.debug("Graph space [{}] delete target: {}", graphSpace, id);
+        E.checkArgument(manager.graphSpace(graphSpace) != null,
+                        "The graph space '%s' is not exist", graphSpace);
 
         try {
             AuthManager authManager = manager.authManager();
@@ -154,8 +164,6 @@ public class TargetAPI extends API {
         private String name;
         @JsonProperty("target_graph")
         private String graph;
-        @JsonProperty("target_url")
-        private String url;
         @JsonProperty("target_resources") // error when List<HugeResource>
         private List<Map<String, Object>> resources;
 
@@ -166,9 +174,6 @@ public class TargetAPI extends API {
             E.checkArgument(this.graph == null ||
                             target.graph().equals(this.graph),
                             "The graph of target can't be updated");
-            if (this.url != null) {
-                target.url(this.url);
-            }
             if (this.resources != null) {
                 target.resources(JsonUtil.toJson(this.resources));
             }
@@ -177,7 +182,7 @@ public class TargetAPI extends API {
 
         public HugeTarget build(String graphSpace) {
             HugeTarget target = new HugeTarget(this.name, graphSpace,
-                                               this.graph, this.url);
+                                               this.graph);
             if (this.resources != null) {
                 target.resources(JsonUtil.toJson(this.resources));
             }
@@ -190,14 +195,11 @@ public class TargetAPI extends API {
                                    "The name of target can't be null");
             E.checkArgumentNotNull(this.graph,
                                    "The graph of target can't be null");
-            E.checkArgumentNotNull(this.url,
-                                   "The url of target can't be null");
         }
 
         @Override
         public void checkUpdate() {
-            E.checkArgument(this.url != null ||
-                            this.resources != null,
+            E.checkArgument(this.resources != null,
                             "Expect one of target url/resources");
 
         }
