@@ -1338,8 +1338,6 @@ public class GraphTransaction extends IndexableTransaction {
              * NOTE: There will be a case here where there is UserpropRelation
              * and with no index, using hstore for Predicate in StoreNode
              */
-
-            allowedOlapQuery(cq);
             if (q == null) {
                 boolean sys = cq.syspropConditions().size() != 0;
                 if (this.indexTx.store().features().supportsFilterInStore()){
@@ -1347,6 +1345,7 @@ public class GraphTransaction extends IndexableTransaction {
                             .collectMatchedIndexes(cq);
                     if (!sys && CollectionUtils.isEmpty(indexes) &&
                         GraphReadMode.OLTP_ONLY.equals(this.graph().readMode())){
+                        allowedOlapQuery(cq);
                         queries.add(cq);
                         continue;
                     }
@@ -1358,19 +1357,7 @@ public class GraphTransaction extends IndexableTransaction {
         }
         return queries;
     }
-    private void allowedOlapQuery(ConditionQuery query) {
-        if (!this.graph().readMode().showOlap()) {
-            for (Id pkId : query.userpropKeys()) {
-                PropertyKey propertyKey = this.graph().propertyKey(pkId);
-                if (propertyKey.olap()) {
-                    throw new NotAllowException(
-                            "Not allowed to query by olap property key '%s'" +
-                            " when graph-read-mode is '%s'",
-                            propertyKey, this.graph().readMode());
-                }
-            }
-        }
-    }
+
 
     private Query optimizeQuery(ConditionQuery query) {
         if (!query.ids().isEmpty()) {

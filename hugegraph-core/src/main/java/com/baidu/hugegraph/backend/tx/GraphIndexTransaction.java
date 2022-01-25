@@ -461,7 +461,7 @@ public class GraphIndexTransaction extends AbstractTransaction {
     private IdHolderList queryByUserprop(ConditionQuery query) {
         // Get user applied label or collect all qualified labels with
         // related index labels
-        //allowedOlapQuery(query);
+        allowedOlapQuery(query);
         Set<MatchedIndex> indexes = this.collectMatchedIndexes(query);
         if (indexes.isEmpty()) {
             Id label = query.condition(HugeKeys.LABEL);
