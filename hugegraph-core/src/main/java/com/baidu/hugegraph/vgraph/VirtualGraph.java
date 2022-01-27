@@ -20,12 +20,14 @@ package com.baidu.hugegraph.vgraph;
 
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.HugeGraphParams;
+import com.baidu.hugegraph.backend.id.EdgeId;
 import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.event.EventHub;
 import com.baidu.hugegraph.event.EventListener;
 import com.baidu.hugegraph.iterator.ExtendableIterator;
 import com.baidu.hugegraph.iterator.MapperIterator;
 import com.baidu.hugegraph.metrics.MetricManager;
+import com.baidu.hugegraph.schema.VertexLabel;
 import com.baidu.hugegraph.structure.HugeEdge;
 import com.baidu.hugegraph.structure.HugeVertex;
 import com.baidu.hugegraph.type.HugeType;
@@ -43,8 +45,10 @@ import com.google.common.collect.ImmutableSet;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.baidu.hugegraph.backend.id.Id;
@@ -134,7 +138,7 @@ public class VirtualGraph {
         for (Id vId : vIds) {
             VirtualVertex vertex = queryVertexById(vId, status);
             if (vertex != null) {
-                resultFromCache.add(vertex.getVertex());
+                resultFromCache.add(vertex.getVertex(graphParams.graph()));
             } else {
                 missingIds.add(vId);
             }
@@ -147,7 +151,10 @@ public class VirtualGraph {
             this.batcher.add(batchTask);
             try {
                 Iterator<VirtualVertex> resultFromBatch = batchTask.getFuture().get();
-                result.extend(new MapperIterator<>(resultFromBatch, v -> v.expired() ? null : v.getVertex()));
+                result.extend(new MapperIterator<>(resultFromBatch, v -> {
+                    HugeVertex vertex = v.getVertex(graphParams.graph());
+                    return vertex.expired() ? null : vertex;
+                }));
             }
             catch (Exception ex) {
                 throw new HugeException("Failed to query vertex in batch", ex);
@@ -156,16 +163,21 @@ public class VirtualGraph {
         return result;
     }
 
-    public VirtualVertex queryVertexWithEdges(Id vId, VirtualVertexStatus status) {
+    public Iterator<HugeEdge> queryEdgesByVertexId(Id vId, VirtualVertexStatus status) {
         assert vId != null;
-        return queryVertexById(vId, status);
+        VirtualVertex v = queryVertexById(vId, status);
+        if (v != null) {
+            HugeVertex owner = v.getVertex(graphParams.graph());
+            return new MapperIterator<>(v.getEdges(), e -> e.getEdge(owner));
+        }
+        return null;
     }
 
     public boolean updateIfPresentVertex(HugeVertex vertex, Iterator<HugeEdge> inEdges) {
         assert vertex != null;
         VirtualVertex vertexFromCache = this.vertexCache.getIfPresent(vertex.id());
         if (vertexFromCache != null) {
-            VirtualVertex vertexMerged = toVirtual(vertexFromCache, vertex, inEdges);
+            VirtualVertex vertexMerged = toVirtual(vertexFromCache, vertex, vertex.getEdges(), inEdges);
             if (vertexMerged != null) {
                 this.vertexCache.put(vertex.id(), vertexMerged);
                 return true;
@@ -174,10 +186,10 @@ public class VirtualGraph {
         return false;
     }
 
-    public VirtualVertex putVertex(HugeVertex vertex, Iterator<HugeEdge> inEdges) {
+    public VirtualVertex putVertex(HugeVertex vertex, Collection<HugeEdge> outEdges, Iterator<HugeEdge> inEdges) {
         assert vertex != null;
         VirtualVertex vertexFromCache = this.vertexCache.getIfPresent(vertex.id());
-        VirtualVertex vertexMerged = toVirtual(vertexFromCache, vertex, inEdges);
+        VirtualVertex vertexMerged = toVirtual(vertexFromCache, vertex, outEdges, inEdges);
         if (vertexMerged != null) {
             this.vertexCache.put(vertex.id(), vertexMerged);
         }
@@ -228,10 +240,14 @@ public class VirtualGraph {
         assert status != VirtualEdgeStatus.None;
 
         ExtendableIterator<HugeEdge> result = new ExtendableIterator<>();
+        Map<Id, HugeVertex> vertexMap = new HashMap<>();
         List<HugeEdge> resultFromCache = new ArrayList<>(eIds.size());
         List<Id> missingIds = new ArrayList<>();
         eIds.forEach(eId -> {
-            HugeEdge edge = queryEdgeById(eId, status);
+            assert eId instanceof EdgeId;
+            HugeVertex owner = vertexMap.computeIfAbsent(((EdgeId) eId).ownerVertexId(),
+                    vId -> new HugeVertex(graphParams.graph(), vId, VertexLabel.undefined(graphParams.graph())));
+            HugeEdge edge = queryEdgeById(eId, status, owner);
             if (edge != null) {
                 resultFromCache.add(edge);
             } else {
@@ -246,7 +262,13 @@ public class VirtualGraph {
             this.batcher.add(batchTask);
             try {
                 Iterator<VirtualEdge> resultFromBatch = batchTask.getFuture().get();
-                result.extend(new MapperIterator<>(resultFromBatch, e -> e.expired() ? null : e.getEdge()));
+                result.extend(new MapperIterator<>(resultFromBatch, e -> {
+                    HugeVertex owner = vertexMap.computeIfAbsent(e.getOwnerVertexId(),
+                            vId -> new HugeVertex(graphParams.graph(), vId,
+                                    VertexLabel.undefined(graphParams.graph())));
+                    HugeEdge edge = e.getEdge(owner);
+                    return edge.expired() ? null : edge;
+                }));
             }
             catch (Exception ex) {
                 throw new HugeException("Failed to query edge in batch", ex);
@@ -283,7 +305,7 @@ public class VirtualGraph {
                 return null;
             }
 
-            if (vertex.getVertex().expired()) {
+            if (vertex.getVertex(graphParams.graph()).expired()) {
                 this.invalidateVertex(vId);
                 return null;
             }
@@ -297,9 +319,9 @@ public class VirtualGraph {
         }
     }
 
-    private HugeEdge queryEdgeById(Id eId, VirtualEdgeStatus status) {
+    private HugeEdge queryEdgeById(Id eId, VirtualEdgeStatus status, HugeVertex owner) {
         try (Timer.Context ignored = this.calls.time()) {
-            HugeEdge edge = toHuge(this.edgeCache.getIfPresent(eId), status);
+            HugeEdge edge = toHuge(this.edgeCache.getIfPresent(eId), status, owner);
             if (edge != null) {
                 this.hits.mark();
             }
@@ -307,26 +329,23 @@ public class VirtualGraph {
         }
     }
 
-    private HugeEdge toHuge(VirtualEdge edge, VirtualEdgeStatus status) {
+    private HugeEdge toHuge(VirtualEdge edge, VirtualEdgeStatus status, HugeVertex owner) {
         if (edge == null) {
             return null;
         }
 
-        if (edge.getEdge().expired()) {
-            this.invalidateEdge(edge.getEdge().id());
+        HugeEdge hugeEdge = edge.getEdge(owner);
+
+        if (hugeEdge.expired()) {
+            this.invalidateEdge(hugeEdge.id());
             return null;
         }
 
         if (status.match(edge.getStatus())) {
-            return edge.getEdge();
+            return hugeEdge;
         } else {
             return null;
         }
-    }
-
-    private VirtualVertex toVirtual(VirtualVertex old, HugeVertex hugeVertex,
-                                    Iterator<HugeEdge> inEdges) {
-        return toVirtual(old, hugeVertex, hugeVertex.getEdges(), inEdges);
     }
 
     private VirtualVertex toVirtual(VirtualVertex old, HugeVertex hugeVertex,
@@ -399,11 +418,11 @@ public class VirtualGraph {
     private void mergeVVProp(VirtualVertex oldV, VirtualVertex resultV, HugeVertex hugeVertex) {
         if (hugeVertex.isPropLoaded()) {
             resultV.orStatus(VirtualVertexStatus.Property);
-            resultV.getVertex().copyProperties(hugeVertex);
+            resultV.setProperties(hugeVertex.getProperties().values());
         } else if (oldV != null && oldV != resultV
                 && VirtualVertexStatus.Property.match(oldV.getStatus())) {
             resultV.orStatus(VirtualVertexStatus.Property);
-            resultV.getVertex().copyProperties(oldV.getVertex());
+            resultV.copyProperties(oldV);
         }
     }
 
@@ -424,7 +443,7 @@ public class VirtualGraph {
             // copy properties from old
             if (VirtualVertexStatus.Property.match(oldE.getStatus())) {
                 newE.orStatus(VirtualEdgeStatus.Property);
-                newE.getEdge().copyProperties(oldE.getEdge());
+                newE.copyProperties(oldE);
             }
         }
 

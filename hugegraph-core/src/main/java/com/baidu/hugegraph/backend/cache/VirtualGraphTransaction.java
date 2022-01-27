@@ -36,7 +36,6 @@ import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.define.Directions;
 import com.baidu.hugegraph.type.define.HugeKeys;
 import com.baidu.hugegraph.vgraph.VirtualEdgeStatus;
-import com.baidu.hugegraph.vgraph.VirtualVertex;
 import com.baidu.hugegraph.vgraph.VirtualVertexStatus;
 import com.baidu.hugegraph.vgraph.VirtualGraph;
 import org.apache.tinkerpop.gremlin.structure.Edge;
@@ -154,6 +153,7 @@ public final class VirtualGraphTransaction extends GraphTransaction {
             Id vId = conditionQuery.condition(HugeKeys.OWNER_VERTEX);
             if (vId != null) {
                 HugeVertex vertex = null;
+                List<HugeEdge> outEdges = new ArrayList<>();
                 List<HugeEdge> inEdges = new ArrayList<>();
                 while (edges.hasNext()) {
                     HugeEdge e = edges.next();
@@ -161,12 +161,13 @@ public final class VirtualGraphTransaction extends GraphTransaction {
                         if (vertex == null) {
                             vertex = e.ownerVertex();
                         }
-                        else if (vertex != e.ownerVertex()){
-                            // backend supportsQueryByPage (rocksdb/hbase/cassandra,...) does not fill
-                            // all edges into one same ownerVertex.
-                            e.vertices(vertex, e.otherVertex());
-                            vertex.addEdge(e);
-                        }
+                        outEdges.add(e);
+//                        else if (vertex != e.ownerVertex()){
+//                            // backend supportsQueryByPage (rocksdb/hbase/cassandra,...) does not fill
+//                            // all edges into one same ownerVertex.
+//                            e.vertices(vertex, e.otherVertex());
+//                            vertex.addEdge(e);
+//                        }
                     }
                     else {
                         inEdges.add(e);
@@ -175,9 +176,9 @@ public final class VirtualGraphTransaction extends GraphTransaction {
                 if (vertex == null) {
                     // vertex has no out-edge
                     vertex = inEdges.get(0).targetVertex();
-                    vertex.resetEdges();
+                    // vertex.resetEdges();
                 }
-                this.vGraph.putVertex(vertex, inEdges.iterator());
+                this.vGraph.putVertex(vertex, outEdges, inEdges.iterator());
             }
         }
         else {
@@ -219,11 +220,11 @@ public final class VirtualGraphTransaction extends GraphTransaction {
     }
 
     private void getQueryEdgesFromVirtualGraph(Id vId, ConditionQuery query, List<HugeEdge> results) {
-        VirtualVertex vertex = this.vGraph.queryVertexWithEdges(vId, getVVStatusFromQuery(query));
-        if (vertex != null) {
-            vertex.getEdges().forEachRemaining(e -> {
-                if (query.test(e.getEdge())) {
-                    results.add(e.getEdge());
+        Iterator<HugeEdge> edges = this.vGraph.queryEdgesByVertexId(vId, getVVStatusFromQuery(query));
+        if (edges != null) {
+            edges.forEachRemaining(e -> {
+                if (query.test(e)) {
+                    results.add(e);
                 }
             });
         }

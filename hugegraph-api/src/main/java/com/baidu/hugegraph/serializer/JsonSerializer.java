@@ -67,12 +67,12 @@ public class JsonSerializer implements Serializer {
     private JsonSerializer() {
     }
 
-    public static JsonSerializer instance() {
-        return INSTANCE;
-    }
-
     private JsonSerializer(Map<String, Object> debugMeasure) {
         this.debugMeasure = debugMeasure;
+    }
+
+    public static JsonSerializer instance() {
+        return INSTANCE;
     }
 
     public static JsonSerializer instance(Map<String, Object> debugMatrix) {

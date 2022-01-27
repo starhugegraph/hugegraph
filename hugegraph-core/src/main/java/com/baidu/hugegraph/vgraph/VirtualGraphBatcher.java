@@ -131,7 +131,7 @@ public class VirtualGraphBatcher {
                 IdQuery query = new IdQuery(VERTEX, vertexMap.keySet());
                 Iterator<Vertex> vertexIterator = tran.queryVertices(query);
                 vertexIterator.forEachRemaining(vertex ->
-                        vertexMap.put((Id) vertex.id(), this.vGraph.putVertex((HugeVertex) vertex, null)));
+                        vertexMap.put((Id) vertex.id(), this.vGraph.putVertex((HugeVertex) vertex, null, null)));
             }
 
             if (edgeMap.size() > 0) {
