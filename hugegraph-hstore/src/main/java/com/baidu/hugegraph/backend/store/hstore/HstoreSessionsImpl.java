@@ -490,6 +490,12 @@ public class HstoreSessionsImpl extends HstoreSessions {
             this.position = keyBegin;
             this.value = null;
             this.matched = false;
+            if (this.iter.hasNext()) {
+                this.iter.next();
+                this.gotNext = true;
+            } else {
+                this.gotNext = false;
+            };
 
             this.checkArguments();
         }
@@ -542,16 +548,15 @@ public class HstoreSessionsImpl extends HstoreSessions {
             return Session.matchScanType(expected, this.scanType);
         }
 
+        boolean gotNext;
         @Override
         public boolean hasNext() {
-            this.matched = false;
-            boolean hasNext = this.iter.hasNext();
-            if (!hasNext) {
-                this.position = null;
-            } else{
+            if (this.gotNext){
                 this.position = this.iter.key();
+            } else {
+                this.position = null;
             }
-            return hasNext;
+            return gotNext;
         }
 
         private boolean filter(byte[] key) {
@@ -599,9 +604,14 @@ public class HstoreSessionsImpl extends HstoreSessions {
             if (!this.matched && !this.hasNext()) {
                 throw new NoSuchElementException();
             }
-            this.iter.next();
             BackendEntry.BackendColumn col = BackendEntry.BackendColumn.of(
                                        this.iter.key(), this.iter.value());
+            if (this.iter.hasNext()) {
+                gotNext = true;
+                this.iter.next();
+            } else {
+                gotNext = false;
+            }
             this.matched = false;
             return col;
         }
@@ -610,7 +620,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public long count() {
             long count = 0L;
             while (this.hasNext()) {
-                this.iter.next();
+                this.next();
                 count++;
                 this.matched = false;
                 BackendEntryIterator.checkInterrupted();
@@ -625,7 +635,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public void close() {
-            this.position = null;
+            //this.position = null;
         }
     }
 }
