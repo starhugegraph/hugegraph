@@ -424,8 +424,8 @@ public class HstoreSessionsImpl extends HstoreSessions {
             assert !this.hasChanges();
             HgKvIterator<HgKvEntry> iterator = this.graph.scanIterator(
                     table, codeFrom, codeTo, scanType, query);
-            return new ColumnIterator<HgKvIterator>(table, iterator, null,
-                                                    null, scanType);
+            return new ColumnIterator<HgKvIterator>(table, iterator, new byte[0],
+                                                    new byte[0], scanType);
         }
 
         @Override
@@ -516,7 +516,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
                             "Can't set SCAN_PREFIX_WITH_END and " +
                             "SCAN_LT_END/SCAN_LTE_END at the same time");
 
-            if (this.match(Session.SCAN_PREFIX_BEGIN)) {
+            if (this.match(Session.SCAN_PREFIX_BEGIN) && !matchHash()) {
                 E.checkArgument(this.keyBegin != null,
                                 "Parameter `keyBegin` can't be null " +
                                 "if set SCAN_PREFIX_WITH_BEGIN");
@@ -525,23 +525,27 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                 "if set SCAN_PREFIX_WITH_BEGIN");
             }
 
-            if (this.match(Session.SCAN_PREFIX_END)) {
+            if (this.match(Session.SCAN_PREFIX_END) && !matchHash()) {
                 E.checkArgument(this.keyEnd != null,
                                 "Parameter `keyEnd` can't be null " +
                                 "if set SCAN_PREFIX_WITH_END");
             }
 
-            if (this.match(Session.SCAN_GT_BEGIN)) {
+            if (this.match(Session.SCAN_GT_BEGIN) && !matchHash()) {
                 E.checkArgument(this.keyBegin != null,
                                 "Parameter `keyBegin` can't be null " +
                                 "if set SCAN_GT_BEGIN or SCAN_GTE_BEGIN");
             }
 
-            if (this.match(Session.SCAN_LT_END)) {
+            if (this.match(Session.SCAN_LT_END) && !matchHash()) {
                 E.checkArgument(this.keyEnd != null,
                                 "Parameter `keyEnd` can't be null " +
                                 "if set SCAN_LT_END or SCAN_LTE_END");
             }
+        }
+
+        private boolean matchHash() {
+            return this.scanType == Session.SCAN_HASHCODE;
         }
 
         private boolean match(int expected) {

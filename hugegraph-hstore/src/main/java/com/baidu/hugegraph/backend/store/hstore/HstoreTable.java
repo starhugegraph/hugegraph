@@ -349,7 +349,9 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         return session.scan(this.table(), Integer.parseInt(StringUtils
                                           .isEmpty(shard.start())? "0"
                                           : shard.start()),
-                            Integer.parseInt(shard.end()), type, query.bytes());
+                            Integer.parseInt(StringUtils.isEmpty(shard.end()) ?
+                                             "0" : shard.end()),
+                            type, query.bytes());
     }
 
     protected static final BackendEntryIterator newEntryIterator(
