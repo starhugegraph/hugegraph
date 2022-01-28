@@ -27,6 +27,7 @@ import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.meta.MetaManager;
+import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.util.StringEncoding;
@@ -1188,7 +1189,37 @@ public class StandardAuthManager implements AuthManager {
                                                  username,
                                                  AuthConstant.TOKEN_USER_ID,
                                                  user.id.asString());
-        String token = this.tokenGenerator.create(payload, AUTH_TOKEN_EXPIRE);
+        String token = this.tokenGenerator.create(payload, AUTH_TOKEN_EXPIRE * 1000);
+        this.tokenCache.update(IdGenerator.of(token), username);
+        return token;
+    }
+
+    @Override
+    public Id createKgUser(HugeUser user) {
+        try {
+            user.creator("KG");
+            user.update(new Date());
+            user.create(user.update());
+            this.metaManager.createUser(user);
+            return IdGenerator.of(user.name());
+        } catch (IOException e) {
+            throw new HugeException("IOException occurs when " +
+                                    "serialize user", e);
+        }
+    }
+
+    @Override
+    public String createToken(String username, long expire) {
+        HugeUser user = this.findUser(username, false);
+        if (user == null) {
+            return null;
+        }
+
+        Map<String, ?> payload = ImmutableMap.of(AuthConstant.TOKEN_USER_NAME,
+                                                 username,
+                                                 AuthConstant.TOKEN_USER_ID,
+                                                 user.id.asString());
+        String token = this.tokenGenerator.create(payload, expire * 1000);
         this.tokenCache.update(IdGenerator.of(token), username);
         return token;
     }
@@ -1253,7 +1284,7 @@ public class StandardAuthManager implements AuthManager {
     public void initAdmin() {
         HugeUser user = new HugeUser("admin");
         user.password(StringEncoding.hashPassword("admin"));
-        user.creator("system");
+        user.creator(RestServer.EXECUTOR);
         user.phone("18888886666");
         user.email("admin@hugegraph.com");
         user.description("None");
