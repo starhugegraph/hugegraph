@@ -26,6 +26,8 @@ public abstract class VirtualElement {
         }
     }
 
+    protected VirtualElement() { }
+
     public void fillProperties(HugeElement owner) {
         if (propertyBuf != null) {
             ByteBuffer byteBuffer = propertyBuf.asByteBuffer();

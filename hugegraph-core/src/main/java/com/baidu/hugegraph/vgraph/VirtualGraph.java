@@ -168,7 +168,7 @@ public class VirtualGraph {
         VirtualVertex v = queryVertexById(vId, status);
         if (v != null) {
             HugeVertex owner = v.getVertex(graphParams.graph());
-            return new MapperIterator<>(v.getEdges(), e -> e.getEdge(owner));
+            return new MapperIterator<>(v.getEdges(graphParams.graph()), e -> e.getEdge(owner));
         }
         return null;
     }
