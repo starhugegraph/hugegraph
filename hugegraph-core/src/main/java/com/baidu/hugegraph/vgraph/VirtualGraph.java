@@ -50,6 +50,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import com.baidu.hugegraph.backend.id.Id;
 import org.slf4j.Logger;
@@ -84,6 +85,8 @@ public class VirtualGraph {
         this.vertexCache = Caffeine.newBuilder()
                 .initialCapacity(this.graphParams.configuration().get(
                                 CoreOptions.VIRTUAL_GRAPH_VERTEX_INIT_CAPACITY))
+                .expireAfterAccess(this.graphParams.configuration().get(
+                        CoreOptions.VIRTUAL_GRAPH_VERTEX_EXPIRE), TimeUnit.SECONDS)
                 .maximumSize(this.graphParams.configuration().get(
                         CoreOptions.VIRTUAL_GRAPH_VERTEX_MAX_SIZE))
                 .recordStats(() ->
@@ -93,6 +96,8 @@ public class VirtualGraph {
         this.edgeCache = Caffeine.newBuilder()
                 .initialCapacity(this.graphParams.configuration().get(
                         CoreOptions.VIRTUAL_GRAPH_EDGE_INIT_CAPACITY))
+                .expireAfterAccess(this.graphParams.configuration().get(
+                        CoreOptions.VIRTUAL_GRAPH_EDGE_EXPIRE), TimeUnit.SECONDS)
                 .maximumSize(this.graphParams.configuration().get(
                         CoreOptions.VIRTUAL_GRAPH_EDGE_MAX_SIZE))
                 .recordStats(() ->

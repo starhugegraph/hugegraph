@@ -727,7 +727,15 @@ public class CoreOptions extends OptionHolder {
                     "graph.virtual_graph_vertex_max_size",
                     "The maximum number of vertices cached in Virtual Graph.",
                     rangeInt(0, Integer.MAX_VALUE),
-                    100000
+                    10000000
+            );
+
+    public static final ConfigOption<Long> VIRTUAL_GRAPH_VERTEX_EXPIRE =
+            new ConfigOption<>(
+                    "graph.virtual_graph_vertex_expire",
+                    "The expiration time in seconds of vertex cache in Virtual Graph.",
+                    rangeInt(0L, Long.MAX_VALUE),
+                    (60 * 100L)
             );
 
     public static final ConfigOption<Integer> VIRTUAL_GRAPH_EDGE_INIT_CAPACITY =
@@ -744,6 +752,14 @@ public class CoreOptions extends OptionHolder {
                     "The maximum number of edges cached in Virtual Graph.",
                     rangeInt(0, Integer.MAX_VALUE),
                     100000
+            );
+
+    public static final ConfigOption<Long> VIRTUAL_GRAPH_EDGE_EXPIRE =
+            new ConfigOption<>(
+                    "graph.virtual_graph_edge_expire",
+                    "The expiration time in seconds of edge cache in Virtual Graph.",
+                    rangeInt(0L, Long.MAX_VALUE),
+                    (60 * 100L)
             );
 
     public static final ConfigOption<Integer> VIRTUAL_GRAPH_BATCHER_TASK_THREADS =
