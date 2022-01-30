@@ -104,6 +104,6 @@ public class MetricsApiTest extends BaseApiTest {
         Response r = client().get(path, ImmutableMap.of());
         String result = assertResponseStatus(200, r);
         Assert.assertContains(
-                "com_baidu_hugegraph_vgraph_VirtualGraph_virtual_graph_hits_hugegraph", result);
+                "com_baidu_hugegraph_vgraph_VirtualGraph_hugegraph_hits", result);
     }
 }
