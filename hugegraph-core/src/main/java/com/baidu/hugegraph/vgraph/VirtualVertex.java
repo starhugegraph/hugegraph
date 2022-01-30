@@ -11,6 +11,7 @@ import com.baidu.hugegraph.backend.serializer.BytesBuffer;
 import com.baidu.hugegraph.iterator.ExtendableIterator;
 import com.baidu.hugegraph.schema.VertexLabel;
 import com.baidu.hugegraph.structure.HugeVertex;
+import com.baidu.hugegraph.type.define.Directions;
 
 public class VirtualVertex extends VirtualElement {
 
@@ -37,11 +38,11 @@ public class VirtualVertex extends VirtualElement {
 
     public Iterator<VirtualEdge> getEdges(HugeGraph graph) {
         ExtendableIterator<VirtualEdge> result = new ExtendableIterator<>();
-        List<VirtualEdge> outEdges = readEdgesFromBuffer(this.outEdgesBuf, graph);
+        List<VirtualEdge> outEdges = readEdgesFromBuffer(this.outEdgesBuf, graph, Directions.OUT);
         if (outEdges != null) {
             result.extend(outEdges.listIterator());
         }
-        List<VirtualEdge> inEdges = readEdgesFromBuffer(this.inEdgesBuf, graph);
+        List<VirtualEdge> inEdges = readEdgesFromBuffer(this.inEdgesBuf, graph, Directions.IN);
         if (inEdges != null) {
             result.extend(inEdges.listIterator());
         }
@@ -76,16 +77,17 @@ public class VirtualVertex extends VirtualElement {
         }
     }
 
-    private List<VirtualEdge> readEdgesFromBuffer(BytesBuffer buffer, HugeGraph graph) {
+    private List<VirtualEdge> readEdgesFromBuffer(BytesBuffer buffer, HugeGraph graph, Directions directions) {
         if (buffer != null) {
             ByteBuffer byteBuffer = buffer.asByteBuffer();
-            BytesBuffer wrapedBuffer = BytesBuffer.wrap(byteBuffer.array(), 0, byteBuffer.position());
+            BytesBuffer wrapedBuffer = BytesBuffer.wrap(byteBuffer.array(),
+                    byteBuffer.arrayOffset(), byteBuffer.position());
 
             int size = wrapedBuffer.readVInt();
             assert size >= 0;
             List<VirtualEdge> result = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
-                VirtualEdge edge = VirtualEdge.readFromBuffer(wrapedBuffer, graph, this.id);
+                VirtualEdge edge = VirtualEdge.readFromBuffer(wrapedBuffer, graph, this.id, directions);
                 result.add(edge);
             }
             return result;

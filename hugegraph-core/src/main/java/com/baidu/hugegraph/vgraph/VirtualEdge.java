@@ -10,6 +10,8 @@ import com.baidu.hugegraph.structure.HugeVertex;
 import com.baidu.hugegraph.type.define.Directions;
 import com.baidu.hugegraph.type.define.SerialEnum;
 
+import java.nio.ByteBuffer;
+
 public class VirtualEdge extends VirtualElement {
 
     private Id ownerVertexId;
@@ -49,30 +51,38 @@ public class VirtualEdge extends VirtualElement {
     }
 
     public void writeToBuffer(BytesBuffer buffer) {
-        buffer.writeVLong(this.expiredTime);
         buffer.write(this.status);
-        buffer.write(this.directions.code());
         buffer.writeId(this.edgeLabel.id());
         buffer.writeString(this.name);
         buffer.writeId(this.otherVertexId);
-        buffer.writeBoolean(this.propertyBuf != null);
-        if (this.propertyBuf != null) {
-            buffer.writeBytes(this.propertyBuf.bytes());
+        if (this.propertyBuf == null) {
+            buffer.writeVInt(0);
+        } else {
+            buffer.writeBytes(this.propertyBuf.getBytes());
+        }
+        if (this.edgeLabel.ttl() > 0L) {
+            buffer.writeVLong(this.expiredTime);
         }
     }
 
-    public static VirtualEdge readFromBuffer(BytesBuffer buffer, HugeGraph graph, Id ownerVertexId) {
+    public static VirtualEdge readFromBuffer(BytesBuffer buffer, HugeGraph graph, Id ownerVertexId,
+                                             Directions directions) {
         VirtualEdge edge = new VirtualEdge();
         edge.ownerVertexId = ownerVertexId;
-        edge.expiredTime = buffer.readVLong();
         edge.status = buffer.read();
-        edge.directions = SerialEnum.fromCode(Directions.class, buffer.read());
+        edge.directions = directions;
         edge.edgeLabel = graph.edgeLabelOrNone(buffer.readId());
         edge.name = buffer.readString();
         edge.otherVertexId = buffer.readId();
-        if (buffer.readBoolean()) {
-            byte[] propertyBytes = buffer.readBytes();
-            edge.propertyBuf = BytesBuffer.wrap(propertyBytes).forReadAll();
+        int length = buffer.readVInt();
+        if (length > 0) {
+            BytesBuffer bytesBuffer = BytesBuffer.wrap(buffer.array(), buffer.position(), length).forReadAll();
+            edge.propertyBuf = new ByteBufferWrapper(buffer.position(), bytesBuffer.asByteBuffer());
+            ByteBuffer innerBuffer = buffer.asByteBuffer();
+            innerBuffer.position(bytesBuffer.position());
+        }
+        if (edge.edgeLabel.ttl() > 0L) {
+            edge.expiredTime = buffer.readVLong();
         }
         return edge;
     }

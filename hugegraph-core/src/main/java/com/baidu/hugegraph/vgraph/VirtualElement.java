@@ -13,7 +13,7 @@ public abstract class VirtualElement {
 
     protected byte status;
     protected long expiredTime;
-    protected BytesBuffer propertyBuf;
+    protected ByteBufferWrapper propertyBuf;
 
 
     protected VirtualElement(HugeElement element,
@@ -28,11 +28,16 @@ public abstract class VirtualElement {
 
     protected VirtualElement() { }
 
+    protected BytesBuffer getPropertiesBufForRead() {
+        assert propertyBuf != null;
+        ByteBuffer byteBuffer = propertyBuf.getByteBuffer();
+        return BytesBuffer.wrap(byteBuffer.array(), propertyBuf.getOffset(),
+                byteBuffer.position() - propertyBuf.getOffset());
+    }
+
     public void fillProperties(HugeElement owner) {
         if (propertyBuf != null) {
-            ByteBuffer byteBuffer = propertyBuf.asByteBuffer();
-            BytesBuffer wrapedBuffer = BytesBuffer.wrap(byteBuffer.array(), 0, byteBuffer.position());
-            SERIALIZER.parseProperties(wrapedBuffer, owner);
+            SERIALIZER.parseProperties(getPropertiesBufForRead(), owner);
         }
     }
 
@@ -40,7 +45,8 @@ public abstract class VirtualElement {
         if (properties != null && !properties.isEmpty()) {
             BytesBuffer buffer = new BytesBuffer();
             SERIALIZER.formatProperties(properties, buffer);
-            propertyBuf = buffer;
+            ByteBuffer innerBuffer = buffer.asByteBuffer();
+            propertyBuf = new ByteBufferWrapper(innerBuffer.arrayOffset(), innerBuffer);
         } else {
             propertyBuf = null;
         }
