@@ -190,7 +190,7 @@ public abstract class OltpTraverser extends HugeTraverser
     protected Set<Id> adjacentVertices(Id sourceV, Set<Id> vertices,
                                        Directions dir, Id label,
                                        Set<Id> excluded, long degree,
-                                       long limit) {
+                                       long limit, boolean concurrent) {
         if (limit == 0) {
             return ImmutableSet.of();
         }
@@ -198,7 +198,7 @@ public abstract class OltpTraverser extends HugeTraverser
         Set<Id> neighbors = newSet(true);
         this.traverseIds(vertices.iterator(), new AdjacentVerticesConsumer(
                 sourceV, dir, label, excluded, degree, limit, neighbors
-        ));
+        ), concurrent);
 
         if (limit != NO_LIMIT && neighbors.size() > limit) {
             int redundantNeighborsCount = (int)(neighbors.size() - limit);
