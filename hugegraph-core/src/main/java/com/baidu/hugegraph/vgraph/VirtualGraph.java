@@ -63,7 +63,7 @@ public class VirtualGraph {
 
     private EventListener storeEventListener;
     private EventListener cacheEventListener;
-    private VirtualGraphBatcher batcher;
+    private VirtualGraphLoader loader;
 
     private final HugeGraphParams graphParams;
     private final String metricsNamePrefix;
@@ -105,7 +105,7 @@ public class VirtualGraph {
                                 MetricRegistry.name(this.metricsNamePrefix, "edge")))
                 .build();
 
-        this.batcher = new VirtualGraphBatcher(this.graphParams, this);
+        this.loader = new VirtualGraphLoader(this.graphParams, this);
 
         this.vertexCountGauge = this.vertexCache::estimatedSize;
         this.edgeCountGauge = this.edgeCache::estimatedSize;
@@ -153,7 +153,7 @@ public class VirtualGraph {
 
         if (missingIds.size() > 0) {
             VirtualGraphQueryTask<VirtualVertex> batchTask = new VirtualGraphQueryTask<>(HugeType.VERTEX, missingIds);
-            this.batcher.add(batchTask);
+            this.loader.add(batchTask);
             try {
                 Iterator<VirtualVertex> resultFromBatch = batchTask.getFuture().get();
                 result.extend(new MapperIterator<>(resultFromBatch, v -> {
@@ -264,7 +264,7 @@ public class VirtualGraph {
 
         if (missingIds.size() > 0) {
             VirtualGraphQueryTask<VirtualEdge> batchTask = new VirtualGraphQueryTask<>(HugeType.EDGE, missingIds);
-            this.batcher.add(batchTask);
+            this.loader.add(batchTask);
             try {
                 Iterator<VirtualEdge> resultFromBatch = batchTask.getFuture().get();
                 result.extend(new MapperIterator<>(resultFromBatch, e -> {
@@ -294,7 +294,7 @@ public class VirtualGraph {
     }
 
     public void close() {
-        this.batcher.close();
+        this.loader.close();
         this.unlistenChanges();
         this.clear();
         MetricManager.INSTANCE.getRegistry().removeMatching(

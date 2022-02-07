@@ -13,6 +13,7 @@ import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -25,7 +26,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import static com.baidu.hugegraph.type.HugeType.VERTEX;
 import static com.baidu.hugegraph.type.HugeType.EDGE;
 
-public class VirtualGraphBatcher {
+public class VirtualGraphLoader {
 
     private final int batchBufferSize;
     private final int batchSize;
@@ -33,12 +34,12 @@ public class VirtualGraphBatcher {
 
     private final HugeGraphParams graphParams;
     private final VirtualGraph vGraph;
-    private final java.util.Timer batchTimer;
-    private final ExecutorService batchExecutor;
+    private java.util.Timer batchTimer;
+    private ExecutorService batchExecutor;
 
-    private final LinkedBlockingQueue<VirtualGraphQueryTask> batchQueue;
+    private LinkedBlockingQueue<VirtualGraphQueryTask> batchQueue;
 
-    public VirtualGraphBatcher(HugeGraphParams graphParams, VirtualGraph vGraph) {
+    public VirtualGraphLoader(HugeGraphParams graphParams, VirtualGraph vGraph) {
         assert graphParams != null;
         assert vGraph != null;
 
@@ -48,15 +49,24 @@ public class VirtualGraphBatcher {
         this.batchSize = this.graphParams.configuration().get(CoreOptions.VIRTUAL_GRAPH_BATCH_SIZE);
         this.batchTimeMS = this.graphParams.configuration().get(CoreOptions.VIRTUAL_GRAPH_BATCH_TIME_MS);
         int threads = this.graphParams.configuration().get(CoreOptions.VIRTUAL_GRAPH_BATCHER_TASK_THREADS);
-        this.batchTimer = new Timer();
-        this.batchQueue = new LinkedBlockingQueue<>(batchBufferSize);
-        this.batchExecutor = ExecutorUtil.newFixedThreadPool(
-                threads, "virtual-graph-batch-worker-" + this.graphParams.graph().name());
-        this.start();
+
+        if (this.batchBufferSize > 0) {
+            this.batchTimer = new Timer();
+            this.batchQueue = new LinkedBlockingQueue<>(batchBufferSize);
+            this.batchExecutor = ExecutorUtil.newFixedThreadPool(
+                    threads, "virtual-graph-batch-worker-" + this.graphParams.graph().name());
+            this.start();
+        }
     }
 
     public void add(VirtualGraphQueryTask task) {
         assert task != null;
+
+        if (this.batchBufferSize <= 0) {
+            this.batchProcess(Collections.singletonList(task));
+            return;
+        }
+
         this.batchQueue.add(task);
 
         if (this.batchQueue.size() >= batchSize) {
@@ -73,7 +83,10 @@ public class VirtualGraphBatcher {
     }
 
     public void close() {
-        this.batchTimer.cancel();
+        if (this.batchBufferSize > 0) {
+            this.batchTimer.cancel();
+            this.batchExecutor.shutdown();
+        }
     }
 
     private void batchProcess(List<VirtualGraphQueryTask> tasks) {

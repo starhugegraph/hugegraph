@@ -695,7 +695,7 @@ public class CoreOptions extends OptionHolder {
                     "graph.virtual_graph_batch_buffer_size",
                     "The size of buffer for batch load in Virtual Graph.",
                     rangeInt(0, 65535),
-                    1000
+                    0
             );
 
     public static final ConfigOption<Integer> VIRTUAL_GRAPH_BATCH_SIZE =
@@ -719,15 +719,15 @@ public class CoreOptions extends OptionHolder {
                     "graph.virtual_graph_vertex_init_capacity",
                     "The minimum number of vertices cached in Virtual Graph.",
                     rangeInt(0, Integer.MAX_VALUE),
-                    10000
+                    (1000 * 1000)
             );
 
-    public static final ConfigOption<Integer> VIRTUAL_GRAPH_VERTEX_MAX_SIZE =
+    public static final ConfigOption<Long> VIRTUAL_GRAPH_VERTEX_MAX_SIZE =
             new ConfigOption<>(
                     "graph.virtual_graph_vertex_max_size",
                     "The maximum number of vertices cached in Virtual Graph.",
-                    rangeInt(0, Integer.MAX_VALUE),
-                    10000000
+                    rangeInt(0L, Long.MAX_VALUE),
+                    (100 * 1000 * 1000L)
             );
 
     public static final ConfigOption<Long> VIRTUAL_GRAPH_VERTEX_EXPIRE =
@@ -746,12 +746,12 @@ public class CoreOptions extends OptionHolder {
                     10000
             );
 
-    public static final ConfigOption<Integer> VIRTUAL_GRAPH_EDGE_MAX_SIZE =
+    public static final ConfigOption<Long> VIRTUAL_GRAPH_EDGE_MAX_SIZE =
             new ConfigOption<>(
                     "graph.virtual_graph_edge_max_size",
                     "The maximum number of edges cached in Virtual Graph.",
-                    rangeInt(0, Integer.MAX_VALUE),
-                    100000
+                    rangeInt(0L, Long.MAX_VALUE),
+                    (1000 * 1000L)
             );
 
     public static final ConfigOption<Long> VIRTUAL_GRAPH_EDGE_EXPIRE =
