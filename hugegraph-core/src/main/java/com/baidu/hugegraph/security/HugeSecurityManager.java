@@ -55,8 +55,7 @@ public class HugeSecurityManager extends SecurityManager {
             "groovy.lang.GroovyClassLoader",
             "sun.reflect.DelegatingClassLoader",
             "org.codehaus.groovy.reflection.SunClassLoader",
-            "org.codehaus.groovy.runtime.callsite.CallSiteClassLoader",
-            "org.apache.hadoop.hbase.util.DynamicClassLoader"
+            "org.codehaus.groovy.runtime.callsite.CallSiteClassLoader"
     );
 
     private static final Set<String> CAFFEINE_CLASSES = ImmutableSet.of(
@@ -100,14 +99,6 @@ public class HugeSecurityManager extends SecurityManager {
             ImmutableSet.of("createSnapshot", "resumeSnapshot"),
             "com.baidu.hugegraph.backend.store.raft.RaftBackendStoreProvider",
             ImmutableSet.of("createSnapshot", "resumeSnapshot")
-    );
-
-    private static final Set<String> HBASE_CLASSES = ImmutableSet.of(
-            // Fixed #758
-            "com.baidu.hugegraph.backend.store.hbase.HbaseStore",
-            "com.baidu.hugegraph.backend.store.hbase.HbaseStore$HbaseSchemaStore",
-            "com.baidu.hugegraph.backend.store.hbase.HbaseStore$HbaseGraphStore",
-            "com.baidu.hugegraph.backend.store.hbase.HbaseSessions$RowIterator"
     );
 
     private static final Set<String> RAFT_CLASSES = ImmutableSet.of(
@@ -167,7 +158,7 @@ public class HugeSecurityManager extends SecurityManager {
     public void checkAccess(Thread thread) {
         if (callFromGremlin() && !callFromCaffeine() &&
             !callFromAsyncTasks() && !callFromEventHubNotify() &&
-            !callFromBackendThread() && !callFromBackendHbase() &&
+            !callFromBackendThread() &&
             !callFromRaft() && !callFromSofaRpc()) {
             throw newSecurityException(
                   "Not allowed to access thread via Gremlin");
@@ -179,7 +170,7 @@ public class HugeSecurityManager extends SecurityManager {
     public void checkAccess(ThreadGroup threadGroup) {
         if (callFromGremlin() && !callFromCaffeine() &&
             !callFromAsyncTasks() && !callFromEventHubNotify() &&
-            !callFromBackendThread() && !callFromBackendHbase() &&
+            !callFromBackendThread() &&
             !callFromRaft() && !callFromSofaRpc()) {
             throw newSecurityException(
                   "Not allowed to access thread group via Gremlin");
@@ -217,7 +208,7 @@ public class HugeSecurityManager extends SecurityManager {
     @Override
     public void checkRead(String file) {
         if (callFromGremlin() && !callFromCaffeine() &&
-            !readGroovyInCurrentDir(file) && !callFromBackendHbase() &&
+            !readGroovyInCurrentDir(file) &&
             !callFromSnapshot() && !callFromRaft() &&
             !callFromSofaRpc()) {
             throw newSecurityException(
@@ -283,7 +274,7 @@ public class HugeSecurityManager extends SecurityManager {
     @Override
     public void checkConnect(String host, int port) {
         if (callFromGremlin() && !callFromBackendSocket() &&
-            !callFromBackendHbase() && !callFromRaft() && !callFromSofaRpc()) {
+            !callFromRaft() && !callFromSofaRpc()) {
             throw newSecurityException(
                   "Not allowed to connect socket via Gremlin");
         }
@@ -338,7 +329,7 @@ public class HugeSecurityManager extends SecurityManager {
     @Override
     public void checkPropertyAccess(String key) {
         if (!callFromAcceptClassLoaders() && callFromGremlin() &&
-            !WHITE_SYSTEM_PROPERTYS.contains(key) && !callFromBackendHbase() &&
+            !WHITE_SYSTEM_PROPERTYS.contains(key) &&
             !callFromSnapshot() && !callFromRaft() &&
             !callFromSofaRpc()) {
             throw newSecurityException(
@@ -453,11 +444,6 @@ public class HugeSecurityManager extends SecurityManager {
     private static boolean callFromAsyncTasks() {
         // Async tasks will create thread when submitted to executor
         return callFromMethods(ASYNC_TASKS);
-    }
-
-    private static boolean callFromBackendHbase() {
-        // TODO: remove this unsafe entrance
-        return callFromWorkerWithClass(HBASE_CLASSES);
     }
 
     private static boolean callFromSnapshot() {

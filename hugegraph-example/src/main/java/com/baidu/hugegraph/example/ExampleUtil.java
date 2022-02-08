@@ -44,7 +44,6 @@ public class ExampleUtil {
         registered = true;
 
         RegisterUtil.registerCassandra();
-        RegisterUtil.registerHBase();
         RegisterUtil.registerRocksDB();
         RegisterUtil.registerMysql();
         RegisterUtil.registerPalo();

@@ -51,16 +51,6 @@ jobs:
 
     - stage: tinkerpop-test
       if: branch =~ env(RELEASE_BRANCH)
-      env: BACKEND=hbase SUITE=structure
-      script: $TRAVIS_DIR/run-tinkerpop-test.sh
-
-    - stage: tinkerpop-test
-      if: branch =~ env(RELEASE_BRANCH)
-      env: BACKEND=hbase SUITE=process
-      script: $TRAVIS_DIR/run-tinkerpop-test.sh
-
-    - stage: tinkerpop-test
-      if: branch =~ env(RELEASE_BRANCH)
       env: BACKEND=rocksdb SUITE=tinkerpop
       script: $TRAVIS_DIR/run-tinkerpop-test.sh
 
@@ -98,7 +88,6 @@ env:
     - BACKEND=memory
     - BACKEND=cassandra
     - BACKEND=mysql
-    - BACKEND=hbase
     - BACKEND=rocksdb
   global:
     - RELEASE_BRANCH=^release-.*$
