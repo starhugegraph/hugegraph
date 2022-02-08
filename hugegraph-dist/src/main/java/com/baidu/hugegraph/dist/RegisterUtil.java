@@ -72,9 +72,6 @@ public class RegisterUtil {
 
     private static void registerBackend(String backend) {
         switch (backend) {
-            case "cassandra":
-                registerCassandra();
-                break;
             case "rocksdb":
                 registerRocksDB();
                 break;
@@ -85,18 +82,6 @@ public class RegisterUtil {
                 throw new HugeException("Unsupported backend type '%s'",
                                         backend);
         }
-    }
-
-    public static void registerCassandra() {
-        // Register config
-        OptionSpace.register("cassandra",
-                "com.baidu.hugegraph.backend.store.cassandra.CassandraOptions");
-        // Register serializer
-        SerializerFactory.register("cassandra",
-                "com.baidu.hugegraph.backend.store.cassandra.CassandraSerializer");
-        // Register backend
-        BackendProviderFactory.register("cassandra",
-                "com.baidu.hugegraph.backend.store.cassandra.CassandraStoreProvider");
     }
 
     public static void registerRocksDB() {

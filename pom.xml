@@ -115,7 +115,6 @@
         <module>hugegraph-example</module>
         <module>hugegraph-dist</module>
         <module>hugegraph-test</module>
-        <module>hugegraph-cassandra</module>
         <module>hugegraph-rocksdb</module>
         <module>hugegraph-hstore</module>
     </modules>

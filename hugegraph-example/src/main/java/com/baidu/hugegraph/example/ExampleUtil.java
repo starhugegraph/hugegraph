@@ -43,7 +43,6 @@ public class ExampleUtil {
         }
         registered = true;
 
-        RegisterUtil.registerCassandra();
         RegisterUtil.registerRocksDB();
     }
 

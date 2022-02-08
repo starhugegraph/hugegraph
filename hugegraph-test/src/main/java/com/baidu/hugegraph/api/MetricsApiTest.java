@@ -93,38 +93,6 @@ public class MetricsApiTest extends BaseApiTest {
 
                 assertMapContains(host, "estimate_num_keys");
                 break;
-            case "cassandra":
-                assertMapContains(graph, "cluster_id");
-                assertMapContains(graph, "servers");
-
-                servers = (Map<?, ?>) graph.get("servers");
-                Assert.assertGte(1, servers.size());
-                for (Map.Entry<?, ?> e : servers.entrySet()) {
-                    String key = (String) e.getKey();
-                    value = e.getValue();
-                    Assert.assertTrue(String.format(
-                                      "Expect map value for key %s but got %s",
-                                      key, value),
-                                      value instanceof Map);
-                    host = (Map<?, ?>) value;
-                    assertMapContains(host, "mem_max");
-                    assertMapContains(host, "mem_committed");
-                    assertMapContains(host, "mem_used");
-                    assertMapContains(host, "mem_used_readable");
-                    assertMapContains(host, "mem_unit");
-
-                    assertMapContains(host, "disk_usage");
-                    assertMapContains(host, "disk_usage_readable");
-                    assertMapContains(host, "disk_usage_details");
-                    assertMapContains(host, "disk_unit");
-
-                    assertMapContains(host, "uptime");
-                    assertMapContains(host, "uptime_readable");
-                    assertMapContains(host, "time_unit");
-
-                    assertMapContains(host, "estimated_partition_count");
-                }
-                break;
             default:
                 Assert.assertTrue("Unexpected backend " + backend, false);
                 break;

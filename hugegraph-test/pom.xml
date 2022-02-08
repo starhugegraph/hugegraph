@@ -30,11 +30,6 @@
         </dependency>
         <dependency>
             <groupId>com.baidu.hugegraph</groupId>
-            <artifactId>hugegraph-cassandra</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.baidu.hugegraph</groupId>
             <artifactId>hugegraph-rocksdb</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -214,16 +209,6 @@
             <properties>
                 <backend>memory</backend>
                 <serializer>text</serializer>
-            </properties>
-        </profile>
-        <profile>
-            <id>cassandra</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-            <properties>
-                <backend>cassandra</backend>
-                <serializer>cassandra</serializer>
             </properties>
         </profile>
         <profile>

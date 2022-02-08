@@ -28,7 +28,6 @@ import com.baidu.hugegraph.unit.cache.CacheTest;
 import com.baidu.hugegraph.unit.cache.CachedGraphTransactionTest;
 import com.baidu.hugegraph.unit.cache.CachedSchemaTransactionTest;
 import com.baidu.hugegraph.unit.cache.RamTableTest;
-import com.baidu.hugegraph.unit.cassandra.CassandraTest;
 import com.baidu.hugegraph.unit.core.AnalyzerTest;
 import com.baidu.hugegraph.unit.core.BackendMutationTest;
 import com.baidu.hugegraph.unit.core.BackendStoreSystemInfoTest;
@@ -120,9 +119,6 @@ import com.baidu.hugegraph.unit.util.VersionTest;
     BinarySerializerTest.class,
     BinaryScatterSerializerTest.class,
     StoreSerializerTest.class,
-
-    /* cassandra */
-    CassandraTest.class,
 
     /* rocksdb */
     RocksDBSessionsTest.class,

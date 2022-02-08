@@ -31,11 +31,6 @@
         </dependency>
         <dependency>
             <groupId>com.baidu.hugegraph</groupId>
-            <artifactId>hugegraph-cassandra</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.baidu.hugegraph</groupId>
             <artifactId>hugegraph-rocksdb</artifactId>
             <version>${project.version}</version>
         </dependency>

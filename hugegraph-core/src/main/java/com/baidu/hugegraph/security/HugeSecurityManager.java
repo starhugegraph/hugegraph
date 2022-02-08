@@ -79,15 +79,6 @@ public class HugeSecurityManager extends SecurityManager {
             ImmutableSet.of("asyncRemoveIndexLeft")
     );
 
-    private static final Map<String, Set<String>> BACKEND_THREAD = ImmutableMap.of(
-            // Fixed #758
-            "com.baidu.hugegraph.backend.store.cassandra.CassandraStore",
-            ImmutableSet.of("open", "opened", "init"),
-            // Fixed https://github.com/hugegraph/hugegraph/pull/892#issuecomment-598545072
-            "com.datastax.driver.core.AbstractSession",
-            ImmutableSet.of("execute")
-    );
-
     private static final Map<String, Set<String>> BACKEND_SNAPSHOT = ImmutableMap.of(
             "com.baidu.hugegraph.backend.store.AbstractBackendStoreProvider",
             ImmutableSet.of("createSnapshot", "resumeSnapshot"),
@@ -152,7 +143,6 @@ public class HugeSecurityManager extends SecurityManager {
     public void checkAccess(Thread thread) {
         if (callFromGremlin() && !callFromCaffeine() &&
             !callFromAsyncTasks() && !callFromEventHubNotify() &&
-            !callFromBackendThread() &&
             !callFromRaft() && !callFromSofaRpc()) {
             throw newSecurityException(
                   "Not allowed to access thread via Gremlin");
@@ -164,7 +154,6 @@ public class HugeSecurityManager extends SecurityManager {
     public void checkAccess(ThreadGroup threadGroup) {
         if (callFromGremlin() && !callFromCaffeine() &&
             !callFromAsyncTasks() && !callFromEventHubNotify() &&
-            !callFromBackendThread() &&
             !callFromRaft() && !callFromSofaRpc()) {
             throw newSecurityException(
                   "Not allowed to access thread group via Gremlin");
@@ -417,11 +406,6 @@ public class HugeSecurityManager extends SecurityManager {
 
     private static boolean callFromCaffeine() {
         return callFromWorkerWithClass(CAFFEINE_CLASSES);
-    }
-
-    private static boolean callFromBackendThread() {
-        // Fixed issue #758
-        return callFromMethods(BACKEND_THREAD);
     }
 
     private static boolean callFromEventHubNotify() {

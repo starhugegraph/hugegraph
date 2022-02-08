@@ -15,8 +15,8 @@ if [ ! -d $HOME/downloads ]; then
 fi
 
 case $BACKEND in
-    cassandra)
-        $TRAVIS_DIR/install-cassandra.sh
+    hstore)
+        $TRAVIS_DIR/install-hstore.sh
         ;;
     *)
         # don't need to install for other backends
