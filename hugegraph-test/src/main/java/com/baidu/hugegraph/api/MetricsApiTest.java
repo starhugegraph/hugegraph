@@ -71,7 +71,6 @@ public class MetricsApiTest extends BaseApiTest {
         int nodes = (Integer) graph.get("nodes");
         switch (backend) {
             case "memory":
-            case "mysql":
             case "rocksdb":
                 Assert.assertEquals(1, nodes);
 

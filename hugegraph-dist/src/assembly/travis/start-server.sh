@@ -12,7 +12,7 @@ REST_CONF=$BASE_DIR/conf/rest-server.properties
 GREMLIN_CONF=$BASE_DIR/conf/gremlin-server.yaml
 
 declare -A backend_serializer_map=(["memory"]="text" ["cassandra"]="cassandra" \
-                                   ["mysql"]="mysql" ["rocksdb"]="binary")
+                                   ["rocksdb"]="binary")
 
 SERIALIZER=${backend_serializer_map[$BACKEND]}
 

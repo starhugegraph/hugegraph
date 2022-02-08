@@ -18,9 +18,6 @@ case $BACKEND in
     cassandra)
         $TRAVIS_DIR/install-cassandra.sh
         ;;
-    mysql)
-        $TRAVIS_DIR/install-mysql-via-docker.sh
-        ;;
     *)
         # don't need to install for other backends
         ;;

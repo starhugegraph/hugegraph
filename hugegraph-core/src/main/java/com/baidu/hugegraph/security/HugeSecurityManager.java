@@ -79,12 +79,6 @@ public class HugeSecurityManager extends SecurityManager {
             ImmutableSet.of("asyncRemoveIndexLeft")
     );
 
-    private static final Map<String, Set<String>> BACKEND_SOCKET = ImmutableMap.of(
-            // Fixed #758
-            "com.baidu.hugegraph.backend.store.mysql.MysqlStore",
-            ImmutableSet.of("open", "init", "clear", "opened", "initialized")
-    );
-
     private static final Map<String, Set<String>> BACKEND_THREAD = ImmutableMap.of(
             // Fixed #758
             "com.baidu.hugegraph.backend.store.cassandra.CassandraStore",
@@ -198,7 +192,7 @@ public class HugeSecurityManager extends SecurityManager {
 
     @Override
     public void checkRead(FileDescriptor fd) {
-        if (callFromGremlin() && !callFromBackendSocket() &&
+        if (callFromGremlin() &&
             !callFromRaft() && !callFromSofaRpc()) {
             throw newSecurityException("Not allowed to read fd via Gremlin");
         }
@@ -228,7 +222,7 @@ public class HugeSecurityManager extends SecurityManager {
 
     @Override
     public void checkWrite(FileDescriptor fd) {
-        if (callFromGremlin() && !callFromBackendSocket() &&
+        if (callFromGremlin() &&
             !callFromRaft() && !callFromSofaRpc()) {
             throw newSecurityException("Not allowed to write fd via Gremlin");
         }
@@ -273,7 +267,7 @@ public class HugeSecurityManager extends SecurityManager {
 
     @Override
     public void checkConnect(String host, int port) {
-        if (callFromGremlin() && !callFromBackendSocket() &&
+        if (callFromGremlin() &&
             !callFromRaft() && !callFromSofaRpc()) {
             throw newSecurityException(
                   "Not allowed to connect socket via Gremlin");
@@ -423,11 +417,6 @@ public class HugeSecurityManager extends SecurityManager {
 
     private static boolean callFromCaffeine() {
         return callFromWorkerWithClass(CAFFEINE_CLASSES);
-    }
-
-    private static boolean callFromBackendSocket() {
-        // Fixed issue #758
-        return callFromMethods(BACKEND_SOCKET);
     }
 
     private static boolean callFromBackendThread() {

@@ -46,11 +46,6 @@ jobs:
 
     - stage: tinkerpop-test
       if: branch =~ env(RELEASE_BRANCH)
-      env: BACKEND=mysql SUITE=tinkerpop
-      script: $TRAVIS_DIR/run-tinkerpop-test.sh
-
-    - stage: tinkerpop-test
-      if: branch =~ env(RELEASE_BRANCH)
       env: BACKEND=rocksdb SUITE=tinkerpop
       script: $TRAVIS_DIR/run-tinkerpop-test.sh
 
@@ -87,7 +82,6 @@ env:
   matrix:
     - BACKEND=memory
     - BACKEND=cassandra
-    - BACKEND=mysql
     - BACKEND=rocksdb
   global:
     - RELEASE_BRANCH=^release-.*$

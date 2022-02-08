@@ -78,12 +78,6 @@ public class RegisterUtil {
             case "rocksdb":
                 registerRocksDB();
                 break;
-            case "mysql":
-                registerMysql();
-                break;
-            case "palo":
-                registerPalo();
-                break;
             case "hstore":
                 registerHstore();
                 break;
@@ -114,30 +108,6 @@ public class RegisterUtil {
                 "com.baidu.hugegraph.backend.store.rocksdb.RocksDBStoreProvider");
         BackendProviderFactory.register("rocksdbsst",
                 "com.baidu.hugegraph.backend.store.rocksdbsst.RocksDBSstStoreProvider");
-    }
-
-    public static void registerMysql() {
-        // Register config
-        OptionSpace.register("mysql",
-                "com.baidu.hugegraph.backend.store.mysql.MysqlOptions");
-        // Register serializer
-        SerializerFactory.register("mysql",
-                "com.baidu.hugegraph.backend.store.mysql.MysqlSerializer");
-        // Register backend
-        BackendProviderFactory.register("mysql",
-                "com.baidu.hugegraph.backend.store.mysql.MysqlStoreProvider");
-    }
-
-    public static void registerPalo() {
-        // Register config
-        OptionSpace.register("palo",
-                "com.baidu.hugegraph.backend.store.palo.PaloOptions");
-        // Register serializer
-        SerializerFactory.register("palo",
-                "com.baidu.hugegraph.backend.store.palo.PaloSerializer");
-        // Register backend
-        BackendProviderFactory.register("palo",
-                "com.baidu.hugegraph.backend.store.palo.PaloStoreProvider");
     }
 
     public static void registerHstore() {
