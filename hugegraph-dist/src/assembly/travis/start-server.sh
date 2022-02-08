@@ -22,11 +22,6 @@ SERIALIZER=${backend_serializer_map[$BACKEND]}
 sed -i "s/backend=.*/backend=$BACKEND/" $CONF
 sed -i "s/serializer=.*/serializer=$SERIALIZER/" $CONF
 
-# Set PostgreSQL configurations if needed
-if [ "$BACKEND" == "postgresql" ]; then
-    sed -i '/org.postgresql.Driver/,+2 s/\#//g' $CONF
-fi
-
 # Set timeout for hbase
 if [ "$BACKEND" == "hbase" ]; then
     sed -i '$arestserver.request_timeout=200' $REST_CONF

@@ -87,9 +87,6 @@ public class RegisterUtil {
             case "palo":
                 registerPalo();
                 break;
-            case "postgresql":
-                registerPostgresql();
-                break;
             case "hstore":
                 registerHstore();
                 break;
@@ -158,17 +155,6 @@ public class RegisterUtil {
                 "com.baidu.hugegraph.backend.store.palo.PaloStoreProvider");
     }
 
-    public static void registerPostgresql() {
-        // Register config
-        OptionSpace.register("postgresql",
-                "com.baidu.hugegraph.backend.store.postgresql.PostgresqlOptions");
-        // Register serializer
-        SerializerFactory.register("postgresql",
-                "com.baidu.hugegraph.backend.store.postgresql.PostgresqlSerializer");
-        // Register backend
-        BackendProviderFactory.register("postgresql",
-                "com.baidu.hugegraph.backend.store.postgresql.PostgresqlStoreProvider");
-    }
     public static void registerHstore() {
         // Register config
         OptionSpace.register("hstore",

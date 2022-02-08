@@ -64,11 +64,6 @@ jobs:
       env: BACKEND=rocksdb SUITE=tinkerpop
       script: $TRAVIS_DIR/run-tinkerpop-test.sh
 
-    - stage: tinkerpop-test
-      if: branch =~ env(RELEASE_BRANCH)
-      env: BACKEND=postgresql SUITE=tinkerpop
-      script: $TRAVIS_DIR/run-tinkerpop-test.sh
-
     - stage: deploy
       if: tag =~ env(RELEASE_TAG)
       script: skip
@@ -105,7 +100,6 @@ env:
     - BACKEND=mysql
     - BACKEND=hbase
     - BACKEND=rocksdb
-    - BACKEND=postgresql
   global:
     - RELEASE_BRANCH=^release-.*$
     - RELEASE_TAG=^v[0-9]\..*$

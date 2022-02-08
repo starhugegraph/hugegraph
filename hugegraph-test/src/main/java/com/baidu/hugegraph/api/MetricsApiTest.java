@@ -72,9 +72,6 @@ public class MetricsApiTest extends BaseApiTest {
         switch (backend) {
             case "memory":
             case "mysql":
-            case "postgresql":
-                Assert.assertEquals(1, nodes);
-                break;
             case "rocksdb":
                 Assert.assertEquals(1, nodes);
 

@@ -24,9 +24,6 @@ case $BACKEND in
     mysql)
         $TRAVIS_DIR/install-mysql-via-docker.sh
         ;;
-    postgresql)
-        $TRAVIS_DIR/install-postgresql-via-docker.sh
-        ;;
     *)
         # don't need to install for other backends
         ;;
