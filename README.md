@@ -11,12 +11,12 @@ HugeGraph is a fast-speed and highly-scalable [graph database](https://en.wikipe
 - Compliance to [Apache TinkerPop 3](https://tinkerpop.apache.org/), supporting [Gremlin](https://tinkerpop.apache.org/gremlin.html)
 - Schema Metadata Management, including VertexLabel, EdgeLabel, PropertyKey and IndexLabel
 - Multi-type Indexes, supporting exact query, range query and complex conditions combination query
-- Plug-in Backend Store Driver Framework, supporting RocksDB, Cassandra, ScyllaDB, HBase and MySQL now and easy to add other backend store driver if needed
+- Plug-in Backend Store Driver Framework, supporting RocksDB, HStore now and easy to add other backend store driver if needed
 - Integration with Hadoop/Spark
 
 ## Learn More
 
-The [project homepage](https://hugegraph.github.io/hugegraph-doc/) contains more information on HugeGraph and provides links to documentation, getting-started guides and release downloads.
+The [project homepage](https://starhugegraph.github.io/hugegraph-doc/) contains more information on HugeGraph and provides links to documentation, getting-started guides and release downloads.
 
 ## Contributing
 
