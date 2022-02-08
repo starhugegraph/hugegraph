@@ -46,11 +46,6 @@ jobs:
 
     - stage: tinkerpop-test
       if: branch =~ env(RELEASE_BRANCH)
-      env: BACKEND=scylladb SUITE=tinkerpop
-      script: $TRAVIS_DIR/run-tinkerpop-test.sh
-
-    - stage: tinkerpop-test
-      if: branch =~ env(RELEASE_BRANCH)
       env: BACKEND=mysql SUITE=tinkerpop
       script: $TRAVIS_DIR/run-tinkerpop-test.sh
 
@@ -107,7 +102,6 @@ env:
   matrix:
     - BACKEND=memory
     - BACKEND=cassandra
-    - BACKEND=scylladb
     - BACKEND=mysql
     - BACKEND=hbase
     - BACKEND=rocksdb

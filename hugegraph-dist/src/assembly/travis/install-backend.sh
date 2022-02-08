@@ -18,9 +18,6 @@ case $BACKEND in
     cassandra)
         $TRAVIS_DIR/install-cassandra.sh
         ;;
-    scylladb)
-        $TRAVIS_DIR/install-scylladb.sh
-        ;;
     hbase)
         $TRAVIS_DIR/install-hbase.sh
         ;;
