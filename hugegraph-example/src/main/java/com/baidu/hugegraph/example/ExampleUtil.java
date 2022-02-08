@@ -44,7 +44,6 @@ public class ExampleUtil {
         registered = true;
 
         RegisterUtil.registerRocksDB();
-        RegisterUtil.registerHstore();
     }
 
     public static HugeGraph loadGraph() {
