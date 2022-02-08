@@ -10,7 +10,7 @@
         <maven>3.3.9</maven>
     </prerequisites>
     <name>hugegraph</name>
-    <url>https://github.com/hugegraph/hugegraph</url>
+    <url>https://github.com/starhugegraph/hugegraph</url>
     <description>
         hugegraph is a fast-speed, highly-scalable, transactional graph database developed by baidu
     </description>
@@ -115,13 +115,7 @@
         <module>hugegraph-example</module>
         <module>hugegraph-dist</module>
         <module>hugegraph-test</module>
-        <module>hugegraph-cassandra</module>
-        <module>hugegraph-scylladb</module>
         <module>hugegraph-rocksdb</module>
-        <module>hugegraph-mysql</module>
-        <module>hugegraph-palo</module>
-        <module>hugegraph-hbase</module>
-        <module>hugegraph-postgresql</module>
         <module>hugegraph-hstore</module>
     </modules>
 
