@@ -22,7 +22,6 @@ package com.baidu.hugegraph.api.space;
 import java.util.Date;
 import java.util.Set;
 
-import javax.annotation.security.RolesAllowed;
 import javax.inject.Singleton;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
