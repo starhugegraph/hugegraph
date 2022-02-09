@@ -119,6 +119,7 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner,
         if (storeNotice.getPartitionLeaders() != null) {
             storeNotice.getPartitionLeaders().forEach((partId, leader) -> {
                 pdClient.updatePartitionLeader(graphName, partId, leader);
+                LOG.warn("updatePartitionLeader:{}-{}-{} ",graphName, partId, leader);
             });
         }
         if (storeNotice.getPartitionIds() != null) {
