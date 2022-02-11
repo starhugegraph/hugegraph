@@ -260,16 +260,13 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
             int scanType = Session.SCAN_ANY |
                     (query.withProperties() ? 0 : Session.SCAN_KEYONLY);
             if (!ArrayUtils.isEmpty(begin))
-            return query instanceof ConditionQuery ?
-                   session.scan(this.table(), ownerKey, ownerKey, begin,
-                                null, scanType,
-                                ((ConditionQuery) query).bytes()) :
-                   session.scan(this.table(), ownerKey, ownerKey, begin,
-                                null, scanType);
+            return session.scan(this.table(), ownerKey, ownerKey, begin,
+                             null, scanType,
+                             query instanceof ConditionQuery ?
+                             ((ConditionQuery) query).bytes() : null);
         }
-        return query instanceof ConditionQuery ?
-               session.scan(this.table(), ((ConditionQuery) query).bytes()) :
-               session.scan(this.table());
+        return session.scan(this.table(),query instanceof ConditionQuery ?
+                                         ((ConditionQuery) query).bytes() : null) ;
     }
 
     protected BackendColumnIterator queryById(Session session, Id id) {
