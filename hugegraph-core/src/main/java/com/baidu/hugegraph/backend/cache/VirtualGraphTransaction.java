@@ -202,6 +202,8 @@ public final class VirtualGraphTransaction extends GraphTransaction {
                 if (results.size() <= 0) {
                     // query all edges of this vertex from backend
                     ConditionQuery vertexAllEdgeQuery = constructEdgesQuery(vId, BOTH);
+                    vertexAllEdgeQuery.capacity(query.capacity());
+                    vertexAllEdgeQuery.limit(query.limit());
                     Iterator<HugeEdge> allEdges = super.queryEdgesFromBackend(vertexAllEdgeQuery);
                     List<HugeEdge> allEdgeList = new ArrayList<>();
                     allEdges.forEachRemaining(e -> {
@@ -210,7 +212,10 @@ public final class VirtualGraphTransaction extends GraphTransaction {
                             results.add(e);
                         }
                     });
-                    putEdgesToVirtualGraph(vertexAllEdgeQuery, allEdgeList.listIterator());
+                    if (query.limit() == Query.NO_LIMIT || allEdgeList.size() < query.limit()) {
+                        // got all edges of this vertex
+                        putEdgesToVirtualGraph(vertexAllEdgeQuery, allEdgeList.listIterator());
+                    }
                 }
                 return null;
             }

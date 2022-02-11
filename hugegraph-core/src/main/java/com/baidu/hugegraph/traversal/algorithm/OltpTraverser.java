@@ -195,13 +195,13 @@ public abstract class OltpTraverser extends HugeTraverser
             return ImmutableSet.of();
         }
 
-        Set<Id> neighbors = newSet(true);
+        Set<Id> neighbors = newSet(concurrent);
         this.traverseIds(vertices.iterator(), new AdjacentVerticesConsumer(
                 sourceV, dir, label, excluded, degree, limit, neighbors
         ), concurrent);
 
         if (limit != NO_LIMIT && neighbors.size() > limit) {
-            int redundantNeighborsCount = (int)(neighbors.size() - limit);
+            int redundantNeighborsCount = (int) (neighbors.size() - limit);
             List<Id> redundantNeighbors = new ArrayList<>(redundantNeighborsCount);
             for (Id vId: neighbors) {
                 redundantNeighbors.add(vId);
@@ -209,7 +209,7 @@ public abstract class OltpTraverser extends HugeTraverser
                     break;
                 }
             }
-            neighbors.removeAll(redundantNeighbors);
+            redundantNeighbors.forEach(neighbors::remove);
         }
 
         return neighbors;
@@ -265,7 +265,7 @@ public abstract class OltpTraverser extends HugeTraverser
             return (Id t) -> {
                 accept(t);
                 if (limit != NO_LIMIT && neighbors.size() >= limit) {
-                    //
+                    return;
                 } else {
                     after.accept(t);
                 }
