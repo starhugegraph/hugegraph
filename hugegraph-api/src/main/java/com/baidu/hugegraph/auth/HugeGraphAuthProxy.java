@@ -1311,7 +1311,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     protected static final void logUser(User user, String path) {
-        LOGGER.getAuditLogger().logUserLogin(user.username(), user.client(), path);
+        
     }
 
     static class Context {
