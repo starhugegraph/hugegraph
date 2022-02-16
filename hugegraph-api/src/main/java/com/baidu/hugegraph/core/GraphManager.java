@@ -40,6 +40,8 @@ import com.baidu.hugegraph.k8s.K8sDriverProxy;
 import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.pd.client.PDClient;
 import com.baidu.hugegraph.pd.client.PDConfig;
+import com.baidu.hugegraph.pd.grpc.discovery.NodeInfos;
+import com.baidu.hugegraph.registerimpl.PdRegister;
 import com.baidu.hugegraph.space.SchemaTemplate;
 import com.baidu.hugegraph.traversal.optimize.HugeScriptTraversal;
 import com.baidu.hugegraph.type.define.GraphReadMode;
@@ -58,6 +60,7 @@ import org.slf4j.Logger;
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.HugeFactory;
 import com.baidu.hugegraph.HugeGraph;
+import com.baidu.hugegraph.RegisterConfig;
 import com.baidu.hugegraph.StandardHugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.auth.AuthManager;
@@ -138,6 +141,8 @@ public final class GraphManager {
     private HugeConfig config;
 
     private K8sDriver.CA ca;
+
+    private String pdK8sServiceId;
 
     public GraphManager(HugeConfig conf, EventHub hub) {
         E.checkArgumentNotNull(conf, "The config can't be null");
@@ -355,6 +360,11 @@ public final class GraphManager {
                                           Service.DeploymentType.MANUAL);
             service.description(service.name());
             service.url(this.url);
+
+            // register self to pd, should prior to etcd due to pdServiceId info
+            this.registerServiceToPd(service);
+
+            // register to etcd
             this.metaManager.addServiceConfig(this.serviceGraphSpace, service);
             this.metaManager.notifyServiceAdd(this.serviceGraphSpace,
                                               this.serviceID);
@@ -549,6 +559,42 @@ public final class GraphManager {
         this.graphSpaces.remove(name);
     }
 
+    private void registerServiceToPd(Service service) {
+        try {
+            PdRegister register = PdRegister.getInstance();
+            RegisterConfig config = new RegisterConfig()
+                                    .setAppName(service.name())
+                                    .setGrpcAddress(this.pdPeers)
+                                    .setUrls(service.urls())
+                                    .setLabelMap(ImmutableMap.of());
+            String pdServiceId = register.registerService(config);
+            service.pdServiceId(pdServiceId);
+            LOG.debug("pd registered, serviceId is {}, going to validate", pdServiceId);
+            Map<String, NodeInfos> infos = register.getServiceInfo(pdServiceId);
+            
+            for(Map.Entry<String, NodeInfos> entry : infos.entrySet()) {
+                NodeInfos info = entry.getValue();
+                info.getInfoList().forEach(node -> {
+                    LOG.debug("Registered Info serviceId {}: appName: {} , id: {} , address: {}",
+                       entry.getKey(), node.getAppName(), node.getId(), node.getAddress());
+                });
+            }
+        } catch (Exception e) {
+            LOG.error("Failed to register service to pd", e);
+        }
+    }
+
+    public void registerK8StoPd() throws Exception {
+        try {
+            PdRegister register = PdRegister.getInstance();
+            String pdServiceId = register.init(this.serverId.asString());
+            this.pdK8sServiceId = pdServiceId;
+        } catch (Exception e) {
+            LOG.error("Register service k8s external info to pd failed!", e);
+            throw e;
+        }
+    }
+
     public Service createService(String graphSpace, Service service) {
         String name = service.name();
         checkServiceName(name);
@@ -581,6 +627,9 @@ public final class GraphManager {
                 }
                 service.urls(urls);
             }
+            // Register to pd. The order here is important since pdServiceId will be stored in etcd
+            this.registerServiceToPd(service);
+            // Persist to etcd
             this.metaManager.addServiceConfig(graphSpace, service);
             this.metaManager.notifyServiceAdd(graphSpace, name);
             this.services.put(serviceName(graphSpace, name), service);
@@ -594,7 +643,9 @@ public final class GraphManager {
     public void dropService(String graphSpace, String name) {
         GraphSpace gs = this.graphSpace(graphSpace);
         Service service = this.metaManager.service(graphSpace, name);
-        this.k8sManager.stopService(gs, service);
+        if (service.k8s()) {
+            this.k8sManager.stopService(gs, service);
+        }
         LockResult lock = this.metaManager.lock(this.cluster, graphSpace, name);
         this.metaManager.removeServiceConfig(graphSpace, name);
         this.metaManager.notifyServiceRemove(graphSpace, name);
@@ -606,6 +657,14 @@ public final class GraphManager {
         this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
         this.metaManager.notifyGraphSpaceUpdate(graphSpace);
         this.metaManager.unlock(lock, this.cluster, graphSpace);
+
+        String pdServiceId = service.pdServiceId();
+        LOG.debug("Going to unregister service {} from Pd", pdServiceId);
+        if (StringUtils.isNotEmpty(pdServiceId)) {
+            PdRegister register = PdRegister.getInstance();
+            register.unregister(service.pdServiceId());
+            LOG.debug("Service {} has been withdrew from Pd", pdServiceId);
+        }
     }
 
     public HugeGraph createGraph(String graphSpace, String name,
@@ -635,8 +694,8 @@ public final class GraphManager {
                         storeName, name);
 
         HugeConfig config = new HugeConfig(propConfig);
-        this.checkOptions(config);
-        HugeGraph graph = this.createGraph(graphSpace, config, init);
+        this.checkOptions(graphSpace, config);
+        HugeGraph graph = this.createGraph(graphSpace, config, this.authManager, init);
         graph.graphSpace(graphSpace);
         String graphName = graphName(graphSpace, name);
         if (init) {
@@ -644,7 +703,6 @@ public final class GraphManager {
             this.metaManager.addGraphConfig(graphSpace, name, configs);
             this.metaManager.notifyGraphAdd(graphSpace, name);
         }
-        graph.switchAuthManager(this.authManager);
         this.graphs.put(graphName, graph);
         this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
         // Let gremlin server and rest server context add graph
@@ -679,7 +737,7 @@ public final class GraphManager {
     }
 
     private HugeGraph createGraph(String graphSpace, HugeConfig config,
-                                  boolean init) {
+                                  AuthManager authManager, boolean init) {
         // open succeed will fill graph instance into HugeFactory graphs(map)
         HugeGraph graph;
         try {
@@ -688,6 +746,7 @@ public final class GraphManager {
             LOG.error("Exception occur when open graph", e);
             throw e;
         }
+        graph.switchAuthManager(authManager);
         graph.graphSpace(graphSpace);
         if (this.requireAuthentication()) {
             /*
@@ -733,9 +792,9 @@ public final class GraphManager {
         return propConfig;
     }
 
-    private void checkOptions(HugeConfig config) {
+    private void checkOptions(String graphSpace, HugeConfig config) {
         // The store cannot be the same as the existing graph
-        this.checkOptionsUnique(config, CoreOptions.STORE);
+        this.checkOptionsUnique(graphSpace, config, CoreOptions.STORE);
         // NOTE: rocksdb can't use same data path for different graph,
         // but it's not easy to check here
         String backend = config.get(CoreOptions.BACKEND);
@@ -1160,12 +1219,17 @@ public final class GraphManager {
                                   () -> TaskManager.instance().pendingTasks());
     }
 
-    private void checkOptionsUnique(HugeConfig config,
+    private void checkOptionsUnique(String graphSpace,
+                                    HugeConfig config,
                                     TypedOption<?, ?> option) {
         Object incomingValue = config.get(option);
         for (String graphName : this.graphs.keySet()) {
             String[] parts = graphName.split(DELIMETER);
-            Object existedValue = this.graph(parts[0], parts[1]).option(option);
+            HugeGraph hugeGraph = this.graph(graphSpace, parts[1]);
+            if (hugeGraph == null) {
+                continue;
+            }
+            Object existedValue = hugeGraph.option(option);
             E.checkArgument(!incomingValue.equals(existedValue),
                             "The option '%s' conflict with existed",
                             option.name());
