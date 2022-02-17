@@ -118,13 +118,13 @@ public class ManagerAPI extends API {
     @Consumes(APPLICATION_JSON)
     @RolesAllowed({"admin"})
     public String list(@Context GraphManager manager,
-                             @QueryParam("type") HugePermission type,
-                             @QueryParam("graphspace") String graphSpace) {
+                       @QueryParam("type") HugePermission type,
+                       @QueryParam("graphspace") String graphSpace) {
         LOG.debug("list graph manager: {} {}", type, graphSpace);
 
         AuthManager authManager = manager.authManager();
         E.checkArgument(type == HugePermission.SPACE ||
-                                type == HugePermission.ADMIN,
+                        type == HugePermission.ADMIN,
                         "The type could be 'SPACE' or 'ADMIN'");
 
         List<String> adminManagers;

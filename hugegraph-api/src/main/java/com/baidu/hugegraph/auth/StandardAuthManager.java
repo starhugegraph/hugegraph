@@ -480,9 +480,9 @@ public class StandardAuthManager implements AuthManager {
         List<String> spaceManagers = new ArrayList<>();
         try {
             List<HugeBelong> belongs =
-                    this.metaManager.listBelongByGroup(
-                            graphSpace, IdGenerator.of(DEFAULT_SPACE_GROUP_KEY),
-                            -1);
+                    this.metaManager.listBelongByGroup(graphSpace,
+                                                       IdGenerator.of(DEFAULT_SPACE_GROUP_KEY),
+                                                       -1);
             for (HugeBelong belong : belongs) {
                 spaceManagers.add(belong.source().asString());
             }
@@ -528,9 +528,9 @@ public class StandardAuthManager implements AuthManager {
         Set<String> adminManagers = new HashSet<>();
         try {
             List<HugeBelong> belongs =
-                    this.metaManager.listBelongByGroup(
-                            ALL_GRAPH_SPACES, IdGenerator.of(DEFAULT_SPACE_GROUP_KEY),
-                            -1);
+                    this.metaManager.listBelongByGroup(ALL_GRAPH_SPACES,
+                                                       IdGenerator.of(DEFAULT_SPACE_GROUP_KEY),
+                                                       -1);
             for (HugeBelong belong : belongs) {
                 adminManagers.add(belong.source().asString());
             }
