@@ -680,6 +680,7 @@ public final class GraphManager {
                         "The graph name '%s' has existed", name);
 
         configs.put(ServerOptions.PD_PEERS.name(), this.pdPeers);
+        configs.put(CoreOptions.GRAPH_SPACE.name(), graphSpace);
         boolean auth = this.metaManager.graphSpace(graphSpace).auth();
         if (DEFAULT_GRAPH_SPACE_NAME.equals(graphSpace) || !auth) {
             configs.put("gremlin.graph", "com.baidu.hugegraph.HugeFactory");
@@ -694,8 +695,8 @@ public final class GraphManager {
                         storeName, name);
 
         HugeConfig config = new HugeConfig(propConfig);
-        this.checkOptions(config);
-        HugeGraph graph = this.createGraph(graphSpace, config, init);
+        this.checkOptions(graphSpace, config);
+        HugeGraph graph = this.createGraph(graphSpace, config, this.authManager, init);
         graph.graphSpace(graphSpace);
         String graphName = graphName(graphSpace, name);
         if (init) {
@@ -703,7 +704,6 @@ public final class GraphManager {
             this.metaManager.addGraphConfig(graphSpace, name, configs);
             this.metaManager.notifyGraphAdd(graphSpace, name);
         }
-        graph.switchAuthManager(this.authManager);
         this.graphs.put(graphName, graph);
         this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
         // Let gremlin server and rest server context add graph
@@ -738,7 +738,7 @@ public final class GraphManager {
     }
 
     private HugeGraph createGraph(String graphSpace, HugeConfig config,
-                                  boolean init) {
+                                  AuthManager authManager, boolean init) {
         // open succeed will fill graph instance into HugeFactory graphs(map)
         HugeGraph graph;
         try {
@@ -747,6 +747,7 @@ public final class GraphManager {
             LOG.error("Exception occur when open graph", e);
             throw e;
         }
+        graph.switchAuthManager(authManager);
         graph.graphSpace(graphSpace);
         if (this.requireAuthentication()) {
             /*
@@ -792,9 +793,9 @@ public final class GraphManager {
         return propConfig;
     }
 
-    private void checkOptions(HugeConfig config) {
+    private void checkOptions(String graphSpace, HugeConfig config) {
         // The store cannot be the same as the existing graph
-        this.checkOptionsUnique(config, CoreOptions.STORE);
+        this.checkOptionsUnique(graphSpace, config, CoreOptions.STORE);
         // NOTE: rocksdb can't use same data path for different graph,
         // but it's not easy to check here
         String backend = config.get(CoreOptions.BACKEND);
@@ -1219,12 +1220,17 @@ public final class GraphManager {
                                   () -> TaskManager.instance().pendingTasks());
     }
 
-    private void checkOptionsUnique(HugeConfig config,
+    private void checkOptionsUnique(String graphSpace,
+                                    HugeConfig config,
                                     TypedOption<?, ?> option) {
         Object incomingValue = config.get(option);
         for (String graphName : this.graphs.keySet()) {
             String[] parts = graphName.split(DELIMETER);
-            Object existedValue = this.graph(parts[0], parts[1]).option(option);
+            HugeGraph hugeGraph = this.graph(graphSpace, parts[1]);
+            if (hugeGraph == null) {
+                continue;
+            }
+            Object existedValue = hugeGraph.option(option);
             E.checkArgument(!incomingValue.equals(existedValue),
                             "The option '%s' conflict with existed",
                             option.name());
