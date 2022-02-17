@@ -19,11 +19,9 @@
 
 package com.baidu.hugegraph.backend.store.hstore;
 
-import java.util.List;
 import java.util.Set;
 
 import com.baidu.hugegraph.pd.common.PDException;
-import com.baidu.hugegraph.store.HgOwnerKey;
 import com.baidu.hugegraph.type.define.GraphMode;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -106,17 +104,12 @@ public abstract class HstoreSessions extends BackendSessionPool {
                              SCAN_LT_END);
         }
 
-        public abstract List<BackendColumnIterator> scan(String table,
-                                                   List<HgOwnerKey> keyFrom,
-                                                   List<HgOwnerKey> keyTo,
-                                                   int scanType);
         public abstract BackendColumnIterator scan(String table,
                                                    byte[] ownerKeyFrom,
                                                    byte[] ownerKeyTo,
                                                    byte[] keyFrom,
                                                    byte[] keyTo,
                                                    int scanType);
-
         public abstract BackendColumnIterator scan(String table,
                                                    byte[] ownerKeyFrom,
                                                    byte[] ownerKeyTo,
