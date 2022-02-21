@@ -697,6 +697,14 @@ public class CoreOptions extends OptionHolder {
                     "EC"
             );
 
+    public static final ConfigOption<Integer> OLTP_QUERY_BATCH_SIZE =
+            new ConfigOption<>(
+                    "oltp.query_batch_size",
+                    "The size of each batch when executing oltp algorithm.",
+                    rangeInt(0, 65535),
+                    1000
+            );
+
     public static final ConfigOption<Boolean> VIRTUAL_GRAPH_ENABLE =
             new ConfigOption<>(
                     "graph.virtual_graph_enable",

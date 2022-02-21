@@ -69,7 +69,6 @@ import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.util.collection.CollectionFactory;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 
 public class HugeTraverser {
@@ -161,6 +160,71 @@ public class HugeTraverser {
         }
         query.withProperties(withEdgeProperties);
         return this.graph.edges(query);
+    }
+
+    @Watched
+    protected Iterator<Iterator<Edge>> edgesOfVertices(Set<Id> sources, Directions dir,
+                                           Id label, long limit,
+                                           boolean withEdgeProperties) {
+
+        return new EdgesOfVerticesIterator(sources, dir, label, limit, withEdgeProperties);
+    }
+
+    class EdgesOfVerticesIterator implements Iterator<Iterator<Edge>> {
+
+        private final int batchSize;
+        private Id[] labels = {};
+        private Directions dir;
+        private long limit;
+        private boolean withEdgeProperties;
+        private Iterator<Id> sources;
+        private Iterator<Iterator<Edge>> currentIt;
+
+        public EdgesOfVerticesIterator(Set<Id> sources, Directions dir,
+                                       Id label, long limit,
+                                       boolean withEdgeProperties) {
+            this.sources = sources.iterator();
+            if (label != null) {
+                labels = new Id[]{label};
+            }
+            this.dir = dir;
+            this.limit = limit;
+            this.withEdgeProperties = withEdgeProperties;
+            this.batchSize = graph().option(CoreOptions.OLTP_QUERY_BATCH_SIZE);
+        }
+
+        @Override
+        public boolean hasNext() {
+            if (this.currentIt != null && this.currentIt.hasNext()) {
+                return true;
+            }
+            if (this.sources.hasNext()) {
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public Iterator<Edge> next() {
+            if (this.currentIt != null && this.currentIt.hasNext()) {
+                return this.currentIt.next();
+            }
+            while (this.sources.hasNext()) {
+                List<Query> queryList = new ArrayList<>(batchSize);
+                do {
+                    Id sourceId = this.sources.next();
+                    queryList.add(GraphTransaction.constructEdgesQuery(sourceId, this.dir, this.labels));
+                } while (queryList.size() < batchSize && this.sources.hasNext());
+
+                List<Iterator<Edge>> its = graph().edges(queryList);
+                Iterator<Iterator<Edge>> cit = its.listIterator();
+                if (cit.hasNext()) {
+                    this.currentIt = cit;
+                    return this.currentIt.next();
+                }
+            }
+            return null;
+        }
     }
 
     @Watched
