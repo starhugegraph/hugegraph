@@ -687,7 +687,7 @@ public class CoreOptions extends OptionHolder {
             new ConfigOption<>(
                     "graph.virtual_graph_enable",
                     "Whether to enable the Virtual Graph.",
-                    true
+                    false
             );
 
     public static final ConfigOption<Integer> VIRTUAL_GRAPH_BATCH_BUFFER_SIZE =
