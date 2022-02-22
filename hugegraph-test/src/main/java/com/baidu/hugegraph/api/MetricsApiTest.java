@@ -99,11 +99,13 @@ public class MetricsApiTest extends BaseApiTest {
         }
     }
 
-    @Test
-    public void testPrometheusAll() {
-        Response r = client().get(path, ImmutableMap.of());
-        String result = assertResponseStatus(200, r);
-        Assert.assertContains(
-                "com_baidu_hugegraph_vgraph_VirtualGraph_hugegraph_hits", result);
-    }
+//    There is no default graph in v3.0.0, disable this test case
+//    @Test
+//    public void testPrometheusAll() {
+//
+//        Response r = client().get(path, ImmutableMap.of());
+//        String result = assertResponseStatus(200, r);
+//        Assert.assertContains(
+//                "com_baidu_hugegraph_vgraph_VirtualGraph_DEFAULT_hugegraph_hits", result);
+//    }
 }

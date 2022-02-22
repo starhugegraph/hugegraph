@@ -77,7 +77,8 @@ public class VirtualGraph {
         this.graphParams = graphParams;
         this.hits = new Meter();
         this.calls = new Timer();
-        this.metricsNamePrefix = MetricRegistry.name(this.getClass(), this.graphParams.name());
+        this.metricsNamePrefix = MetricRegistry.name(this.getClass(),
+                this.graphParams.graph().graphSpace(), this.graphParams.graph().name());
         this.init();
     }
 
