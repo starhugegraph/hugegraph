@@ -25,7 +25,6 @@ import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.task.HugeTask;
 import com.baidu.hugegraph.task.TaskCallable;
-import com.baidu.hugegraph.task.TaskScheduler;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.util.E;
 
@@ -35,6 +34,7 @@ public class JobBuilder<V> {
 
     private String name;
     private String input;
+    private String context;
     private Job<V> job;
     private Set<Id> dependencies;
 
@@ -66,6 +66,11 @@ public class JobBuilder<V> {
         return this;
     }
 
+    public JobBuilder<V> context(String context) {
+        this.context = context;
+        return this;
+    }
+
     public HugeTask<V> schedule() {
         E.checkArgumentNotNull(this.name, "Job name can't be null");
         E.checkArgumentNotNull(this.job, "Job callable can't be null");
@@ -80,6 +85,7 @@ public class JobBuilder<V> {
         HugeTask<V> task = new HugeTask<>(this.genTaskId(), null, job);
         task.type(this.job.type());
         task.name(this.name);
+        task.context(context);
         if (this.input != null) {
             task.input(this.input);
         }
@@ -88,9 +94,8 @@ public class JobBuilder<V> {
                 task.depends(depend);
             }
         }
-
-        TaskScheduler scheduler = this.graph.taskScheduler();
-        scheduler.schedule(task);
+        // TaskScheduler scheduler = this.graph.taskScheduler();
+        // scheduler.schedule(task);
 
         return task;
     }
