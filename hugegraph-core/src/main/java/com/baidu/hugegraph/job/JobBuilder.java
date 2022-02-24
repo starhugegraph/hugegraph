@@ -25,6 +25,7 @@ import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.task.HugeTask;
 import com.baidu.hugegraph.task.TaskCallable;
+import com.baidu.hugegraph.task.TaskScheduler;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.util.E;
 
@@ -94,8 +95,8 @@ public class JobBuilder<V> {
                 task.depends(depend);
             }
         }
-        // TaskScheduler scheduler = this.graph.taskScheduler();
-        // scheduler.schedule(task);
+        TaskScheduler scheduler = this.graph.taskScheduler();
+        scheduler.schedule(task);
 
         return task;
     }

@@ -96,6 +96,7 @@ import com.baidu.hugegraph.type.define.NodeRole;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.util.RateLimiter;
+import com.google.common.base.Strings;
 
 public final class HugeGraphAuthProxy implements HugeGraph {
 
@@ -990,7 +991,8 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     class TaskSchedulerProxy extends TaskScheduler {
 
         private final TaskScheduler taskScheduler;
-
+        private final HugeGraphLogger LOGGER =
+                        Log.getLogger(TaskSchedulerProxy.class);
         public TaskSchedulerProxy(TaskScheduler origin) {
             super(origin);
             this.taskScheduler = origin;
@@ -1015,8 +1017,11 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
         @Override
         public <V> Future<?> schedule(HugeTask<V> task) {
+            LOGGER.logCustomDebug("====> going to set task context {}", "Scorpiour", getContextString());
             verifyTaskPermission(HugePermission.EXECUTE);
-            task.context(getContextString());
+            if (Strings.isNullOrEmpty(task.context())) {
+                task.context(getContextString());
+            }
             return this.taskScheduler.schedule(task);
         }
 
