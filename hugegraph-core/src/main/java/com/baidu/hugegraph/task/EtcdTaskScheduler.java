@@ -155,7 +155,6 @@ public class EtcdTaskScheduler extends TaskScheduler {
         this.backupForLoadTaskExecutor = backupForLoadTaskExecutor;
         this.taskDBExecutor = taskDBExecutor;
 
-
         this.eventListener =  this.listenChanges();
         MetaManager manager = MetaManager.instance();
         for (int i = 0; i <= maxDepth.getValue(); i++) {
@@ -279,6 +278,16 @@ public class EtcdTaskScheduler extends TaskScheduler {
     public <V> Future<?> schedule(HugeTask<V> task) {
         E.checkArgumentNotNull(task, "Task can't be null");
 
+        if (task.status() == TaskStatus.NEW && Strings.isNullOrEmpty(task.context())) {
+            LOGGER.logCustomDebug("attach context to task {} ", "Scorpiour", task.id().asString());
+            String currentContext = TaskManager.getContext();
+            if (!Strings.isNullOrEmpty(currentContext)) {
+                task.context(TaskManager.getContext());
+            }
+        } else {
+            LOGGER.logCustomDebug("task {} has context already", "Scorpiour", task.id().asString());
+        }
+
         if (task.callable() instanceof EphemeralJob) {
             task.status(TaskStatus.QUEUED);
             return this.submitEphemeralTask(task);
@@ -299,9 +308,7 @@ public class EtcdTaskScheduler extends TaskScheduler {
     }
 
     private <V> Id saveWithId(HugeTask<V> task) {
-        Exception e = new Exception("Inspect stack trace when etcd scheduler save task");
-        e.printStackTrace();
-
+        
         task.scheduler(this);
         E.checkArgumentNotNull(task, "Task can't be null");
         HugeVertex v = this.call(() -> {

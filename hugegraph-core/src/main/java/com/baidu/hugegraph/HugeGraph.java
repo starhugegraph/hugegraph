@@ -121,12 +121,14 @@ public interface HugeGraph extends Graph {
     public Iterator<Vertex> vertices(Object... objects);
     public Iterator<Vertex> vertices(Query query);
     public Iterator<Vertex> adjacentVertex(Object id);
+    public Iterator<Vertex> adjacentVertexWithProp(Object... ids);
     public boolean checkAdjacentVertexExist();
 
     public Edge edge(Object object);
     @Override
     public Iterator<Edge> edges(Object... objects);
     public Iterator<Edge> edges(Query query);
+    public Iterator<Edge> edgesWithProp(Object... objects);
     public Iterator<Vertex> adjacentVertices(Iterator<Edge> edges) ;
     public Iterator<Edge> adjacentEdges(Id vertexId);
 
@@ -135,6 +137,7 @@ public interface HugeGraph extends Graph {
     public String graphSpace();
     public void graphSpace(String graphSpace);
     public String name();
+    public String spaceGraphName();
     public String backend();
     public String backendVersion();
     public BackendStoreSystemInfo backendStoreSystemInfo();
