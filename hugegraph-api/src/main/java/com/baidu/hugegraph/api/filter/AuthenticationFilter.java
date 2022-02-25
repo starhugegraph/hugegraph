@@ -50,6 +50,7 @@ import com.baidu.hugegraph.auth.HugeAuthenticator.User;
 import com.baidu.hugegraph.auth.RolePermission;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.logger.HugeGraphLogger;
+import com.baidu.hugegraph.space.GraphSpace;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import com.google.common.collect.ImmutableList;
@@ -219,24 +220,25 @@ public class AuthenticationFilter implements ContainerRequestFilter {
         }
 
         private boolean matchPermission(String required) {
-            boolean valid;
-            RequiredPerm requiredPerm;
+            boolean valid = false;
+            RequiredPerm requiredPerm = null;
+
 
             if (!required.startsWith(HugeAuthenticator.KEY_GRAPHSPACE)) {
                 // Permission format like: "admin"
                 requiredPerm = new RequiredPerm();
                 requiredPerm.owner(required);
                 valid = RolePerm.match(this.role(), requiredPerm);
-            } else {
+            } else {  
                 // The required like:
                 // $graphspace=graphspace $owner=graph1 $action=vertex_write
                 requiredPerm = RequiredPerm.fromPermission(required);
 
                 /*
-                 * Replace graphspace value (it may be a variable) if the
-                 * permission format like:
-                 * "$graphspace=$graphspace $owner=$graph $action=vertex_write"
-                 */
+                * Replace graphspace value (it may be a variable) if the
+                * permission format like:
+                * "$graphspace=$graphspace $owner=$graph $action=vertex_write"
+                */
                 String graphSpace = requiredPerm.graphSpace();
                 if (graphSpace.startsWith(HugeAuthenticator.VAR_PREFIX)) {
                     int prefixLen = HugeAuthenticator.VAR_PREFIX.length();
@@ -246,37 +248,29 @@ public class AuthenticationFilter implements ContainerRequestFilter {
                     requiredPerm.graphSpace(graphSpace);
                 }
 
-                /*
-                 * Replace owner value(it may be a variable) if the permission
-                 * format like: "$graphspace=$graphspace $owner=$graph $action=vertex_write"
-                 */
-                String owner = requiredPerm.owner();
-                if (owner.startsWith(HugeAuthenticator.VAR_PREFIX)) {
-                    // Replace `$graph` with graph name like "graph1"
-                    int prefixLen = HugeAuthenticator.VAR_PREFIX.length();
-                    assert owner.length() > prefixLen;
-                    owner = owner.substring(prefixLen);
-                    owner = this.getPathParameter(owner);
-                    requiredPerm.owner(owner);
-                }
-
-                if (manager.isAuth()) {
+                GraphSpace space = manager.graphSpace(graphSpace);
+                Boolean isAuth = null != space && space.auth();
+                if (isAuth) {
+                    /*
+                    * Replace owner value(it may be a variable) if the permission
+                    * format like: "$graphspace=$graphspace $owner=$graph $action=vertex_write"
+                    */
+                    String owner = requiredPerm.owner();
+                    if (owner.startsWith(HugeAuthenticator.VAR_PREFIX)) {
+                        // Replace `$graph` with graph name like "graph1"
+                        int prefixLen = HugeAuthenticator.VAR_PREFIX.length();
+                        assert owner.length() > prefixLen;
+                        owner = owner.substring(prefixLen);
+                        owner = this.getPathParameter(owner);
+                        requiredPerm.owner(owner);
+                    }
                     valid = RolePerm.match(this.role(), requiredPerm);
                 } else {
                     valid = true;
                 }
             }
 
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.logCustomDebug(
-                    "Verify permission {} {} for user '{}' with role {}",
-                    "Jermy Li",
-                    requiredPerm.action().string(),
-                    requiredPerm.resourceObject(),
-                    this.user.username(), this.user.role());
-            }
-
-            if (!valid &&
+            if (!valid && null != requiredPerm &&
                 !required.equals(HugeAuthenticator.USER_ADMIN)) {
                     LOGGER.getAuditLogger().logUserAccessDenied(
                         user.userId().asString(),

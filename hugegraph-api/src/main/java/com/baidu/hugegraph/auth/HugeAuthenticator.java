@@ -376,12 +376,13 @@ public interface HugeAuthenticator extends Authenticator {
             return new RolePerm((Map) table.map());
         }
 
-        public static boolean match(Object role, RequiredPerm requiredPerm) {
-            if (role == ROLE_ADMIN ||
+        public static boolean match(RolePermission role, RequiredPerm requiredPerm) {
+
+            if (role.equals(ROLE_ADMIN) ||
                 RolePermission.isAdmin((RolePermission) role)) {
                 return true;
             }
-            if (role == ROLE_NONE) {
+            if (role.equals(ROLE_NONE)) {
                 return false;
             }
 
