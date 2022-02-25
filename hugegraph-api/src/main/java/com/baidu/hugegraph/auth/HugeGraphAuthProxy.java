@@ -545,7 +545,10 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
     @Override
     public void close() throws Exception {
-        this.verifyAdminPermission();
+        // close() is usually raised by local script
+        // or SIGINT / SIGKILL, so that verifyPermission
+        // is not suitable here
+        // this.verifyAdminPermission();
         this.hugegraph.close();
     }
 
@@ -1066,7 +1069,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
         @Override
         public boolean close() {
-            verifyAdminPermission();
+            // verifyAdminPermission();
             return this.taskScheduler.close();
         }
 
