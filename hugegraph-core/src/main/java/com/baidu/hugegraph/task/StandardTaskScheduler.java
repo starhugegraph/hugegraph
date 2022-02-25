@@ -146,16 +146,11 @@ public class StandardTaskScheduler extends TaskScheduler {
     public <V> Future<?> schedule(HugeTask<V> task) {
         E.checkArgumentNotNull(task, "Task can't be null");
 
-        LOGGER.logCustomDebug("current context of TaskManager {}", "Scorpiour", TaskManager.getContext());
-
         if (task.status() == TaskStatus.NEW && Strings.isNullOrEmpty(task.context())) {
-            LOGGER.logCustomDebug("attach context to task {} ", "Scorpiour", task.id().asString());
             String currentContext = TaskManager.getContext();
             if (!Strings.isNullOrEmpty(currentContext)) {
                 task.context(TaskManager.getContext());
             }
-        } else {
-            LOGGER.logCustomDebug("task {} has context already", "Scorpiour", task.id().asString());
         }
 
         if (task.status() == TaskStatus.QUEUED) {

@@ -1020,7 +1020,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
         @Override
         public <V> Future<?> schedule(HugeTask<V> task) {
-            LOGGER.logCustomDebug("====> going to set task context {}", "Scorpiour", getContextString());
             verifyTaskPermission(HugePermission.EXECUTE);
             if (Strings.isNullOrEmpty(task.context())) {
                 task.context(getContextString());
