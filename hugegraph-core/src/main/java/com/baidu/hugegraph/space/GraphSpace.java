@@ -194,7 +194,7 @@ public class GraphSpace {
     }
 
     public void oltpNamespace(String oltpNamespace) {
-        E.checkArgument(oltpNamespace != null &&
+        E.checkArgument(oltpNamespace != null && "null" != oltpNamespace &&
                         !StringUtils.isEmpty(oltpNamespace),
                         "The oltp graph space can't be null or empty");
         this.oltpNamespace = oltpNamespace;
@@ -205,7 +205,7 @@ public class GraphSpace {
     }
 
     public void olapNamespace(String olapNamespace) {
-        E.checkArgument(olapNamespace != null &&
+        E.checkArgument(olapNamespace != null && "null" != olapNamespace &&
                         !StringUtils.isEmpty(olapNamespace),
                         "The olap graph space can't be null or empty");
         this.olapNamespace = olapNamespace;
@@ -216,7 +216,7 @@ public class GraphSpace {
     }
 
     public void storageNamespace(String storageNamespace) {
-        E.checkArgument(storageNamespace != null &&
+        E.checkArgument(storageNamespace != null && "null" != storagenamespace &&
                         !StringUtils.isEmpty(storageNamespace),
                         "The storage graph space can't be null or empty");
         this.storageNamespace = storageNamespace;
