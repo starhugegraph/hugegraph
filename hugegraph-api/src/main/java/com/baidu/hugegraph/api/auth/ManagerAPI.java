@@ -156,14 +156,9 @@ public class ManagerAPI extends API {
         AuthManager authManager = manager.authManager();
         String user = authManager.username();
 
-        E.checkArgument(type == HugePermission.SPACE ||
-                        type == HugePermission.ADMIN,
-                        "The type could be 'SPACE' or 'ADMIN'");
-
         boolean result;
         if (type == HugePermission.SPACE) {
-            E.checkArgument(manager.graphSpace(graphSpace) != null,
-                            "The graph space is not exist");
+            E.checkNotNull(manager.graphSpace(graphSpace), "graphspace");
 
             result = authManager.isSpaceManager(graphSpace, user);
         } else {

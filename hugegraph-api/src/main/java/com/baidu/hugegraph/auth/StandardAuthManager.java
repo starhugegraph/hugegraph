@@ -502,8 +502,8 @@ public class StandardAuthManager implements AuthManager {
             return this.metaManager.existBelong(graphSpace,
                                                 IdGenerator.of(belongId));
         } catch (Exception e) {
-            throw new HugeException("Exception occurs when " +
-                                            "check if is space manager", e);
+            throw new HugeException("Exception occurs when check if is space " +
+                                    "manager.", e);
         }
     }
 
