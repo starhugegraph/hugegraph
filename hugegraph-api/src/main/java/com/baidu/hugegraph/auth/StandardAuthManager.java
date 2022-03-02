@@ -497,8 +497,7 @@ public class StandardAuthManager implements AuthManager {
     public boolean isSpaceManager(String graphSpace, String user) {
         try {
             String belongId =
-                    this.metaManager.belongId(user,
-                                              DEFAULT_SPACE_GROUP_KEY);
+                    this.metaManager.belongId(user, DEFAULT_SPACE_GROUP_KEY);
 
             return this.metaManager.existBelong(graphSpace,
                                                 IdGenerator.of(belongId));
@@ -562,14 +561,13 @@ public class StandardAuthManager implements AuthManager {
 
     public boolean isAdminManager(String user) {
 
-        if (user.equals("admin")) {
+        if ("admin".equals(user)) {
             return true;
         }
 
         try {
             String belongId =
-                    this.metaManager.belongId(user,
-                                              DEFAULT_ADMIN_GROUP_KEY);
+                    this.metaManager.belongId(user, DEFAULT_ADMIN_GROUP_KEY);
             return this.metaManager.existBelong(ALL_GRAPH_SPACES,
                                                 IdGenerator.of(belongId));
         } catch (Exception e) {

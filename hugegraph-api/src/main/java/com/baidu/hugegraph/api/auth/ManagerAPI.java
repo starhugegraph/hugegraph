@@ -151,13 +151,13 @@ public class ManagerAPI extends API {
                   graphSpace);
 
         E.checkArgument(type == HugePermission.SPACE ||
-                                type == HugePermission.ADMIN,
+                        type == HugePermission.ADMIN,
                         "The type could be 'SPACE' or 'ADMIN'");
         AuthManager authManager = manager.authManager();
         String user = authManager.username();
 
         E.checkArgument(type == HugePermission.SPACE ||
-                                type == HugePermission.ADMIN,
+                        type == HugePermission.ADMIN,
                         "The type could be 'SPACE' or 'ADMIN'");
 
         boolean result;
