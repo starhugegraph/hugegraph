@@ -38,9 +38,9 @@ public class OlapPropertyKeyCreateCallable extends SchemaCallable {
         SchemaTransaction schemaTx = this.params().schemaTransaction();
         PropertyKey propertyKey = schemaTx.getPropertyKey(this.schemaId());
         // TODO: shall we sync 2 actions here?
-        LOG.info("start create index label for olap pk");
+        LOG.debug("start create index label for olap pk");
         schemaTx.createIndexLabelForOlapPk(propertyKey);
-        LOG.info("start create olap pk");
+        LOG.debug("start create olap pk");
         schemaTx.createOlapPk(this.schemaId());
         return null;
     }

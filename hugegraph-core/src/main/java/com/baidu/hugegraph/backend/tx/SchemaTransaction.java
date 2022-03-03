@@ -607,7 +607,7 @@ public class SchemaTransaction extends IndexableTransaction {
                                                .job(callable)
                                                .dependencies(dependencies);
         HugeTask<?> task = builder.schedule();
-        LOG.info("olap pk create task {}", task);
+        LOG.debug("olap pk create task {}", task);
         // If TASK_SYNC_DELETION is true, wait async thread done before
         // continue. This is used when running tests.
         if (graph.option(CoreOptions.TASK_SYNC_DELETION)) {
