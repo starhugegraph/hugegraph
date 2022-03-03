@@ -482,9 +482,13 @@ public class StandardTaskScheduler extends TaskScheduler {
         @SuppressWarnings("unchecked")
         HugeTask<V> task = (HugeTask<V>) this.tasks.get(id);
         if (task != null) {
+            LOG.info("====Task in memory is {} ", task);
+            LOG.info("====Task in storage is {}", this.findTask(id));
             return task;
         }
-        return this.findTask(id);
+        task = this.findTask(id);
+        LOG.info("====memory not exist, task in storage is {}", task);
+        return task;
     }
 
     @Override
