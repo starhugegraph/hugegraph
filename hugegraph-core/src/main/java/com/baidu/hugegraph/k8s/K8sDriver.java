@@ -636,7 +636,7 @@ public class K8sDriver {
                                   graphSpace.name(),
                                   service.type().name().toLowerCase(),
                                   service.name());
-        return name.replace("_", ".");
+        return name.replace("_", "-");
     }
 
     private static void sleepAWhile(int second) {
