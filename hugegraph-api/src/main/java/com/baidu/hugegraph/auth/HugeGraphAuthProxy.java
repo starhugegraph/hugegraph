@@ -22,6 +22,7 @@ package com.baidu.hugegraph.auth;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -83,7 +84,6 @@ import com.baidu.hugegraph.structure.HugeElement;
 import com.baidu.hugegraph.structure.HugeFeatures;
 import com.baidu.hugegraph.structure.HugeVertex;
 import com.baidu.hugegraph.task.HugeTask;
-import com.baidu.hugegraph.task.ServerInfoManager;
 import com.baidu.hugegraph.task.TaskManager;
 import com.baidu.hugegraph.task.TaskScheduler;
 import com.baidu.hugegraph.task.TaskStatus;
@@ -92,7 +92,6 @@ import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.Namifiable;
 import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.type.define.GraphReadMode;
-import com.baidu.hugegraph.type.define.NodeRole;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.util.RateLimiter;
@@ -675,9 +674,9 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     @Override
-    public void serverStarted(Id serverId, NodeRole serverRole) {
+    public void serverStarted() {
         this.verifyAdminPermission();
-        this.hugegraph.serverStarted(serverId, serverRole);
+        this.hugegraph.serverStarted();
     }
 
     @Override
@@ -755,6 +754,50 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     public void resumeSnapshot() {
         this.verifyPermission(HugePermission.WRITE, ResourceType.STATUS);
         this.hugegraph.resumeSnapshot();
+    }
+
+
+    @Override
+    public String creator() {
+        this.verifyAnyPermission();
+        return this.hugegraph.creator();
+    }
+
+    @Override
+    public void creator(String creator) {
+        this.verifyAnyPermission();
+        this.hugegraph.creator(creator);
+    }
+
+    @Override
+    public Date createTime() {
+        this.verifyAnyPermission();
+        return this.hugegraph.createTime();
+    }
+
+    @Override
+    public void createTime(Date createTime) {
+        this.verifyAnyPermission();
+        this.hugegraph.createTime(createTime);
+        
+    }
+
+    @Override
+    public Date updateTime() {
+        this.verifyAnyPermission();
+        return this.hugegraph.updateTime();
+    }
+
+    @Override
+    public void updateTime(Date updateTime) {
+        this.verifyAnyPermission();
+        this.hugegraph.updateTime(updateTime);
+    }
+
+    @Override
+    public void refreshUpdateTime() {
+        this.verifyAnyPermission();
+        this.hugegraph.refreshUpdateTime();
     }
 
     private <V> Cache<Id, V> cache(String prefix, long capacity,
@@ -1086,12 +1129,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
             this.taskScheduler.waitUntilAllTasksCompleted(seconds);
         }
 
-        @Override
-        public void checkRequirement(String op) {
-            verifyAnyPermission();
-            this.taskScheduler.checkRequirement(op);
-        }
-
         private void verifyTaskPermission(HugePermission actionPerm) {
             verifyPermission(actionPerm, ResourceType.TASK);
         }
@@ -1140,12 +1177,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
             return Objects.equals(currentUser.getName(), taskUser.getName()) ||
                    RolePerm.match(currentUser.role(), taskUser.role(), null);
-        }
-
-        @Override
-        protected ServerInfoManager serverManager() {
-            // TODO Auto-generated method stub
-            return null;
         }
 
         @Override
@@ -1326,7 +1357,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         return contexts.get();
     }
 
-    protected static final String getContextString() {
+    public static final String getContextString() {
         Context context = getContext();
         if (context == null) {
             return null;
