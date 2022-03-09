@@ -20,6 +20,7 @@
 package com.baidu.hugegraph.api.auth;
 
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.security.RolesAllowed;
 import javax.inject.Singleton;
@@ -36,6 +37,9 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
 import com.baidu.hugegraph.auth.AuthManager;
+import com.baidu.hugegraph.auth.HugePermission;
+import com.baidu.hugegraph.auth.HugeResource;
+import com.baidu.hugegraph.auth.RolePermission;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 
@@ -143,7 +147,7 @@ public class UserAPI extends API {
 
         AuthManager authManager = manager.authManager();
         HugeUser user = authManager.getUser(IdGenerator.of(id), true);
-        return manager.authManager().rolePermission(user).toJson();
+        return manager.authManager().rolePermission(user).toFilterJson();
     }
 
     @DELETE

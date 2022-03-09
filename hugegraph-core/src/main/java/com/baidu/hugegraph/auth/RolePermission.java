@@ -22,6 +22,7 @@ package com.baidu.hugegraph.auth;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -164,6 +165,37 @@ public class RolePermission {
 
     public String toJson() {
         return JsonUtil.toJson(this);
+    }
+
+    public String toFilterJson() {
+        Map<String, Map<String, Map<HugePermission,
+                        List<HugeResource>>>> filterRoles = new HashMap<>();
+
+        for (Map.Entry<String, Map<String, Map<HugePermission,
+                       List<HugeResource>>>> gsp : this.roles.entrySet()) {
+            Map<String, Map<HugePermission,
+                            List<HugeResource>>> gpFilter = new HashMap<>();
+            for (Map.Entry<String, Map<HugePermission, List<HugeResource>>>
+                           gp : gsp.getValue().entrySet()) {
+                Map<HugePermission, List<HugeResource>> pFilter =
+                                                        new HashMap<>();
+                for (Map.Entry<HugePermission, List<HugeResource>>
+                               p : gp.getValue().entrySet()) {
+                    if (p.getKey() == HugePermission.ADMIN ||
+                        p.getKey() == HugePermission.SPACE) {
+                        continue;
+                    }
+                    pFilter.put(p.getKey(), p.getValue());
+                }
+                if (!pFilter.isEmpty()) {
+                    gpFilter.put(gp.getKey(), pFilter);
+                }
+            }
+            if (!gpFilter.isEmpty()) {
+                filterRoles.put(gsp.getKey(), gpFilter);
+            }
+        }
+        return JsonUtil.toJson(filterRoles);
     }
 
     public static RolePermission fromJson(Object json) {
