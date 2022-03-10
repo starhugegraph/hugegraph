@@ -22,10 +22,12 @@ package com.baidu.hugegraph.api.space;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import javax.inject.Singleton;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -34,6 +36,7 @@ import javax.ws.rs.core.Context;
 
 import com.codahale.metrics.annotation.Timed;
 import com.google.common.collect.ImmutableMap;
+import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.api.API;
@@ -140,5 +143,77 @@ public class HStoreAPI extends API {
         storeInfo.put("partitions", partitionInfos);
 
         return storeInfo;
+    }
+
+    @GET
+    @Timed
+    @Path("status")
+    @Produces(APPLICATION_JSON_WITH_CHARSET)
+    public Object status() {
+
+        LOG.debug("Get hstore cluster status");
+
+        String status = null;
+        try {
+            status = client().getClusterStats().getState().name();
+        } catch (PDException e) {
+            throw new HugeException("Get store cluster status error", e);
+        }
+
+        return ImmutableMap.of("status", status);
+    }
+
+    @GET
+    @Timed
+    @Path("split")
+    @Produces(APPLICATION_JSON_WITH_CHARSET)
+    public void split() {
+
+        LOG.debug("Trigger the cluster to split...");
+
+        // TODO
+        // client().splitData();
+    }
+
+    @GET
+    @Timed
+    @Path("{id}/startup")
+    @Produces(APPLICATION_JSON_WITH_CHARSET)
+    public void startup(@PathParam("id") long id) {
+
+        LOG.debug("Query Hstore cluster status");
+        Metapb.Store oldStore = null;
+        try {
+            oldStore = client().getStore(id);
+        } catch (PDException e) {
+            throw new HugeException("Get hstore node by id error", e);
+        }
+
+        Metapb.Store newStore = Metapb.Store.newBuilder(oldStore)
+                                            .setState(Metapb.StoreState.Up)
+                                            .build();
+        // TODO
+        // client().updateStore(newStore);
+    }
+
+    @GET
+    @Timed
+    @Path("{id}/shutdown")
+    @Produces(APPLICATION_JSON_WITH_CHARSET)
+    public void shutdown(@PathParam("id") long id) {
+
+        LOG.info("shutdown hstore node: %s");
+
+        Metapb.Store oldStore = null;
+        try {
+            oldStore = client().getStore(id);
+        } catch (PDException e) {
+            throw new HugeException("Get hstore node by id error", e);
+        }
+        Metapb.Store newStore = Metapb.Store.newBuilder(oldStore)
+                                            .setState(Metapb.StoreState.Up)
+                                            .build();
+        // TODO
+        // client().updateStore(newStore);
     }
 }
