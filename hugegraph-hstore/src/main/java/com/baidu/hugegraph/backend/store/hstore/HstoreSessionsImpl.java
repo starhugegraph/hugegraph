@@ -26,11 +26,15 @@ import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.pd.client.PDClient;
 import com.baidu.hugegraph.pd.client.PDConfig;
 import com.baidu.hugegraph.pd.grpc.Metapb;
-import com.baidu.hugegraph.store.*;
+import com.baidu.hugegraph.store.HgKvEntry;
+import com.baidu.hugegraph.store.HgKvIterator;
+import com.baidu.hugegraph.store.HgOwnerKey;
+import com.baidu.hugegraph.store.HgScanQuery;
+import com.baidu.hugegraph.store.HgSessionManager;
+import com.baidu.hugegraph.store.HgStoreSession;
 import com.baidu.hugegraph.store.client.HgStoreNodeManager;
 import com.baidu.hugegraph.store.client.util.HgStoreClientConst;
 import com.baidu.hugegraph.testutil.Assert;
-import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.util.Bytes;
 import com.baidu.hugegraph.util.E;
@@ -39,7 +43,14 @@ import com.baidu.hugegraph.util.StringEncoding;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -423,6 +434,20 @@ public class HstoreSessionsImpl extends HstoreSessions {
             return new ColumnIterator<HgKvIterator>(table, result, keyFrom,
                                                     keyTo, scanType);
         }
+        @Override
+        public BackendColumnIterator scan(String table, byte[] ownerKeyFrom,
+                                          byte[] ownerKeyTo, byte[] keyFrom,
+                                          byte[] keyTo, int scanType,
+                                          byte[] query,byte[] position) {
+            assert !this.hasChanges();
+            HgKvIterator result = this.graph.scanIterator(table,
+                                                          HgOwnerKey.of(ownerKeyFrom,keyFrom),
+                                                          HgOwnerKey.of(ownerKeyTo,keyTo),
+                                                          scanType,query);
+            result.seek(position);
+            return new ColumnIterator<HgKvIterator>(table, result, keyFrom,
+                                                    keyTo, scanType);
+        }
 
         @Override
         public BackendColumnIterator scan(String table, int codeFrom, int codeTo,
@@ -480,7 +505,6 @@ public class HstoreSessionsImpl extends HstoreSessions {
         private final byte[] keyEnd;
         private final int scanType;
 
-        private byte[] position;
         private byte[] value;   
         private boolean matched;
 
@@ -500,7 +524,6 @@ public class HstoreSessionsImpl extends HstoreSessions {
             this.keyBegin = keyBegin;
             this.keyEnd = keyEnd;
             this.scanType = scanType;
-            this.position = keyBegin;
             this.value = null;
             this.matched = false;
             if (this.iter.hasNext()) {
@@ -568,11 +591,11 @@ public class HstoreSessionsImpl extends HstoreSessions {
         boolean gotNext;
         @Override
         public boolean hasNext() {
-            if (this.gotNext){
-                this.position = this.iter.key();
-            } else {
-                this.position = null;
-            }
+            //if (this.gotNext){
+            //    this.position = this.iter.position();
+            //} else {
+            //    this.position = null;
+            //}
             return gotNext;
         }
 
@@ -647,7 +670,11 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public byte[] position() {
-            return this.position;
+            if (this.gotNext){
+                return this.iter.position();
+            } else {
+                return null;
+            }
         }
 
         @Override
