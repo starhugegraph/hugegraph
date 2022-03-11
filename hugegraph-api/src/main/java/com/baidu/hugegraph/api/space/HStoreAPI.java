@@ -26,6 +26,7 @@ import java.util.Map;
 import javax.inject.Singleton;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -172,7 +173,7 @@ public class HStoreAPI extends API {
         return ImmutableMap.of("status", status);
     }
 
-    @GET
+    @PUT
     @Timed
     @Path("split")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
@@ -191,7 +192,7 @@ public class HStoreAPI extends API {
     @Timed
     @Path("{id}/startup")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    public void startup(@Context HugeConfig config,
+    public Object startup(@Context HugeConfig config,
                         @PathParam("id") long id) {
 
         LOG.debug("Query Hstore cluster status");
@@ -212,13 +213,15 @@ public class HStoreAPI extends API {
             throw new HugeException(String.format("Startup node(%s) error", id),
                                     e);
         }
+
+        return "success";
     }
 
     @GET
     @Timed
     @Path("{id}/shutdown")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    public void shutdown(@Context HugeConfig config,
+    public Object shutdown(@Context HugeConfig config,
                          @PathParam("id") long id) {
 
         LOG.info("shutdown hstore node: %s");
@@ -239,5 +242,7 @@ public class HStoreAPI extends API {
             throw new HugeException(String.format("Shutdown node(%s) error", id),
                                     e);
         }
+
+        return "success";
     }
 }
