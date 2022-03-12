@@ -173,11 +173,11 @@ public class HStoreAPI extends API {
         return ImmutableMap.of("status", status);
     }
 
-    @PUT
+    @GET
     @Timed
     @Path("split")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    public void split(@Context HugeConfig config) {
+    public Object split(@Context HugeConfig config) {
 
         LOG.debug("Trigger the cluster to split...");
 
@@ -186,6 +186,8 @@ public class HStoreAPI extends API {
         } catch (PDException e) {
             throw new HugeException("Trigger split error", e);
         }
+
+        return "success";
     }
 
     @GET
