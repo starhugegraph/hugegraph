@@ -67,7 +67,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
     private static volatile PDClient DEFAULT_PD_CLIENT;
     private static volatile HstoreNodePartitionerImpl nodePartitioner = null;
     private static volatile Set<String> INFO_INITIALIZED_GRAPH =
-                            Collections.synchronizedSet(new HashSet<>());
+            Collections.synchronizedSet(new HashSet<>());
     private static final Logger LOG = Log.logger(HstoreSessionsImpl.class);
 
     public HstoreSessionsImpl(HugeConfig config, String database,
@@ -87,13 +87,13 @@ public class HstoreSessionsImpl extends HstoreSessions {
             synchronized (INITIALIZED_NODE) {
                 if (!INITIALIZED_NODE) {
                     HgStoreNodeManager nodeManager =
-                                       HgStoreNodeManager.getInstance();
+                            HgStoreNodeManager.getInstance();
                     DEFAULT_PD_CLIENT = PDClient.create(PDConfig.of(
-                                        config.get(HstoreOptions.PD_PEERS))
-                                        .setEnablePDNotify(true));
+                                                                        config.get(HstoreOptions.PD_PEERS))
+                                                                .setEnablePDNotify(true));
                     nodePartitioner = FakeHstoreNodePartitionerImpl
-                                      .NodePartitionerFactory
-                                      .getNodePartitioner(config,nodeManager);
+                            .NodePartitionerFactory
+                            .getNodePartitioner(config,nodeManager);
                     nodeManager.setNodeProvider(nodePartitioner);
                     nodeManager.setNodePartitioner(nodePartitioner);
                     nodeManager.setNodeNotifier(nodePartitioner);
@@ -236,10 +236,10 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public void reset() {
-           if (this.changedSize != 0){
-               this.rollback();
-               this.changedSize = 0;
-           }
+            if (this.changedSize != 0){
+                this.rollback();
+                this.changedSize = 0;
+            }
         }
         /**
          * Any change in the session
@@ -286,7 +286,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public boolean existsTable(String tableName) {
-           return this.graph.existsTable(tableName);
+            return this.graph.existsTable(tableName);
         }
 
         @Override
@@ -354,7 +354,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
         @Override
         public byte[] get(String table, byte[] key) {
             return this.graph.get(table,
-                   HgOwnerKey.of(HgStoreClientConst.ALL_PARTITION_OWNER, key));
+                                  HgOwnerKey.of(HgStoreClientConst.ALL_PARTITION_OWNER, key));
         }
 
         @Override
@@ -376,7 +376,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                           byte[] conditionQueryToByte) {
             assert !this.hasChanges();
             HgKvIterator results =
-                         this.graph.scanIterator(table, conditionQueryToByte);
+                    this.graph.scanIterator(table, conditionQueryToByte);
             return new ColumnIterator<HgKvIterator>(table, results);
         }
 
@@ -390,7 +390,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                           byte[] prefix) {
             assert !this.hasChanges();
             HgKvIterator result = this.graph.scanIterator(table,
-                                  HgOwnerKey.of(ownerKey, prefix));
+                                                          HgOwnerKey.of(ownerKey, prefix));
             return new ColumnIterator<HgKvIterator>(table, result);
         }
 
@@ -414,9 +414,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                           byte[] keyTo, int scanType) {
             assert !this.hasChanges();
             HgKvIterator result = this.graph.scanIterator(table,
-                                  HgOwnerKey.of(ownerKeyFrom,keyFrom),
-                                  HgOwnerKey.of(ownerKeyTo,keyTo),
-                                  scanType);
+                                                          HgOwnerKey.of(ownerKeyFrom,keyFrom),
+                                                          HgOwnerKey.of(ownerKeyTo,keyTo),
+                                                          scanType);
             return new ColumnIterator<HgKvIterator>(table, result, keyFrom,
                                                     keyTo, scanType);
         }
@@ -428,9 +428,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
                                           byte[] query) {
             assert !this.hasChanges();
             HgKvIterator result = this.graph.scanIterator(table,
-                                  HgOwnerKey.of(ownerKeyFrom,keyFrom),
-                                  HgOwnerKey.of(ownerKeyTo,keyTo),
-                                  scanType,query);
+                                                          HgOwnerKey.of(ownerKeyFrom,keyFrom),
+                                                          HgOwnerKey.of(ownerKeyTo,keyTo),
+                                                          scanType,query);
             return new ColumnIterator<HgKvIterator>(table, result, keyFrom,
                                                     keyTo, scanType);
         }
@@ -505,9 +505,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
         private final byte[] keyEnd;
         private final int scanType;
 
-        private byte[] value;   
+        private byte[] value;
         private boolean matched;
-
+        private byte[] position;
         public ColumnIterator(String table, T results) {
             this(table, results, null, null, 0);
         }
@@ -529,6 +529,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
             if (this.iter.hasNext()) {
                 this.iter.next();
                 this.gotNext = true;
+                this.position=iter.position();
             } else {
                 this.gotNext = false;
             };
@@ -538,17 +539,17 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         private void checkArguments() {
             E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
-                            this.match(Session.SCAN_PREFIX_END)),
+                              this.match(Session.SCAN_PREFIX_END)),
                             "Can't set SCAN_PREFIX_WITH_BEGIN and " +
                             "SCAN_PREFIX_WITH_END at the same time");
 
             E.checkArgument(!(this.match(Session.SCAN_PREFIX_BEGIN) &&
-                            this.match(Session.SCAN_GT_BEGIN)),
+                              this.match(Session.SCAN_GT_BEGIN)),
                             "Can't set SCAN_PREFIX_WITH_BEGIN and " +
                             "SCAN_GT_BEGIN/SCAN_GTE_BEGIN at the same time");
 
             E.checkArgument(!(this.match(Session.SCAN_PREFIX_END) &&
-                            this.match(Session.SCAN_LT_END)),
+                              this.match(Session.SCAN_LT_END)),
                             "Can't set SCAN_PREFIX_WITH_END and " +
                             "SCAN_LT_END/SCAN_LTE_END at the same time");
 
@@ -591,11 +592,11 @@ public class HstoreSessionsImpl extends HstoreSessions {
         boolean gotNext;
         @Override
         public boolean hasNext() {
-            //if (this.gotNext){
-            //    this.position = this.iter.position();
-            //} else {
-            //    this.position = null;
-            //}
+            if (this.gotNext){
+                this.position = this.iter.position();
+            } else {
+                this.position = null;
+            }
             return gotNext;
         }
 
@@ -645,7 +646,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
                 throw new NoSuchElementException();
             }
             BackendEntry.BackendColumn col = BackendEntry.BackendColumn.of(
-                                       this.iter.key(), this.iter.value());
+                    this.iter.key(), this.iter.value());
             if (this.iter.hasNext()) {
                 gotNext = true;
                 this.iter.next();
@@ -670,11 +671,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public byte[] position() {
-            if (this.gotNext){
-                return this.iter.position();
-            } else {
-                return null;
-            }
+            return this.position;
         }
 
         @Override
