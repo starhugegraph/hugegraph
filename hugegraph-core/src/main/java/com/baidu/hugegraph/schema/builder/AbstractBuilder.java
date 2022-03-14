@@ -23,11 +23,11 @@ import java.util.Set;
 import java.util.function.Function;
 
 import com.baidu.hugegraph.HugeGraph;
-import com.baidu.hugegraph.StandardHugeGraph;
 import com.baidu.hugegraph.backend.id.Id;
-import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.backend.tx.SchemaTransaction;
 import com.baidu.hugegraph.exception.ExistedException;
+import com.baidu.hugegraph.meta.MetaManager;
+import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.schema.EdgeLabel;
 import com.baidu.hugegraph.schema.IndexLabel;
 import com.baidu.hugegraph.schema.PropertyKey;
@@ -70,13 +70,18 @@ public abstract class AbstractBuilder {
     protected <V> V lockCheckAndCreateSchema(HugeType type, String name,
                                              Function<String, V> callback) {
         String spaceGraph = this.graph.spaceGraphName();
-        LockUtil.Locks locks = new LockUtil.Locks(spaceGraph);
+        MetaManager manager = MetaManager.instance();
+        LockResult result = null;
+        String lockName = String.join("-", spaceGraph,
+                          LockUtil.hugeType2Group(type), name);
         try {
-            locks.lockWrites(LockUtil.hugeType2Group(type),
-                             IdGenerator.of(name));
-            return callback.apply(name);
+            result = manager.lock(lockName);
+            if (result.lockSuccess()) {
+                return callback.apply(name);
+            }
+            return null;
         } finally {
-            locks.unlock();
+            manager.unlock(lockName, result);
         }
     }
 
