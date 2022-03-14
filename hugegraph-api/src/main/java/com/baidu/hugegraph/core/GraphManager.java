@@ -26,6 +26,8 @@ import java.io.ByteArrayInputStream;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.text.ParseException;
 import java.util.Collections;
 import java.util.Date;
@@ -720,8 +722,15 @@ public final class GraphManager {
         String name = service.name();
         checkServiceName(name);
 
-        if (null != service.urls() && service.urls().contains(this.url)) {
-            throw new HugeException("url cannot be same as current url %s", this.url);
+        if (null != service.urls()) {
+            try {
+                URL url = new URL(this.url);
+                if (service.urls().contains(url.getHost())) {
+                    throw new HugeException("url cannot be same as current url %s", this.url);
+                }
+            } catch (MalformedURLException ue) {
+
+            }
         }
 
 
