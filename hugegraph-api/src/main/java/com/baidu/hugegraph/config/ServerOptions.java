@@ -296,7 +296,7 @@ public class ServerOptions extends OptionHolder {
 
     public static final ConfigOption<String> SERVER_DEFAULT_OLAP_K8S_NAMESPACE =
             new ConfigOption<>(
-                    "server.default_oltp_k8s_namespace",
+                    "server.default_olap_k8s_namespace",
                     "The default namespace for HugeGraph default graph space.",
                     disallowEmpty(),
                     "hugegraph-computer-system"
@@ -460,7 +460,7 @@ public class ServerOptions extends OptionHolder {
                     "The hugegraph url for k8s work " +
                     "when the computer service is enabled.",
                     null,
-                    ""
+                    "hugegraph-computer-system"
             );
 
     public static final ConfigOption<String> K8S_ENABLE_INTERNAL_ALGORITHM =
