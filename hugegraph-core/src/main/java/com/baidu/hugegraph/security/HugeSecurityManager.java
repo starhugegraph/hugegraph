@@ -157,7 +157,7 @@ public class HugeSecurityManager extends SecurityManager {
         if (callFromGremlin() && !callFromCaffeine() &&
             !callFromAsyncTasks() && !callFromEventHubNotify() &&
             !callFromRaft() && !callFromSofaRpc() &&
-            !callFromHStore()) {
+            !callFromHStore() && !callFromEtcd()) {
             throw newSecurityException(
                   "Not allowed to access thread via Gremlin");
         }
@@ -169,7 +169,7 @@ public class HugeSecurityManager extends SecurityManager {
         if (callFromGremlin() && !callFromCaffeine() &&
             !callFromAsyncTasks() && !callFromEventHubNotify() &&
             !callFromRaft() && !callFromSofaRpc() &&
-            !callFromHStore()) {
+            !callFromHStore() && !callFromEtcd()) {
             throw newSecurityException(
                   "Not allowed to access thread group via Gremlin");
         }
