@@ -111,6 +111,11 @@ public class HugeSecurityManager extends SecurityManager {
             "com.baidu.hugegraph.backend.store.hstore.HstoreProvider"
     );
 
+    private static final Set<String> ETCD_CLASSES = ImmutableSet.of(
+            "com.baidu.hugegraph.meta.EtcdMetaDriver",
+            "com.baidu.hugegraph.meta.MetaManager"
+    );
+
     @Override
     public void checkPermission(Permission permission) {
         if (DENIED_PERMISSIONS.contains(permission.getName()) &&
@@ -449,6 +454,10 @@ public class HugeSecurityManager extends SecurityManager {
 
     private static boolean callFromHStore() {
         return callFromWorkerWithClass(HSTORE_CLASSES);
+    }
+
+    private static boolean callFromEtcd() {
+        return callFromWorkerWithClass(ETCD_CLASSES);
     }
 
     private static boolean callFromNewSecurityException() {
