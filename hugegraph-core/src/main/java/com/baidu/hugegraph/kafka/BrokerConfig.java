@@ -54,10 +54,14 @@ public final class BrokerConfig {
 
 
         private static HugeGraphClusterRole getClusterRole() {
-            MetaManager manager = MetaManager.instance();
-            String val = manager.getHugeGraphClusterRole();
-            HugeGraphClusterRole role = HugeGraphClusterRole.fromName(val);
-            return role;
+            try {
+                MetaManager manager = MetaManager.instance();
+                String val = manager.getHugeGraphClusterRole();
+                HugeGraphClusterRole role = HugeGraphClusterRole.fromName(val);
+                return role;
+            } catch (Exception e) {
+                return HugeGraphClusterRole.NONE;
+            }
         }
 
         private static String getKafkaHost() {

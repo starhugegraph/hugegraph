@@ -143,7 +143,9 @@ public class ApplicationConfig extends ResourceConfig {
                         if (null != confConsumer) {
                             confConsumer.close();
                         }
-                        SlaveServerWrapper.getInstance().close();
+                        if (BrokerConfig.getInstance().isSlave() || BrokerConfig.getInstance().isMaster()) {
+                            SlaveServerWrapper.getInstance().close();
+                        }
                         if (manager != null) {
                             manager.close();
                             manager.destroy();
