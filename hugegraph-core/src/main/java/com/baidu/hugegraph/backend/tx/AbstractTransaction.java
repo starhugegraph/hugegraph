@@ -21,10 +21,13 @@ package com.baidu.hugegraph.backend.tx;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Iterator;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.baidu.hugegraph.backend.cache.CachedSchemaTransaction;
 import com.baidu.hugegraph.backend.query.ConditionQuery;
+import com.baidu.hugegraph.backend.query.IdPrefixQuery;
 import com.baidu.hugegraph.exception.NotAllowException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -170,6 +173,18 @@ public abstract class AbstractTransaction implements Transaction {
         try {
             this.injectOlapPkIfNeeded(squery);
             return new QueryResults<>(this.store.query(squery), query);
+        } finally {
+            this.afterRead(); // TODO: not complete the iteration currently
+        }
+    }
+
+    @Watched(prefix = "tx")
+    public List<Iterator<BackendEntry>> query(List<Query> queries) {
+        E.checkArgument(queries != null && !queries.isEmpty(), "queries is empty or null");
+
+        this.beforeRead();
+        try {
+            return this.store.query(queries, this.serializer::writeQuery);
         } finally {
             this.afterRead(); // TODO: not complete the iteration currently
         }

@@ -39,6 +39,7 @@ import java.util.function.Supplier;
 import javax.ws.rs.ForbiddenException;
 
 import com.baidu.hugegraph.backend.store.BackendStoreProvider;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.tinkerpop.gremlin.groovy.jsr223.GroovyTranslator;
 import org.apache.tinkerpop.gremlin.process.computer.GraphComputer;
 import org.apache.tinkerpop.gremlin.process.traversal.Bytecode;
@@ -506,6 +507,11 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     public Iterator<Edge> edges(Object... objects) {
         return verifyElemPermission(HugePermission.READ,
                                     this.hugegraph.edges(objects));
+    }
+
+    @Override
+    public List<Iterator<Edge>> edges(List<Query> queryList) {
+        throw new NotImplementedException();
     }
 
     @Override

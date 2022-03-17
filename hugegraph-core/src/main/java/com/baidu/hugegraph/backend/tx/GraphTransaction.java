@@ -22,6 +22,7 @@ package com.baidu.hugegraph.backend.tx;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -31,11 +32,10 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.ForbiddenException;
 
-import com.baidu.hugegraph.StandardHugeGraph;
-import com.baidu.hugegraph.exception.NotAllowException;
 import com.baidu.hugegraph.type.define.GraphReadMode;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.tinkerpop.gremlin.structure.Edge;
@@ -1012,6 +1012,16 @@ public class GraphTransaction extends IndexableTransaction implements AutoClosea
         return this.skipOffsetOrStopLimit(r, query);
     }
 
+    @Watched
+    public List<Iterator<Edge>> queryEdges(List<Query> queryList) {
+        if (queryList == null || queryList.size() <= 0) {
+            return Collections.emptyList();
+        }
+
+        Query filter = queryList.get(0);
+        return this.queryEdgesFromBackend(queryList);
+    }
+
     protected Iterator<HugeEdge> queryEdgesFromBackend(Query query) {
         assert query.resultType().isEdge();
 
@@ -1042,6 +1052,38 @@ public class GraphTransaction extends IndexableTransaction implements AutoClosea
         }
         return edges;
     }
+
+    protected List<Iterator<Edge>> queryEdgesFromBackend(List<Query> queryList) {
+        if (queryList.size() <= 0) {
+            return Collections.emptyList();
+        }
+
+        Query sampleQuery = queryList.get(0);
+        boolean withProperties = sampleQuery.withProperties();
+
+        for (Query query: queryList) {
+            assert query.resultType().isEdge();
+            assert query instanceof ConditionQuery;
+            assert query.withProperties() == withProperties;
+        }
+
+        List<Iterator<BackendEntry>> queryResults = this.query(queryList);
+
+        return queryResults.stream().map(it -> new FlatMapperIterator<>(it, entry -> {
+            // Edges are in a vertex
+            HugeVertex vertex = this.parseEntry(entry, withProperties);
+            if (vertex == null) {
+                LOG.warn("Fetching edges of vertex, got null vertex, entry.id {}", entry.id());
+                return null;
+            }
+            /*
+             * Copy to avoid ConcurrentModificationException when removing edge
+             * because HugeEdge.remove() will update edges in owner vertex
+             */
+            return new ListIterator<Edge>(ImmutableList.copyOf(vertex.getEdges()));
+        })).collect(Collectors.toList());
+    }
+
 
     @Watched(prefix = "graph")
     public <V> void addVertexProperty(HugeVertexProperty<V> prop) {

@@ -68,6 +68,10 @@ public final class Consumers<V> {
 
     public Consumers(ExecutorService executor,
                      Consumer<V> consumer, Runnable done) {
+        this(executor, consumer, done, QUEUE_WORKER_SIZE);
+    }
+    public Consumers(ExecutorService executor,
+                     Consumer<V> consumer, Runnable done, int queueWorkerSize) {
         this.executor = executor;
         this.consumer = consumer;
         this.done = done;
@@ -77,7 +81,7 @@ public final class Consumers<V> {
             workers = ((ThreadPoolExecutor) this.executor).getCorePoolSize();
         }
         this.workers = workers;
-        this.queueSize = QUEUE_WORKER_SIZE * workers;
+        this.queueSize =  queueWorkerSize * workers;
         this.latch = new CountDownLatch(workers);
         this.queue = new ArrayBlockingQueue<>(this.queueSize);
     }

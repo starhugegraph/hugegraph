@@ -133,6 +133,7 @@ public interface HugeGraph extends Graph {
     @Override
     public Iterator<Edge> edges(Object... objects);
     public Iterator<Edge> edges(Query query);
+    public List<Iterator<Edge>> edges(List<Query> queryList);
     public Iterator<Edge> edgesWithProp(Object... objects);
     public Iterator<Vertex> adjacentVertices(Iterator<Edge> edges) ;
     public Iterator<Edge> adjacentEdges(Id vertexId);

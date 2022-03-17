@@ -19,9 +19,14 @@
 
 package com.baidu.hugegraph.backend.cache;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.function.Function;
 
 import com.baidu.hugegraph.backend.id.Id;
+import com.baidu.hugegraph.backend.query.ConditionQuery;
+import com.baidu.hugegraph.backend.query.ConditionQueryFlatten;
 import com.baidu.hugegraph.backend.query.Query;
 import com.baidu.hugegraph.backend.store.BackendEntry;
 import com.baidu.hugegraph.backend.store.BackendFeatures;
@@ -29,6 +34,8 @@ import com.baidu.hugegraph.backend.store.BackendMutation;
 import com.baidu.hugegraph.backend.store.BackendStore;
 import com.baidu.hugegraph.backend.store.BackendStoreProvider;
 import com.baidu.hugegraph.config.HugeConfig;
+import com.baidu.hugegraph.iterator.ExtendableIterator;
+import com.baidu.hugegraph.iterator.FlatMapperIterator;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.util.StringEncoding;
 
@@ -170,6 +177,34 @@ public class CachedBackendStore implements BackendStore {
             }
             return rs;
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<Iterator<BackendEntry>> query(List<Query> queries,
+                                              Function<Query, Query> queryWriter) {
+        List<Iterator<BackendEntry>> result = new ArrayList<>();
+
+        FlatMapperIterator<Query, BackendEntry> it =
+                new FlatMapperIterator<>(queries.listIterator(), query -> {
+                    assert query instanceof ConditionQuery;
+                    List<ConditionQuery> flattenQueryList =
+                            ConditionQueryFlatten.flatten((ConditionQuery) query);
+
+                    if (flattenQueryList.size() > 1) {
+                        ExtendableIterator<BackendEntry> itExtend
+                                = new ExtendableIterator<>();
+                        flattenQueryList.forEach(cq -> {
+                            Query cQuery = queryWriter.apply(cq);
+                            itExtend.extend(this.query(cQuery));
+                        });
+                        return itExtend;
+                    } else {
+                        return this.query(queryWriter.apply(query));
+                    }
+                });
+        result.add(it);
+        return result;
     }
 
     @Override
