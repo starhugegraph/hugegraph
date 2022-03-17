@@ -88,9 +88,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
                 if (!INITIALIZED_NODE) {
                     HgStoreNodeManager nodeManager =
                             HgStoreNodeManager.getInstance();
-                    DEFAULT_PD_CLIENT = PDClient.create(PDConfig.of(
-                                                                        config.get(HstoreOptions.PD_PEERS))
-                                                                .setEnablePDNotify(true));
+                    DEFAULT_PD_CLIENT = PDClient.create(
+                            PDConfig.of(config.get(HstoreOptions.PD_PEERS))
+                                        .setEnablePDNotify(true));
                     nodePartitioner = FakeHstoreNodePartitionerImpl
                             .NodePartitionerFactory
                             .getNodePartitioner(config,nodeManager);
@@ -443,7 +443,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
             HgKvIterator result = this.graph.scanIterator(table,
                                                           HgOwnerKey.of(ownerKeyFrom,keyFrom),
                                                           HgOwnerKey.of(ownerKeyTo,keyTo),
-                                                          scanType,query);
+                                                          0, scanType, query);
             result.seek(position);
             return new ColumnIterator<HgKvIterator>(table, result, keyFrom,
                                                     keyTo, scanType);

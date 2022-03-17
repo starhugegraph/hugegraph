@@ -23,7 +23,6 @@ import static com.baidu.hugegraph.space.GraphSpace.DEFAULT_GRAPH_SPACE_DESCRIPTI
 import static com.baidu.hugegraph.space.GraphSpace.DEFAULT_GRAPH_SPACE_SERVICE_NAME;
 
 import java.io.ByteArrayInputStream;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
@@ -43,7 +42,6 @@ import com.baidu.hugegraph.k8s.K8sDriverProxy;
 import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.pd.client.PDClient;
 import com.baidu.hugegraph.pd.client.PDConfig;
-import com.baidu.hugegraph.pd.grpc.discovery.NodeInfos;
 import com.baidu.hugegraph.registerimpl.PdRegister;
 import com.baidu.hugegraph.space.SchemaTemplate;
 import com.baidu.hugegraph.traversal.optimize.HugeScriptTraversal;
@@ -68,13 +66,15 @@ import com.baidu.hugegraph.StandardHugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.auth.AuthManager;
 import com.baidu.hugegraph.auth.HugeAuthenticator;
+import com.baidu.hugegraph.auth.HugeAuthenticator.User;
 import com.baidu.hugegraph.auth.HugeFactoryAuthProxy;
 import com.baidu.hugegraph.auth.HugeGraphAuthProxy;
-import com.baidu.hugegraph.auth.HugeAuthenticator.User;
 import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.backend.cache.Cache;
 import com.baidu.hugegraph.backend.cache.CacheManager;
+import com.baidu.hugegraph.backend.store.AbstractBackendStoreProvider;
 import com.baidu.hugegraph.backend.store.BackendStoreSystemInfo;
+import com.baidu.hugegraph.config.ConfigOption;
 import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.config.ServerOptions;
@@ -101,11 +101,11 @@ import com.baidu.hugegraph.util.ConfigUtil;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Events;
 import com.baidu.hugegraph.util.Log;
+import com.baidu.hugegraph.util.collection.CollectionFactory;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
-import com.baidu.hugegraph.util.collection.CollectionFactory;
 
 import io.fabric8.kubernetes.api.model.Namespace;
 
@@ -120,6 +120,7 @@ public final class GraphManager {
     private final String graphsDir;
     private final Boolean startIgnoreSingleGraphError;
     private final Boolean graphLoadFromLocalConfig;
+    private final Boolean k8sApiEnabled;
     private final Map<String, GraphSpace> graphSpaces;
     private final Map<String, Service> services;
     private final Map<String, Graph> graphs;
@@ -165,6 +166,7 @@ public final class GraphManager {
         this.serviceID = conf.get(ServerOptions.SERVICE_ID);
         this.pdPeers = conf.get(ServerOptions.PD_PEERS);
         this.eventHub = hub;
+        this.k8sApiEnabled = conf.get(ServerOptions.K8S_API_ENABLE);
 
         this.listenChanges();
 
@@ -206,6 +208,10 @@ public final class GraphManager {
         this.addMetrics(conf);
         // listen meta changes, e.g. watch dynamically graph add/remove
         this.listenMetaChanges();
+    }
+
+    public MetaManager meta() {
+        return this.metaManager;
     }
 
     public void reload() {
@@ -336,10 +342,46 @@ public final class GraphManager {
         this.updateGraphSpace(graphSpace);
     }
 
+    /**
+     * Force overwrite internalAlgorithmImageUrl
+     */
+    public void overwriteAlgorithmImageUrl(String imageUrl) {
+        if (StringUtils.isNotBlank(imageUrl) && this.k8sApiEnabled) {
+
+            ServerOptions.K8S_INTERNAL_ALGORITHM_IMAGE_URL = new ConfigOption<>(
+                    "k8s.internal_algorithm_image_url",
+                    "K8s internal algorithm image url",
+                    null,
+                    imageUrl
+            );
+
+            String namespace = K8sDriverProxy.getNamespace();
+            String enableInternalAlgorithm = K8sDriverProxy.getEnableInternalAlgorithm();
+            String internalAlgorithm = K8sDriverProxy.getInternalAlgorithm();
+            Map<String, String> algorithms = K8sDriverProxy.getAlgorithms();
+            try {
+                K8sDriverProxy.setConfig(
+                    namespace,
+                    enableInternalAlgorithm,
+                    imageUrl,
+                    internalAlgorithm,
+                    algorithms
+                );
+            } catch (IOException e) {
+                LOG.error("Overwrite internal_algorithm_image_url failed! {}", e);
+            }
+        }
+    }
+
     private void loadGraphSpaces() {
         Map<String, GraphSpace> graphSpaceConfigs =
                                 this.metaManager.graphSpaceConfigs();
         this.graphSpaces.putAll(graphSpaceConfigs);
+        for(Map.Entry<String, GraphSpace> entry : graphSpaceConfigs.entrySet()) {
+            if (this.serviceGraphSpace.equals(entry.getKey())) {
+                overwriteAlgorithmImageUrl(entry.getValue().internalAlgorithmImageUrl());
+            }
+        }
     }
 
     private void loadServices() {
@@ -368,7 +410,8 @@ public final class GraphManager {
             this.metaManager.notifyServiceAdd(this.serviceGraphSpace,
                                               this.serviceID);
             // add to local cache since even-handler has not been registered now
-            this.services.put(serviceName(this.serviceGraphSpace, service.name()), service);
+            this.services.put(serviceName(this.serviceGraphSpace,
+                                          service.name()), service);
         }
     }
 
@@ -435,6 +478,7 @@ public final class GraphManager {
         this.metaManager.listenGraphAdd(this::graphAddHandler);
         this.metaManager.listenGraphRemove(this::graphRemoveHandler);
         this.metaManager.listenGraphUpdate(this::graphUpdateHandler);
+        this.metaManager.listenGraphClear(this::graphClearHandler);
 
         this.metaManager.listenRestPropertiesUpdate(
                          this.serviceGraphSpace, this.serviceID,
@@ -488,7 +532,8 @@ public final class GraphManager {
 
             HugeFactory.checkGraphName(parts[1], "meta server");
             try {
-                HugeGraph graph = this.createGraph(parts[0], parts[1], creator, config, false);
+                HugeGraph graph = this.createGraph(parts[0], parts[1],
+                                                   creator, config, false);
                 graph.createTime(createTime);
                 graph.updateTime(updateTime);
             } catch (HugeException e) {
@@ -535,6 +580,7 @@ public final class GraphManager {
         return this.createGraphSpace(space);
     }
 
+    @SuppressWarnings("unused")
     private GraphSpace createGraphSpace(String name, String description,
                                         int cpuLimit, int memoryLimit,
                                         int storageLimit,
@@ -558,7 +604,8 @@ public final class GraphManager {
         return space;
     }
 
-    private void makeResourceQuota(String namespace, int cpuLimit, int memoryLimit) {
+    private void makeResourceQuota(String namespace, int cpuLimit,
+                                   int memoryLimit) {
         k8sManager.loadResourceQuota(namespace, cpuLimit, memoryLimit);   
     }
 
@@ -567,22 +614,24 @@ public final class GraphManager {
      * @param namespace
      * @return isNewCreated
      */
-    private boolean attachK8sNamespace(String namespace) {
+    private boolean attachK8sNamespace(String namespace, String olapOperatorImage, Boolean isOlap) {
         if (!Strings.isNullOrEmpty(namespace)) {
             Namespace current = k8sManager.namespace(namespace);
             if (null == current) {
                 current = k8sManager.createNamespace(namespace,
                     ImmutableMap.of());
                 if (null == current) {
-                    throw new HugeException("Cannot attach k8s namespace {}", namespace);
+                    throw new HugeException("Cannot attach k8s namespace {}",
+                                            namespace);
                 }
                 // start operator pod
                 // read from computer-system or default ?
                 // read from "hugegraph-computer-system" 
                 // String containerName = "hugegraph-operator";
                 // String imageName = "";
-
-                k8sManager.createOperatorPod(namespace);
+                if (isOlap) {
+                    k8sManager.createOperatorPod(namespace, olapOperatorImage);
+                }
                 return true;
             }
         }
@@ -602,21 +651,29 @@ public final class GraphManager {
             int cpuLimit = space.cpuLimit();
             int memoryLimit = space.memoryLimit();
 
-            int computeCpuLimit = space.computeCpuLimit() == 0 ? space.cpuLimit() : space.computeCpuLimit();
-            int computeMemoryLimit = space.computeMemoryLimit() == 0 ? space.memoryLimit() : space.computeMemoryLimit();
-
-            boolean isNewCreated = attachK8sNamespace(space.oltpNamespace());
+            int computeCpuLimit = space.computeCpuLimit() == 0 ?
+                                  space.cpuLimit() : space.computeCpuLimit();
+            int computeMemoryLimit = space.computeMemoryLimit() == 0 ?
+                                     space.memoryLimit() : space.computeMemoryLimit();
+            boolean isOlap = space.oltpNamespace().equals(space.olapNamespace());
+            boolean isNewCreated = attachK8sNamespace(space.oltpNamespace(),
+                                                      space.operatorImagePath(), isOlap);
             if (isNewCreated) {
-                if (space.oltpNamespace().equals(space.olapNamespace())) {
-                    this.makeResourceQuota(space.oltpNamespace(), cpuLimit + computeCpuLimit, memoryLimit + computeMemoryLimit);
+                if (isOlap) {
+                    this.makeResourceQuota(space.oltpNamespace(),
+                                           cpuLimit + computeCpuLimit,
+                                           memoryLimit + computeMemoryLimit);
                 } else {
-                    this.makeResourceQuota(space.oltpNamespace(), cpuLimit, memoryLimit);
+                    this.makeResourceQuota(space.oltpNamespace(), cpuLimit,
+                                           memoryLimit);
                 }
             }
-            if (!space.oltpNamespace().equals(space.olapNamespace())) {
-                isNewCreated = attachK8sNamespace(space.olapNamespace());
+            if (!isOlap) {
+                isNewCreated = attachK8sNamespace(space.olapNamespace(),
+                                                  space.operatorImagePath(), true);
                 if (isNewCreated) {
-                    this.makeResourceQuota(space.olapNamespace(), computeCpuLimit, computeMemoryLimit);
+                    this.makeResourceQuota(space.olapNamespace(),
+                                           computeCpuLimit, computeMemoryLimit);
                 }
             }
         }
@@ -672,15 +729,19 @@ public final class GraphManager {
         try {
             PdRegister register = PdRegister.getInstance();
             RegisterConfig config = new RegisterConfig()
-                                    .setAppName(this.cluster)
-                                    .setGrpcAddress(this.pdPeers)
-                                    .setUrls(service.urls())
-                                    .setLabelMap(ImmutableMap.of(
-                                            PdRegisterLabel.REGISTER_TYPE.name(),   PdRegisterType.DDS.name(),
-                                            PdRegisterLabel.GRAPHSPACE.name(),      this.serviceGraphSpace,
-                                            PdRegisterLabel.SERVICE_NAME.name(),    service.name(),
-                                            PdRegisterLabel.SERVICE_ID.name(),      service.serviceId()
-                                    ));
+                    .setAppName(this.cluster)
+                    .setGrpcAddress(this.pdPeers)
+                    .setUrls(service.urls())
+                    .setLabelMap(ImmutableMap.of(
+                            PdRegisterLabel.REGISTER_TYPE.name(),
+                            PdRegisterType.DDS.name(),
+                            PdRegisterLabel.GRAPHSPACE.name(),
+                            this.serviceGraphSpace,
+                            PdRegisterLabel.SERVICE_NAME.name(),
+                            service.name(),
+                            PdRegisterLabel.SERVICE_ID.name(),
+                            service.serviceId()
+                    ));
 
             String ddsHost = this.metaManager.getDDSHost();
             if (!Strings.isNullOrEmpty(ddsHost)) {
@@ -717,16 +778,21 @@ public final class GraphManager {
             RegisterConfig config = new RegisterConfig();
 
             config
-                .setNodePort(serviceDTO.getSpec().getPorts().get(0).getNodePort().toString())
+                .setNodePort(serviceDTO.getSpec().getPorts()
+                                       .get(0).getNodePort().toString())
                 .setNodeName(serviceDTO.getSpec().getClusterIP())
                 .setAppName(this.cluster)
                 .setGrpcAddress(this.pdPeers)
                 .setVersion(serviceDTO.getMetadata().getResourceVersion())
                 .setLabelMap(ImmutableMap.of(
-                        PdRegisterLabel.REGISTER_TYPE.name(),   PdRegisterType.NODE_PORT.name(),
-                        PdRegisterLabel.GRAPHSPACE.name(),      this.serviceGraphSpace,
-                        PdRegisterLabel.SERVICE_NAME.name(),    serviceDTO.getMetadata().getName(),
-                        PdRegisterLabel.SERVICE_ID.name(),      serviceDTO.getMetadata().getNamespace() + "-" + serviceDTO.getMetadata().getName()
+                        PdRegisterLabel.REGISTER_TYPE.name(),
+                        PdRegisterType.NODE_PORT.name(),
+                        PdRegisterLabel.GRAPHSPACE.name(),
+                        this.serviceGraphSpace,
+                        PdRegisterLabel.SERVICE_NAME.name(),
+                        serviceDTO.getMetadata().getName(),
+                        PdRegisterLabel.SERVICE_ID.name(),
+                        serviceDTO.getMetadata().getNamespace() + "-" + serviceDTO.getMetadata().getName()
                 ));
 
             String ddsHost = this.metaManager.getDDSHost();
@@ -745,7 +811,8 @@ public final class GraphManager {
         checkServiceName(name);
 
         if (null != service.urls() && service.urls().contains(this.url)) {
-            throw new HugeException("url cannot be same as current url %s", this.url);
+            throw new HugeException("url cannot be same as current url %s",
+                                    this.url);
         }
 
 
@@ -796,7 +863,8 @@ public final class GraphManager {
     public void startService(String graphSpace, Service service) {
         List<String> endpoints = this.config.get(ServerOptions.META_ENDPOINTS);
         GraphSpace gs = this.graphSpace(graphSpace);
-        Set<String> urls = this.k8sManager.startService(gs, service, endpoints, this.cluster);
+        Set<String> urls = this.k8sManager.startService(gs, service, endpoints,
+                                                        this.cluster);
         if (!urls.isEmpty()) {
             String url = urls.iterator().next();
             String[] parts = url.split(":");
@@ -880,7 +948,8 @@ public final class GraphManager {
 
         HugeConfig config = new HugeConfig(propConfig);
         this.checkOptions(graphSpace, config);
-        HugeGraph graph = this.createGraph(graphSpace, config, this.authManager, init);
+        HugeGraph graph = this.createGraph(graphSpace, config,
+                                           this.authManager, init);
         graph.graphSpace(graphSpace);
 
         graph.creator(creator);
@@ -1254,9 +1323,13 @@ public final class GraphManager {
     private <T> void graphSpaceAddHandler(T response) {
         List<String> names = this.metaManager
                                  .extractGraphSpacesFromResponse(response);
+
         for (String gs : names) {
             GraphSpace graphSpace = this.metaManager.getGraphSpaceConfig(gs);
             this.graphSpaces.put(gs, graphSpace);
+            if (this.serviceGraphSpace.equals(gs)) {
+                overwriteAlgorithmImageUrl(graphSpace.internalAlgorithmImageUrl());
+            }
         }
     }
 
@@ -1274,6 +1347,9 @@ public final class GraphManager {
         for (String gs : names) {
             GraphSpace graphSpace = this.metaManager.getGraphSpaceConfig(gs);
             this.graphSpaces.put(gs, graphSpace);
+            if (this.serviceGraphSpace.equals(gs)) {
+                overwriteAlgorithmImageUrl(graphSpace.internalAlgorithmImageUrl());
+            }
         }
     }
 
@@ -1285,7 +1361,8 @@ public final class GraphManager {
             String[] parts = s.split(DELIMITER);
             String graphSpace = parts[0];
             String serviceName = parts[1];
-            String serviceRawConf = this.metaManager.getServiceRawConfig(graphSpace, serviceName);
+            String serviceRawConf = this.metaManager.getServiceRawConfig(
+                                    graphSpace, serviceName);
 
             service = this.metaManager.parseServiceRawConfig(serviceRawConf);
             this.services.put(s, service);
@@ -1308,7 +1385,8 @@ public final class GraphManager {
             String[] parts = s.split(DELIMITER);
             String graphSpace = parts[0];
             String serviceName = parts[1];
-            String serviceRawConf = this.metaManager.getServiceRawConfig(graphSpace, serviceName);
+            String serviceRawConf = this.metaManager.getServiceRawConfig(
+                                    graphSpace, serviceName);
             service = this.metaManager.parseServiceRawConfig(serviceRawConf);
             this.services.put(s, service);
         }
@@ -1328,12 +1406,15 @@ public final class GraphManager {
             Map<String, Object> config =
                     this.metaManager.getGraphConfig(parts[0], parts[1]);
             Object objc = config.get("creator");
-            String creator = null == objc ? GraphSpace.DEFAULT_CREATOR_NAME : String.valueOf(objc);
+            String creator = null == objc ?
+                             GraphSpace.DEFAULT_CREATOR_NAME :
+                             String.valueOf(objc);
 
 
             // Create graph without init
             try {
-                HugeGraph graph = this.createGraph(parts[0], parts[1], creator, config, false);
+                HugeGraph graph = this.createGraph(parts[0], parts[1], creator,
+                                                   config, false);
                 graph.serverStarted();
                 graph.tx().close();
             } catch (HugeException e) {
@@ -1383,6 +1464,21 @@ public final class GraphManager {
                     String readMode = configs.get(
                            CoreOptions.GRAPH_READ_MODE.name()).toString();
                     hugeGraph.readMode(GraphReadMode.valueOf(readMode));
+                }
+            }
+        }
+    }
+
+    private <T> void graphClearHandler(T response) {
+        List<String> graphNames = this.metaManager
+                                      .extractGraphsFromResponse(response);
+        for (String graphName : graphNames) {
+            if (this.graphs.containsKey(graphName)) {
+                Graph graph = this.graphs.get(graphName);
+                if (graph instanceof HugeGraph) {
+                    HugeGraph hugeGraph = (HugeGraph) graph;
+                    ((AbstractBackendStoreProvider) hugeGraph.storeProvider())
+                            .notifyAndWaitEvent(Events.STORE_CLEAR);
                 }
             }
         }
@@ -1519,8 +1615,7 @@ public final class GraphManager {
                 if (StringUtils.isNotEmpty(event)) {
                     Map<String, Object> properties = JsonUtil.fromJson(event, Map.class);
                     HugeConfig conf = new HugeConfig(properties);
-                    Boolean k8sApiEnable = conf.get(ServerOptions.K8S_API_ENABLE);
-                    if (k8sApiEnable) {
+                    if (k8sApiEnabled) {
                         GraphSpace gs = this.metaManager.graphSpace(this.serviceGraphSpace);
                         String namespace = gs.olapNamespace();
                         // conf.get(
@@ -1575,7 +1670,8 @@ public final class GraphManager {
         return map == null ? new HashMap<>() : map;
     }
 
-    public Map<String, Object> restProperties(String graphSpace, String serviceName) {
+    public Map<String, Object> restProperties(String graphSpace,
+                                              String serviceName) {
         Map<String, Object> map;
         map = this.metaManager.restProperties(graphSpace, serviceName);
         return map == null ? new HashMap<>() : map;
@@ -1646,7 +1742,8 @@ public final class GraphManager {
         this.metaManager.addSchemaTemplate(graphSpace, schemaTemplate);
     }
 
-    public void updateSchemaTemplate(String graphSpace, SchemaTemplate schemaTemplate) {
+    public void updateSchemaTemplate(String graphSpace,
+                                     SchemaTemplate schemaTemplate) {
         this.metaManager.updateSchemaTemplate(graphSpace, schemaTemplate);
     }
 
