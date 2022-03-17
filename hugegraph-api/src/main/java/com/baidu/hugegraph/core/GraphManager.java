@@ -615,27 +615,32 @@ public final class GraphManager {
      * @return isNewCreated
      */
     private boolean attachK8sNamespace(String namespace, String olapOperatorImage, Boolean isOlap) {
-        if (!Strings.isNullOrEmpty(namespace)) {
-            Namespace current = k8sManager.namespace(namespace);
-            if (null == current) {
-                current = k8sManager.createNamespace(namespace,
-                    ImmutableMap.of());
+        boolean isNewCreated = false;
+        try {
+            if (!Strings.isNullOrEmpty(namespace)) {
+                Namespace current = k8sManager.namespace(namespace);
                 if (null == current) {
-                    throw new HugeException("Cannot attach k8s namespace {}",
-                                            namespace);
+                    current = k8sManager.createNamespace(namespace,
+                        ImmutableMap.of());
+                    if (null == current) {
+                        throw new HugeException("Cannot attach k8s namespace {}",
+                                                namespace);
+                    }
+                    isNewCreated = true;
+                    // start operator pod
+                    // read from computer-system or default ?
+                    // read from "hugegraph-computer-system"
+                    // String containerName = "hugegraph-operator";
+                    // String imageName = "";
+                    if (isOlap) {
+                        k8sManager.createOperatorPod(namespace, olapOperatorImage);
+                    }
                 }
-                // start operator pod
-                // read from computer-system or default ?
-                // read from "hugegraph-computer-system" 
-                // String containerName = "hugegraph-operator";
-                // String imageName = "";
-                if (isOlap) {
-                    k8sManager.createOperatorPod(namespace, olapOperatorImage);
-                }
-                return true;
             }
+        } catch (Exception e) {
+            LOG.error("Attach k8s namespace meet error {}", e);
         }
-        return false;
+        return isNewCreated;
     }
 
     public GraphSpace createGraphSpace(GraphSpace space) {
@@ -655,11 +660,11 @@ public final class GraphManager {
                                   space.cpuLimit() : space.computeCpuLimit();
             int computeMemoryLimit = space.computeMemoryLimit() == 0 ?
                                      space.memoryLimit() : space.computeMemoryLimit();
-            boolean isOlap = space.oltpNamespace().equals(space.olapNamespace());
+            boolean sameNamespace = space.oltpNamespace().equals(space.olapNamespace());
             boolean isNewCreated = attachK8sNamespace(space.oltpNamespace(),
-                                                      space.operatorImagePath(), isOlap);
+                                                      space.operatorImagePath(), sameNamespace);
             if (isNewCreated) {
-                if (isOlap) {
+                if (sameNamespace) {
                     this.makeResourceQuota(space.oltpNamespace(),
                                            cpuLimit + computeCpuLimit,
                                            memoryLimit + computeMemoryLimit);
@@ -668,7 +673,7 @@ public final class GraphManager {
                                            memoryLimit);
                 }
             }
-            if (!isOlap) {
+            if (!sameNamespace) {
                 isNewCreated = attachK8sNamespace(space.olapNamespace(),
                                                   space.operatorImagePath(), true);
                 if (isNewCreated) {
