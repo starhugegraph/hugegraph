@@ -328,17 +328,13 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         int type = query.inclusiveStart() ?
                    Session.SCAN_GTE_BEGIN : Session.SCAN_GT_BEGIN;
         type |= Session.SCAN_PREFIX_END;
-        LinkedList<HgOwnerKey> ownerKeyFrom = new LinkedList<>();
-        LinkedList<HgOwnerKey> ownerKeyTo = new LinkedList<>();
+        LinkedList<HgOwnerKey> ownerKey = new LinkedList<>();
         queries.forEach((item)->{
-            byte[] start = this.ownerByQueryDelegate.apply(item.resultType(),
-                                                           item.start());
-            ownerKeyFrom.add(HgOwnerKey.of(start, item.start().asBytes()));
-            byte[] end = this.ownerByQueryDelegate.apply(item.resultType(),
+            byte[] prefix = this.ownerByQueryDelegate.apply(item.resultType(),
                                                            item.prefix());
-            ownerKeyTo.add(HgOwnerKey.of(end,query.prefix().asBytes()));
+            ownerKey.add(HgOwnerKey.of(prefix,item.prefix().asBytes()));
         });
-        return session.scan(tableName, ownerKeyFrom, ownerKeyTo, type);
+        return session.scan(tableName, ownerKey, type);
     }
 
     protected BackendColumnIterator queryByRange(Session session,
