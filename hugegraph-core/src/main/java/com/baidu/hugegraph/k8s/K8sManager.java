@@ -239,7 +239,7 @@ public class K8sManager {
 
         try {
 
-            String fileName = "/home/scorpiour/HugeGraph/hugegraph/hugegraph-dist/src/assembly/static/conf/resource-quota-template.yaml";// CoreOptions.K8S_QUOTA_TEMPLATE.defaultValue();
+            String fileName = CoreOptions.K8S_QUOTA_TEMPLATE.defaultValue();
 
             inputStream = new FileInputStream(fileName);
             Map<String, Object> quotaMap = yaml.load(inputStream);
