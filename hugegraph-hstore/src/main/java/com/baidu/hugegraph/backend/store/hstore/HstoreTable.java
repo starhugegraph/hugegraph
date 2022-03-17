@@ -331,7 +331,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
                                                            item.prefix());
             ownerKey.add(HgOwnerKey.of(prefix,item.prefix().asBytes()));
         });
-        return session.scan(tableName, ownerKey, type);
+        return session.scan(tableName, ownerKey, type, query.limit());
     }
 
     protected BackendColumnIterator queryByRange(Session session,
