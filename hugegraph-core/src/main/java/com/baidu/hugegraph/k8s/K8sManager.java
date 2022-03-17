@@ -214,18 +214,21 @@ public class K8sManager {
 
     // 把所有字符串hugegraph-computer-operator-system都替换成新的namespace就行了
     public void loadOperator(String namespace, String imagePath) throws HugeException {
-        this.loadOperatorTemplate();
-        if (Strings.isNullOrEmpty(this.operatorTemplate)) {
-            throw new HugeException("Cannot generate yaml config for operator: template load failed");
-        }
-
-        String content = this.operatorTemplate.replaceAll(TEMPLATE_NAMESPACE, namespace);
-        String image = "image: " + imagePath;
-        content = content.replaceAll(TEMPLATE_OPERATOR_IMAGE, image);
         try {
+            this.loadOperatorTemplate();
+            if (Strings.isNullOrEmpty(this.operatorTemplate)) {
+                throw new HugeException("Cannot generate yaml config for operator: template load failed");
+            }
+
+            String content = this.operatorTemplate.replaceAll(TEMPLATE_NAMESPACE, namespace);
+            String image = "image: " + imagePath;
+            content = content.replaceAll(TEMPLATE_OPERATOR_IMAGE, image);
+
             k8sDriver.createOrReplaceByYaml(content);
         } catch (IOException e) {
-
+            LOGGER.logCriticalError(e, "IO Exception when create operator");
+        } catch (Exception e) {
+            LOGGER.logCriticalError(e, "Unknown Exception when create operator");
         }
     }
 
@@ -236,7 +239,9 @@ public class K8sManager {
 
         try {
 
-            inputStream = new FileInputStream(CoreOptions.K8S_QUOTA_TEMPLATE.defaultValue());
+            String fileName = CoreOptions.K8S_QUOTA_TEMPLATE.defaultValue();
+
+            inputStream = new FileInputStream(fileName);
             Map<String, Object> quotaMap = yaml.load(inputStream);
             Map<String, Object> metaData = (Map<String, Object>)quotaMap.get("metadata");
             Map<String, Object> spec = (Map<String, Object>)quotaMap.get("spec");

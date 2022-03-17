@@ -25,6 +25,8 @@ import static com.baidu.hugegraph.space.GraphSpace.DEFAULT_GRAPH_SPACE_SERVICE_N
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.text.ParseException;
 import java.util.Collections;
 import java.util.Date;
@@ -32,6 +34,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -615,27 +618,32 @@ public final class GraphManager {
      * @return isNewCreated
      */
     private boolean attachK8sNamespace(String namespace, String olapOperatorImage, Boolean isOlap) {
-        if (!Strings.isNullOrEmpty(namespace)) {
-            Namespace current = k8sManager.namespace(namespace);
-            if (null == current) {
-                current = k8sManager.createNamespace(namespace,
-                    ImmutableMap.of());
+        boolean isNewCreated = false;
+        try {
+            if (!Strings.isNullOrEmpty(namespace)) {
+                Namespace current = k8sManager.namespace(namespace);
                 if (null == current) {
-                    throw new HugeException("Cannot attach k8s namespace {}",
-                                            namespace);
+                    current = k8sManager.createNamespace(namespace,
+                        ImmutableMap.of());
+                    if (null == current) {
+                        throw new HugeException("Cannot attach k8s namespace {}",
+                                                namespace);
+                    }
+                    isNewCreated = true;
+                    // start operator pod
+                    // read from computer-system or default ?
+                    // read from "hugegraph-computer-system"
+                    // String containerName = "hugegraph-operator";
+                    // String imageName = "";
+                    if (isOlap) {
+                        k8sManager.createOperatorPod(namespace, olapOperatorImage);
+                    }
                 }
-                // start operator pod
-                // read from computer-system or default ?
-                // read from "hugegraph-computer-system" 
-                // String containerName = "hugegraph-operator";
-                // String imageName = "";
-                if (isOlap) {
-                    k8sManager.createOperatorPod(namespace, olapOperatorImage);
-                }
-                return true;
             }
+        } catch (Exception e) {
+            LOG.error("Attach k8s namespace meet error {}", e);
         }
-        return false;
+        return isNewCreated;
     }
 
     public GraphSpace createGraphSpace(GraphSpace space) {
@@ -655,11 +663,11 @@ public final class GraphManager {
                                   space.cpuLimit() : space.computeCpuLimit();
             int computeMemoryLimit = space.computeMemoryLimit() == 0 ?
                                      space.memoryLimit() : space.computeMemoryLimit();
-            boolean isOlap = space.oltpNamespace().equals(space.olapNamespace());
+            boolean sameNamespace = space.oltpNamespace().equals(space.olapNamespace());
             boolean isNewCreated = attachK8sNamespace(space.oltpNamespace(),
-                                                      space.operatorImagePath(), isOlap);
+                                                      space.operatorImagePath(), sameNamespace);
             if (isNewCreated) {
-                if (isOlap) {
+                if (sameNamespace) {
                     this.makeResourceQuota(space.oltpNamespace(),
                                            cpuLimit + computeCpuLimit,
                                            memoryLimit + computeMemoryLimit);
@@ -668,7 +676,7 @@ public final class GraphManager {
                                            memoryLimit);
                 }
             }
-            if (!isOlap) {
+            if (!sameNamespace) {
                 isNewCreated = attachK8sNamespace(space.olapNamespace(),
                                                   space.operatorImagePath(), true);
                 if (isNewCreated) {
@@ -725,6 +733,46 @@ public final class GraphManager {
         this.graphSpaces.remove(name);
     }
 
+    private void registerFakeNodeport(Service service) {
+            // for those manual service, register a fake nodePort
+        if (!service.manual()) {
+            return;
+        }
+
+        try {
+            String first = service.urls().iterator().next();
+            URL url = new URL(first);
+            String host = url.getHost();
+            int port = url.getPort();
+
+            PdRegister register = PdRegister.getInstance();
+            RegisterConfig config = new RegisterConfig()
+                    .setAppName(this.cluster)
+                    .setGrpcAddress(this.pdPeers)
+                    .setNodeName(host)
+                    .setLabelMap(ImmutableMap.of(
+                            PdRegisterLabel.REGISTER_TYPE.name(), PdRegisterType.NODE_PORT.name(),
+                            PdRegisterLabel.GRAPHSPACE.name(), this.serviceGraphSpace,
+                            PdRegisterLabel.SERVICE_NAME.name(), service.name(),
+                            PdRegisterLabel.SERVICE_ID.name(), service.serviceId()
+                    ));
+            if (port > 0) {
+                config.setNodePort(String.valueOf(port));
+            } else {
+                String protocol = url.getProtocol();
+                config.setNodePort("http".equals(protocol) ? "80" : "443");
+            }
+            register.registerService(config);
+
+        } catch (NoSuchElementException nse) {
+            // NSE ignored
+        } catch (MalformedURLException mfe) {
+            // MFE ignored
+        } catch (Exception e) {
+            LOG.error("Failed to register fake node-port service to pd", e);
+        }
+    }
+
     private void registerServiceToPd(Service service) {
         try {
             PdRegister register = PdRegister.getInstance();
@@ -733,33 +781,21 @@ public final class GraphManager {
                     .setGrpcAddress(this.pdPeers)
                     .setUrls(service.urls())
                     .setLabelMap(ImmutableMap.of(
-                            PdRegisterLabel.REGISTER_TYPE.name(),
-                            PdRegisterType.DDS.name(),
-                            PdRegisterLabel.GRAPHSPACE.name(),
-                            this.serviceGraphSpace,
-                            PdRegisterLabel.SERVICE_NAME.name(),
-                            service.name(),
-                            PdRegisterLabel.SERVICE_ID.name(),
-                            service.serviceId()
+                            PdRegisterLabel.REGISTER_TYPE.name(), PdRegisterType.DDS.name(),
+                            PdRegisterLabel.GRAPHSPACE.name(), this.serviceGraphSpace,
+                            PdRegisterLabel.SERVICE_NAME.name(), service.name(),
+                            PdRegisterLabel.SERVICE_ID.name(), service.serviceId()
                     ));
 
             String ddsHost = this.metaManager.getDDSHost();
             if (!Strings.isNullOrEmpty(ddsHost)) {
                 config.setDdsHost(ddsHost);
             }
+
             String pdServiceId = register.registerService(config);
             service.pdServiceId(pdServiceId);
-            /*
-            LOG.debug("pd registered, serviceId is {}, going to validate", pdServiceId);
-            Map<String, NodeInfos> infos = register.getServiceInfo(pdServiceId);
-            
-            for(Map.Entry<String, NodeInfos> entry : infos.entrySet()) {
-                NodeInfos info = entry.getValue();
-                info.getInfoList().forEach(node -> {
-                    LOG.debug("Registered Info serviceId {}: appName: {} , id: {} , address: {}",
-                       entry.getKey(), node.getAppName(), node.getId(), node.getAddress());
-                });
-            }*/
+            this.registerFakeNodeport(service);
+
         } catch (Exception e) {
             LOG.error("Failed to register service to pd", e);
         }
@@ -785,14 +821,11 @@ public final class GraphManager {
                 .setGrpcAddress(this.pdPeers)
                 .setVersion(serviceDTO.getMetadata().getResourceVersion())
                 .setLabelMap(ImmutableMap.of(
-                        PdRegisterLabel.REGISTER_TYPE.name(),
-                        PdRegisterType.NODE_PORT.name(),
-                        PdRegisterLabel.GRAPHSPACE.name(),
-                        this.serviceGraphSpace,
-                        PdRegisterLabel.SERVICE_NAME.name(),
-                        serviceDTO.getMetadata().getName(),
+                        PdRegisterLabel.REGISTER_TYPE.name(), PdRegisterType.NODE_PORT.name(),
+                        PdRegisterLabel.GRAPHSPACE.name(), this.serviceGraphSpace,
+                        PdRegisterLabel.SERVICE_NAME.name(), serviceDTO.getMetadata().getName(),
                         PdRegisterLabel.SERVICE_ID.name(),
-                        serviceDTO.getMetadata().getNamespace() + "-" + serviceDTO.getMetadata().getName()
+                            serviceDTO.getMetadata().getNamespace() + "-" + serviceDTO.getMetadata().getName()
                 ));
 
             String ddsHost = this.metaManager.getDDSHost();
@@ -940,6 +973,12 @@ public final class GraphManager {
 
         configs.put("graphSpace", graphSpace);
 
+        Date timeStamp = new Date();
+
+        configs.putIfAbsent("creator", creator);
+        configs.putIfAbsent("create_time", timeStamp);
+        configs.putIfAbsent("update_time", timeStamp);
+
         Configuration propConfig = this.buildConfig(configs);
         String storeName = propConfig.getString(CoreOptions.STORE.name());
         E.checkArgument(name.equals(storeName),
@@ -953,15 +992,12 @@ public final class GraphManager {
         graph.graphSpace(graphSpace);
 
         graph.creator(creator);
-        graph.createTime(new Date());
-        graph.refreshUpdateTime();
+        graph.createTime(timeStamp);
+        graph.updateTime(timeStamp);
 
         String graphName = graphName(graphSpace, name);
         if (init) {
             this.creatingGraphs.add(graphName);
-            configs.put("creator", graph.creator());
-            configs.put("create_time", graph.createTime());
-            configs.put("update_time", graph.updateTime());
             this.metaManager.addGraphConfig(graphSpace, name, configs);
             this.metaManager.notifyGraphAdd(graphSpace, name);
         }

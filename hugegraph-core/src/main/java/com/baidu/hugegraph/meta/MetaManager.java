@@ -130,6 +130,10 @@ public class MetaManager {
     private MetaManager() {
     }
 
+    public synchronized boolean isReady() {
+        return null != this.metaDriver;
+    }
+
     public synchronized void connect(String cluster, MetaDriverType type,
                                      String trustFile, String clientCertFile,
                                      String clientKeyFile, Object... args) {
