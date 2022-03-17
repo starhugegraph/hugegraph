@@ -945,6 +945,12 @@ public final class GraphManager {
 
         configs.put("graphSpace", graphSpace);
 
+        Date timeStamp = new Date();
+
+        configs.putIfAbsent("creator", creator);
+        configs.putIfAbsent("create_time", timeStamp);
+        configs.putIfAbsent("update_time", timeStamp);
+
         Configuration propConfig = this.buildConfig(configs);
         String storeName = propConfig.getString(CoreOptions.STORE.name());
         E.checkArgument(name.equals(storeName),
@@ -958,15 +964,12 @@ public final class GraphManager {
         graph.graphSpace(graphSpace);
 
         graph.creator(creator);
-        graph.createTime(new Date());
-        graph.refreshUpdateTime();
+        graph.createTime(timeStamp);
+        graph.updateTime(timeStamp);
 
         String graphName = graphName(graphSpace, name);
         if (init) {
             this.creatingGraphs.add(graphName);
-            configs.put("creator", graph.creator());
-            configs.put("create_time", graph.createTime());
-            configs.put("update_time", graph.updateTime());
             this.metaManager.addGraphConfig(graphSpace, name, configs);
             this.metaManager.notifyGraphAdd(graphSpace, name);
         }
