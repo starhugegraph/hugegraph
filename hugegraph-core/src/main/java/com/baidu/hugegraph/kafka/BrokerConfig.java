@@ -54,14 +54,21 @@ public final class BrokerConfig {
 
 
         private static HugeGraphClusterRole getClusterRole() {
-            MetaManager manager = MetaManager.instance();
-            String val = manager.getHugeGraphClusterRole();
-            HugeGraphClusterRole role = HugeGraphClusterRole.fromName(val);
-            return role;
+            try {
+                MetaManager manager = MetaManager.instance();
+                if (!manager.isReady()) {
+                    return HugeGraphClusterRole.NONE;
+                }
+                String val = manager.getHugeGraphClusterRole();
+                HugeGraphClusterRole role = HugeGraphClusterRole.fromName(val);
+                return role;
+            } catch (Exception e) {
+                return HugeGraphClusterRole.NONE;
+            }
         }
 
         private static String getKafkaHost() {
-            String result =MetaManager.instance().getKafkaBrokerHost();
+            String result = MetaManager.instance().getKafkaBrokerHost();
             return result;
         }
 
@@ -80,8 +87,9 @@ public final class BrokerConfig {
         
         this.updateNeedSyncBroker();
         this.updateNeedSyncStorage();
-
-        manager.listenKafkaConfig(this::kafkaConfigEventHandler);
+        if (manager.isReady()) {
+            manager.listenKafkaConfig(this::kafkaConfigEventHandler);
+        }
     }
 
     private <T> void kafkaConfigEventHandler(T response) {
