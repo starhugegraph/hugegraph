@@ -395,10 +395,12 @@ public class HstoreSessionsImpl extends HstoreSessions {
         }
 
         @Override
-        public List<BackendColumnIterator> scan(String table, List<HgOwnerKey> keyFrom, List<HgOwnerKey> keyTo, int scanType) {
-            HgScanQuery scanQuery = HgScanQuery.rangeOf(table, keyFrom,keyTo)
+        public List<BackendColumnIterator> scan(String table, List<HgOwnerKey> keys,
+                                                int scanType, long limit) {
+            HgScanQuery scanQuery = HgScanQuery.prefixOf(table, keys)
                                                .builder()
-                                               .setScanType(scanType).build();
+                                               .setScanType(scanType)
+                                               .setPerKeyLimit(limit).build();
             List<HgKvIterator<HgKvEntry>> scanIterators = this.graph.scanBatch(
                     scanQuery);
             LinkedList<BackendColumnIterator> columnIterators = new LinkedList<>();
@@ -416,7 +418,8 @@ public class HstoreSessionsImpl extends HstoreSessions {
             HgKvIterator result = this.graph.scanIterator(table,
                                                           HgOwnerKey.of(ownerKeyFrom,keyFrom),
                                                           HgOwnerKey.of(ownerKeyTo,keyTo),
-                                                          scanType);
+                                                          0,
+                                                          scanType,null);
             return new ColumnIterator<HgKvIterator>(table, result, keyFrom,
                                                     keyTo, scanType);
         }
