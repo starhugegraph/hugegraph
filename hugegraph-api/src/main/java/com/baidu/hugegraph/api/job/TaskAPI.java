@@ -31,6 +31,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.NotFoundException;
 import javax.ws.rs.NotSupportedException;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -134,7 +135,11 @@ public class TaskAPI extends API {
 
         TaskScheduler scheduler = graph(manager, graphSpace, graph)
                                   .taskScheduler();
-        return scheduler.task(IdGenerator.of(id)).asMap();
+        HugeTask<?> task = scheduler.task(IdGenerator.of(id));
+        if (null != task) {
+            return task.asMap();
+        }
+        throw new NotFoundException("Task not found");
     }
 
     @DELETE

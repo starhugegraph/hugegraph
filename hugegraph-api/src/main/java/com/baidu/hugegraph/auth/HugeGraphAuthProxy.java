@@ -1090,8 +1090,11 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
         @Override
         public <V> HugeTask<V> task(Id id) {
-            return verifyTaskPermission(HugePermission.READ,
-                                        this.taskScheduler.task(id));
+            HugeTask<V> task = this.taskScheduler.task(id);
+            if (null != task) {
+                return verifyTaskPermission(HugePermission.READ, task);
+            }
+            return task;
         }
 
         @Override
