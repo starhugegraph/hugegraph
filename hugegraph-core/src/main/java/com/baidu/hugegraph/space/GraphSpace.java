@@ -410,18 +410,26 @@ public class GraphSpace {
         }
     }
 
-
-
+    /**
+     * Only limit the resource usage for oltp service under k8s
+     * @param service
+     * @return
+     */
     public boolean tryOfferResourceFor(Service service) {
+        if (!service.k8s()) {
+            return true;
+        }
         int count = service.count();
         int leftCpu = this.cpuLimit - this.cpuUsed;
         int leftMemory = this.memoryLimit - this.memoryUsed;
-        if (service.cpuLimit() * count > leftCpu ||
-            service.memoryLimit() * count > leftMemory) {
+        int acquiredCpu = service.cpuLimit() * count;
+        int acquiredMemory = service.memoryLimit() * count;
+        if (acquiredCpu > leftCpu ||
+            acquiredMemory > leftMemory) {
             return false;
         }
-        this.incrCpuUsed(service.cpuLimit() * count);
-        this.incrMemoryUsed(service.memoryLimit() * count);
+        this.incrCpuUsed(acquiredCpu);
+        this.incrMemoryUsed(acquiredMemory);
         return true;
     }
 
