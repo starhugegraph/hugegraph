@@ -858,7 +858,7 @@ public class MetaManager {
         graphSpace, graphName, META_PATH_TASK, taskPriority);
     }
 
-    private String taskStatusListKey(String graphSpace, String graphName, String taskId, TaskStatus status) {
+    private String taskStatusKey(String graphSpace, String graphName, String taskId, TaskStatus status) {
         // HUGEGRAPH/{cluster}/GRAPHSPACE/{graphSpace}/TASK/{statusType}/{id}
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_GRAPHSPACE,
         graphSpace, graphName, META_PATH_TASK, status.name(), taskId);
@@ -1925,7 +1925,7 @@ public class MetaManager {
         if (status == TaskStatus.UNKNOWN) {
             return null;
         }
-        String statusListKey = this.taskStatusListKey(graphSpace, graphName, id.asString(), status);
+        String statusListKey = this.taskStatusKey(graphSpace, graphName, id.asString(), status);
         String jsonStr = this.metaDriver.get(statusListKey);
         return parseTask(jsonStr, graphSpace, graphName);
     }
@@ -2157,12 +2157,12 @@ public class MetaManager {
     }
 
     private <V> void removeTaskFromStatusList(String graphSpace, String graphName, String taskId, TaskStatus status) {
-        String key = taskStatusListKey(graphSpace, graphName, taskId, status);
+        String key = taskStatusKey(graphSpace, graphName, taskId, status);
         this.metaDriver.delete(key);
     }
 
     private <V> void addTaskToStatusList(String graphSpace, String graphName, String taskId, String jsonTask, TaskStatus status) {
-        String key = taskStatusListKey(graphSpace, graphName, taskId, status);
+        String key = taskStatusKey(graphSpace, graphName, taskId, status);
         this.metaDriver.put(key, jsonTask);
     }
 
@@ -2222,12 +2222,12 @@ public class MetaManager {
         String taskId = task.id().asString();
 
         String taskPriorityKey = taskPriorityKey(graphSpace, graphName, task.priority().toString(), taskId);
-        String statusListKey = taskStatusListKey(graphSpace, graphName, taskId, task.status());
+        String statusListKey = taskStatusKey(graphSpace, graphName, taskId, task.status());
         String taskKey = taskKey(graphSpace, graphName, taskId);
 
         this.metaDriver.delete(taskPriorityKey);
         this.metaDriver.delete(statusListKey);
-        this.metaDriver.delete(taskKey);
+        this.metaDriver.deleteWithPrefix(taskKey);
 
         return null;
     }
