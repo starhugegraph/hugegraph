@@ -80,11 +80,11 @@ public class KoutTraverser extends OltpTraverser {
                 remaining = limit;
             }
             if (nearest) {
-                latest = this.adjacentVertices(sourceV, latest, dir, labelId,
+                latest = this.adjacentVerticesBatch(sourceV, latest, dir, labelId,
                                                all, degree, remaining, concurrent);
                 all.addAll(latest);
             } else {
-                latest = this.adjacentVertices(sourceV, latest, dir, labelId,
+                latest = this.adjacentVerticesBatch(sourceV, latest, dir, labelId,
                                                null, degree, remaining, concurrent);
             }
             if (capacity != NO_LIMIT) {

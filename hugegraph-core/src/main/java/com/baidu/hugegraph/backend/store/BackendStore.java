@@ -20,7 +20,9 @@
 package com.baidu.hugegraph.backend.store;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
@@ -65,6 +67,9 @@ public interface BackendStore {
 
     // Query data
     public Iterator<BackendEntry> query(Query query);
+    public List<Iterator<BackendEntry>> query(List<Query> queries,
+                                              Function<Query, Query> queryWriter);
+
     public Number queryNumber(Query query);
 
     // Transaction

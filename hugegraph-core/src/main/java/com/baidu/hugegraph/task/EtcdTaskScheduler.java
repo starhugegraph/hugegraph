@@ -28,7 +28,9 @@ import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -332,11 +334,29 @@ public class EtcdTaskScheduler extends TaskScheduler {
     @Override
     public <V> HugeTask<V> delete(Id id, boolean force) {
         MetaManager manager = MetaManager.instance();
-
         HugeTask<V> task = manager.getTask(this.graphSpace(), this.graphName, id);
+        // Be aware of the order: remove persistance first, then remove memory cache
         if (null != task) {
-            manager.deleteTask(this.graphSpace(), this.graphName, task); 
+            manager.deleteTask(this.graphSpace(), this.graphName, task);
+            try {
+                this.call(() -> {
+                    Iterator<Vertex> vertices = this.tx().queryVertices(id);
+                    HugeVertex vertex = (HugeVertex) QueryResults.one(vertices);
+                    if (vertex == null) {
+                        return null;
+                    }
+                    HugeTask<V> result = HugeTask.fromVertex(vertex);
+                    E.checkState(force || result.completed(),
+                                "Can't delete incomplete task '%s' in status %s",
+                                id, result.status());
+                    this.tx().removeVertex(vertex);
+                    return result;
+                }).get();
+            } catch (InterruptedException | CancellationException | ExecutionException ie) {
+                LOGGER.logCriticalError(ie, "Concurrent Exception captured when delete task");
+            }
         }
+        this.taskMap.remove(id);
         return task;
     }
 

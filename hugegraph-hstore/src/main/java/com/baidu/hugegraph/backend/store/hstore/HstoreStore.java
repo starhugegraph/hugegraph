@@ -22,8 +22,11 @@ package com.baidu.hugegraph.backend.store.hstore;
 import com.baidu.hugegraph.backend.BackendException;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
+import com.baidu.hugegraph.backend.query.ConditionQuery;
 import com.baidu.hugegraph.backend.query.IdPrefixQuery;
 import com.baidu.hugegraph.backend.query.Query;
+import com.baidu.hugegraph.backend.serializer.BinaryBackendEntry;
+import com.baidu.hugegraph.backend.serializer.BytesBuffer;
 import com.baidu.hugegraph.backend.serializer.MergeIterator;
 import com.baidu.hugegraph.backend.store.AbstractBackendStore;
 import com.baidu.hugegraph.backend.store.BackendAction;
@@ -37,6 +40,7 @@ import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.define.GraphMode;
+import com.baidu.hugegraph.type.define.HugeKeys;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import org.apache.commons.collections.CollectionUtils;
@@ -54,6 +58,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public abstract class HstoreStore extends AbstractBackendStore<Session> {
@@ -62,7 +67,7 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
 
     private static final BackendFeatures FEATURES = new HstoreFeatures();
     private final Map<String, HstoreTable> olapTables;
-    private final String store,namespace;
+    private final String store, namespace;
 
     private final BackendStoreProvider provider;
     private final Map<HugeType, HstoreTable> tables;
@@ -286,7 +291,26 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         }
     }
 
-    public List<Iterator<BackendEntry>> query(List<HugeType>typeList,
+    @Override
+    public List<Iterator<BackendEntry>> query(List<Query> queries,
+                                              Function<Query, Query> queryWriter) {
+        if (queries == null && queries.size() <= 0) {
+            return new LinkedList<>();
+        }
+        List<HugeType> typeList = getHugeTypes(queries.get(0));
+        List<IdPrefixQuery> idPrefixQueries = queries.stream().map(q -> {
+                    assert q instanceof ConditionQuery;
+                    ConditionQuery cq = (ConditionQuery) q;
+                    Id ownerId = cq.condition(HugeKeys.OWNER_VERTEX);
+                    assert ownerId != null;
+                    BytesBuffer buffer = BytesBuffer.allocate(BytesBuffer.BUF_EDGE_ID);
+                    buffer.writeId(ownerId);
+                    return new IdPrefixQuery(cq, new BinaryBackendEntry.BinaryId(buffer.bytes(), ownerId));
+                }).collect(Collectors.toList());
+        return query(typeList, idPrefixQueries);
+    }
+
+    public List<Iterator<BackendEntry>> query(List<HugeType> typeList,
                                               List<IdPrefixQuery> queries) {
         Lock readLock = this.storeLock.readLock();
         readLock.lock();

@@ -24,6 +24,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
 
+import com.baidu.hugegraph.backend.query.ConditionQuery;
+import com.baidu.hugegraph.backend.query.ConditionQueryFlatten;
+import com.baidu.hugegraph.iterator.ExtendableIterator;
+import com.baidu.hugegraph.iterator.FlatMapperIterator;
 import org.slf4j.Logger;
 
 import com.alipay.sofa.jraft.Status;
@@ -139,6 +143,33 @@ public class RaftBackendStore implements BackendStore {
     public Iterator<BackendEntry> query(Query query) {
         return (Iterator<BackendEntry>)
                this.queryByRaft(query, o -> this.store.query(query));
+    }
+
+    @Override
+    public List<Iterator<BackendEntry>> query(List<Query> queries,
+                                              Function<Query, Query> queryWriter) {
+        List<Iterator<BackendEntry>> result = new ArrayList<>();
+
+        FlatMapperIterator<Query, BackendEntry> it =
+                new FlatMapperIterator<>(queries.listIterator(), query -> {
+                    assert query instanceof ConditionQuery;
+                    List<ConditionQuery> flattenQueryList =
+                            ConditionQueryFlatten.flatten((ConditionQuery) query);
+
+                    if (flattenQueryList.size() > 1) {
+                        ExtendableIterator<BackendEntry> itExtend
+                                = new ExtendableIterator<>();
+                        flattenQueryList.forEach(cq -> {
+                            Query cQuery = queryWriter.apply(cq);
+                            itExtend.extend(this.query(cQuery));
+                        });
+                        return itExtend;
+                    } else {
+                        return this.query(queryWriter.apply(query));
+                    }
+                });
+        result.add(it);
+        return result;
     }
 
     @Override

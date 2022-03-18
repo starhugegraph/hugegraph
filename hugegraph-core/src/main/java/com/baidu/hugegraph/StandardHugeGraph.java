@@ -127,6 +127,7 @@ public class StandardHugeGraph implements HugeGraph {
            CoreOptions.OLTP_CONCURRENT_THREADS,
            CoreOptions.OLTP_CONCURRENT_DEPTH,
            CoreOptions.OLTP_COLLECTION_TYPE,
+           CoreOptions.OLTP_QUERY_BATCH_SIZE,
            CoreOptions.VERTEX_DEFAULT_LABEL,
            CoreOptions.VERTEX_ENCODE_PK_NUMBER,
            CoreOptions.STORE_GRAPH,
@@ -724,6 +725,12 @@ public class StandardHugeGraph implements HugeGraph {
     @Watched
     public Iterator<Edge> edges(Query query) {
         return this.graphTransaction().queryEdges(query);
+    }
+
+    @Override
+    @Watched
+    public List<Iterator<Edge>> edges(List<Query> queryList) {
+        return this.graphTransaction().queryEdges(queryList);
     }
 
     @Override
