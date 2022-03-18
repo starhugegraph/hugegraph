@@ -51,8 +51,6 @@ import io.fabric8.kubernetes.api.model.HTTPGetAction;
 import io.fabric8.kubernetes.api.model.HTTPGetActionBuilder;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.IntOrString;
-import io.fabric8.kubernetes.api.model.LimitRange;
-import io.fabric8.kubernetes.api.model.LimitRangeBuilder;
 import io.fabric8.kubernetes.api.model.ListOptions;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.NamespaceBuilder;
@@ -95,8 +93,6 @@ public class K8sDriver {
     private static final String PORT_SUFFIX = "-port";
     private static final String TCP = "TCP";
 
-    private static final String CLUSTER_IP = "ClusterIP";
-    private static final String LOAD_BALANCER = "LoadBalancer";
     private static final String NODE_PORT = "NodePort";
     private static final int HG_PORT = 8080;
 
@@ -125,10 +121,9 @@ public class K8sDriver {
     private static final String BINDING_API_GROUP = "rbac.authorization.k8s.io";
     private static final String CLUSTER_ROLE = "ClusterRole";
     private static final String CLUSTER_ROLE_NAME = "cluster-admin";
-    private static final String BINDING_API_VERSION =
-            "rbac.authorization.k8s.io/v1";
+    private static final String BINDING_API_VERSION = "rbac.authorization.k8s.io/v1";
 
-    private KubernetesClient client;
+    private final KubernetesClient client;
 
     private String oltpImage;
     private String olapImage;
@@ -259,17 +254,19 @@ public class K8sDriver {
                                          .withName(CA_CONFIG_MAP_NAME)
                                          .get();
         if (null == configMap) {
-            throw new HugeException("Cannot start OLTP service since configMap does not exist!");
+            throw new HugeException("Cannot start OLTP service since " +
+                                    "configMap does not exist!");
         }
 
         // Get & check service account
         ServiceAccount serviceAccount = this.client.serviceAccounts()
-                                                  .inNamespace(namespace)
-                                                  .withName(namespace + SERVICE_ACCOUNT_NAME)
-                                                  .get();
+                                                   .inNamespace(namespace)
+                                                   .withName(serviceAccountName(namespace))
+                                                   .get();
 
         if (null == serviceAccount) {
-            throw new HugeException("Cannot start OLTP service since service account is not created!");
+            throw new HugeException("Cannot start OLTP service since service " +
+                                    "account is not created!");
         }
         // Get & check deployment
         String deploymentName = deploymentName(graphSpace, service);
@@ -287,7 +284,8 @@ public class K8sDriver {
     public void stopOltpService(GraphSpace graphSpace, Service service) {
         String serviceName = serviceName(graphSpace, service);
         String namespace = namespace(graphSpace, service);
-        this.client.services().inNamespace(namespace).withName(serviceName).delete();
+        this.client.services().inNamespace(namespace)
+                   .withName(serviceName).delete();
 
         io.fabric8.kubernetes.api.model.Service svc = this.client.services()
                 .inNamespace(namespace).withName(serviceName).get();
@@ -318,7 +316,8 @@ public class K8sDriver {
             sleepAWhile(1);
         }
         if (deployment != null) {
-            throw new HugeException("Failed to stop deployment: %s", deployment);
+            throw new HugeException("Failed to stop deployment: %s",
+                                    deployment);
         }
 
         LOG.info("Stop service {} in namespace {}", service, namespace);
@@ -384,7 +383,7 @@ public class K8sDriver {
     private void createServiceAccountIfNeeded(GraphSpace graphSpace,
                                               Service service) {
         String namespace = namespace(graphSpace, service);
-        String serviceAccountName = namespace + SERVICE_ACCOUNT_NAME;
+        String serviceAccountName = serviceAccountName(namespace);
         ServiceAccount serviceAccount = this.client
                 .serviceAccounts()
                 .inNamespace(namespace)
@@ -407,7 +406,7 @@ public class K8sDriver {
 
         // Bind service account
         Subject subject = new SubjectBuilder()
-                .withKind("ServiceAccount")
+                .withKind(SERVICE_ACCOUNT)
                 .withName(serviceAccountName)
                 .withNamespace(namespace)
                 .build();
@@ -590,7 +589,7 @@ public class K8sDriver {
                 .endMetadata()
 
                 .withNewSpec()
-                .withServiceAccountName(namespace + SERVICE_ACCOUNT_NAME)
+                .withServiceAccountName(serviceAccountName(namespace))
                 .withAutomountServiceAccountToken(true)
 
                 .addNewContainer()
@@ -735,9 +734,9 @@ public class K8sDriver {
         Deployment deployment;
         try {
             deployment = this.client.apps().deployments()
-                            .inNamespace(namespace)
-                            .withName(deploymentName)
-                            .get();
+                                    .inNamespace(namespace)
+                                    .withName(deploymentName)
+                                    .get();
             if (null == deployment) {
                 return 0;
             }
@@ -756,7 +755,6 @@ public class K8sDriver {
     public void createOrReplaceByYaml(String yaml) throws IOException {
         InputStream is = new ByteArrayInputStream(yaml.getBytes());
         try {
-
             ParameterNamespaceListVisitFromServerGetDeleteRecreateWaitApplicable<HasMetadata> meta
                 = this.client.load(is);
             meta.createOrReplace();
@@ -771,6 +769,10 @@ public class K8sDriver {
         InputStream is = new ByteArrayInputStream(yaml.getBytes());
         Resource<ResourceQuota> quota = this.client.resourceQuotas().inNamespace(namespace).load(is);
         this.client.resourceQuotas().inNamespace(namespace).create(quota.get());
+    }
+
+    private static String serviceAccountName(String namespace) {
+        return namespace + SERVICE_ACCOUNT_NAME;
     }
 
     public static class CA {
