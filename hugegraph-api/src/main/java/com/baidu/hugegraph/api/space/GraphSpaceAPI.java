@@ -157,8 +157,7 @@ public class GraphSpaceAPI extends API {
                 }
 
                 String description = (String) graphSpaceMap.get("description");
-                if (description != null &&
-                    Strings.isEmpty(description)) {
+                if (!Strings.isEmpty(description)) {
                     exist.description(description);
                 }
 
