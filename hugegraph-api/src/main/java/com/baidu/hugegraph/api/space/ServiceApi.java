@@ -60,7 +60,6 @@ public class ServiceApi extends API {
     private static final String CONFIRM_DROP = "I'm sure to delete the service";
 
     private static final String CLUSTER_IP = "ClusterIP";
-    private static final String LOAD_BALANCER = "LoadBalancer";
     private static final String NODE_PORT = "NodePort";
 
     @GET
