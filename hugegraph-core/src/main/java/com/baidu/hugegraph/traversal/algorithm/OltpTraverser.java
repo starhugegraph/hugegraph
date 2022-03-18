@@ -253,12 +253,12 @@ public abstract class OltpTraverser extends HugeTraverser
     protected Set<Id> adjacentVerticesBatch(Id sourceV, Set<Id> vertices,
                                        Directions dir, Id label,
                                        Set<Id> excluded, long degree,
-                                       long limit, boolean concurrent) {
+                                       long limit) {
         if (limit == 0) {
             return ImmutableSet.of();
         }
 
-        Set<Id> neighbors = newSet(concurrent);
+        Set<Id> neighbors = newSet(true);
 
         Iterator<Iterator<Edge>> edgeIts = edgesOfVertices(vertices, dir, label, degree, false);
         this.traverseBatch(edgeIts, new AdjacentVerticesBatchConsumer(
