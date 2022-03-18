@@ -29,33 +29,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.yaml.snakeyaml.Yaml;
+
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.space.GraphSpace;
 import com.baidu.hugegraph.space.Service;
-import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import com.google.common.base.Strings;
-
-import org.yaml.snakeyaml.Yaml;
 
 import io.fabric8.kubernetes.api.model.Namespace;
 
 public class K8sManager {
 
-    private static final HugeGraphLogger LOGGER =
-        Log.getLogger(K8sManager.class);
+    private static final HugeGraphLogger LOGGER = Log.getLogger(K8sManager.class);
 
     private K8sDriver k8sDriver;
 
     private static final K8sManager INSTANCE = new K8sManager();
 
     private String operatorTemplate;
-    private static final String TEMPLATE_NAMESPACE
-        = "hugegraph-computer-operator-system";
-    private static final String TEMPLATE_OPERATOR_IMAGE
-        = "image: hugegraph/hugegraph-computer-operator:latest";
+    private static final String TEMPLATE_NAMESPACE = "hugegraph-computer-operator-system";
+    private static final String TEMPLATE_OPERATOR_IMAGE = "image: hugegraph/hugegraph-computer-operator:latest";
 
     public static K8sManager instance() {
         return INSTANCE;
@@ -82,15 +78,11 @@ public class K8sManager {
             File file = new File(CoreOptions.K8S_OPERATOR_TEMPLATE.defaultValue());
             FileReader reader = new FileReader(file);
             int length = (int)file.length();
-            char buffer[] = new char[length];
+            char[] buffer = new char[length];
             reader.read(buffer, 0, length);
             this.operatorTemplate = new String(buffer);
             reader.close();
-
-        } catch (IOException exc) {
-
-        } finally {
-
+        } catch (IOException ignored) {
         }
     }
 
@@ -121,7 +113,6 @@ public class K8sManager {
                                         Service service,
                                         List<String> metaServers,
                                         String cluster) {
-        
         if (null == k8sDriver) {
             LOGGER.logCriticalError(new HugeException("k8sDriver is not initialized!"), "startOltpService");
             return Collections.EMPTY_SET;
@@ -134,8 +125,8 @@ public class K8sManager {
                                     List<String> metaServers, String cluster) {
         switch (service.type()) {
             case OLTP:
-                return this.createOltpService(graphSpace, service, metaServers,
-                                             cluster);
+                return this.createOltpService(graphSpace, service,
+                                              metaServers, cluster);
             case OLAP:
             case STORAGE:
             default:
@@ -148,13 +139,13 @@ public class K8sManager {
                                     List<String> metaServers, String cluster) {
         switch (service.type()) {
             case OLTP:
-                return this.startOltpService(graphSpace, service, metaServers,
-                            cluster);
+                return this.startOltpService(graphSpace, service,
+                                             metaServers, cluster);
             case OLAP:
             case STORAGE:
             default:
                 throw new AssertionError(String.format(
-                "Invalid service type '%s'", service.type()));
+                          "Invalid service type '%s'", service.type()));
         }
     }
 
@@ -182,9 +173,10 @@ public class K8sManager {
             case OLTP:
                 this.k8sDriver.deleteOltpService(graphSpace, service);
                 break;
+            case OLAP:
+            case STORAGE:
             default:
                 LOGGER.logCustomDebug("Cannot stop service other than OLTP", "K8sManager");
-                break;
         }
     }
 
@@ -195,15 +187,6 @@ public class K8sManager {
         return this.k8sDriver.podsRunning(graphSpace, service);
     }
 
-    /**
-     * 
-     * @param namespace
-     * @param podName 
-     * @param labels
-     * @param containerName
-     * @param image
-     * @return
-     */
     public void createOperatorPod(String namespace, String imagePath) {
         if (Strings.isNullOrEmpty(imagePath)) {
             LOGGER.logCriticalError(new IllegalArgumentException("imagePath should not be empty"), "Cannot create operator pod");
@@ -212,15 +195,16 @@ public class K8sManager {
         this.loadOperator(namespace, imagePath);         
     }
 
-    // 把所有字符串hugegraph-computer-operator-system都替换成新的namespace就行了
-    public void loadOperator(String namespace, String imagePath) throws HugeException {
+    public void loadOperator(String namespace, String imagePath)
+                throws HugeException {
         try {
             this.loadOperatorTemplate();
             if (Strings.isNullOrEmpty(this.operatorTemplate)) {
                 throw new HugeException("Cannot generate yaml config for operator: template load failed");
             }
 
-            String content = this.operatorTemplate.replaceAll(TEMPLATE_NAMESPACE, namespace);
+            String content = this.operatorTemplate.replaceAll(TEMPLATE_NAMESPACE,
+                                                              namespace);
             String image = "image: " + imagePath;
             content = content.replaceAll(TEMPLATE_OPERATOR_IMAGE, image);
 
@@ -258,19 +242,15 @@ public class K8sManager {
 
             StringWriter writer = new StringWriter();
             yaml.dump(quotaMap, writer);
-            
             String yamlStr = writer.toString();
-
             k8sDriver.createResourceQuota(namespace, yamlStr);
-
         } catch (Exception e) {
             LOGGER.logCriticalError(e, "Failed to load resource quota!");
         } finally {
             if (null != inputStream) {
                 try {
                     inputStream.close();
-                } catch (IOException exc) {
-
+                } catch (IOException ignored) {
                 }
             }
         }
