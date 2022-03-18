@@ -53,6 +53,7 @@ public class K8sManager {
     private static final String TEMPLATE_NAME = "name: hugegraph-computer-operator-system";
     private static final String TEMPLATE_CLUSTER_ROLE_BINDING_NAME = "name: hugegraph-computer-operator-manager-rolebinding";
     private static final String TEMPLATE_NAMESPACE = "namespace: hugegraph-computer-operator-system";
+    private static final String TEMPLATE_WATCH_NAMESPACE = "value: hugegraph-computer-operator-system";
     private static final String TEMPLATE_OPERATOR_IMAGE = "image: hugegraph/hugegraph-computer-operator:latest";
 
     public static K8sManager instance() {
@@ -207,6 +208,9 @@ public class K8sManager {
 
             String nextNamespace = "namespace: " + namespace;
             String content = this.operatorTemplate.replaceAll(TEMPLATE_NAMESPACE, nextNamespace);
+
+            String watchNamespace = "value: " + namespace;
+            content = content.replace(TEMPLATE_WATCH_NAMESPACE, watchNamespace);
 
             String nextName = "name: " + namespace;
             content = content.replaceAll(TEMPLATE_NAME, nextName);
