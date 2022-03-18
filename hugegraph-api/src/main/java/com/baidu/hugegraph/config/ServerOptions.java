@@ -484,7 +484,7 @@ public class ServerOptions extends OptionHolder {
                     "k8s.internal_algorithm",
                     "K8s internal algorithm",
                     disallowEmpty(),
-                    "[page-rank, degree-centrality, wcc, triangle-count, rings, rings-with-filter, betweenness-centrality, closeness-centrality, lpa, links, kcore, louvain, clustering-coefficient]"
+                    "[page-rank, degree-centrality, wcc, triangle-count, rings, rings-with-filter, betweenness-centrality, closeness-centrality, lpa, links, kcore, louvain, clustering-coefficient, ppr, subgraph-match]"
             );
 
     public static final ConfigListOption<String> K8S_ALGORITHMS =
@@ -504,6 +504,8 @@ public class ServerOptions extends OptionHolder {
                     "links:com.baidu.hugegraph.computer.algorithm.path.links.LinksParams",
                     "kcore:com.baidu.hugegraph.computer.algorithm.community.kcore.KCoreParams",
                     "louvain:com.baidu.hugegraph.computer.algorithm.community.louvain.LouvainParams",
-                    "clustering-coefficient:com.baidu.hugegraph.computer.algorithm.community.cc.ClusteringCoefficientParams"
+                    "clustering-coefficient:com.baidu.hugegraph.computer.algorithm.community.cc.ClusteringCoefficientParams",
+                    "ppr:com.baidu.hugegraph.computer.algorithm.centrality.ppr.PersonalPageRankParams",
+                    "subgraph-match:com.baidu.hugegraph.computer.algorithm.path.subgraph.SubGraphMatchParams"
             );
 }
