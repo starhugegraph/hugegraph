@@ -259,13 +259,11 @@ public class ServiceApi extends API {
                                 "The urls must be null or empty when " +
                                 "deployment type is %s",
                                 this.deploymentType);
-                E.checkArgument(this.routeType != null &&
-                                !StringUtils.isEmpty(this.routeType),
+                E.checkArgument(!StringUtils.isEmpty(this.routeType),
                                 "The route type of service can't be null or " +
                                 "empty");
                 E.checkArgument(NODE_PORT.equals(this.routeType) ||
-                                CLUSTER_IP.equals(this.routeType) ||
-                                LOAD_BALANCER.equals(this.routeType),
+                                CLUSTER_IP.equals(this.routeType),
                                 "Invalid route type '%s'", this.routeType);
             }
         }
