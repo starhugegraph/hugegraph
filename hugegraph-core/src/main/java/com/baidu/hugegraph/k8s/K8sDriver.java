@@ -265,7 +265,7 @@ public class K8sDriver {
         // Get & check service account
         ServiceAccount serviceAccount = this.client.serviceAccounts()
                                                   .inNamespace(namespace)
-                                                  .withName(SERVICE_ACCOUNT_NAME)
+                                                  .withName(namespace + SERVICE_ACCOUNT_NAME)
                                                   .get();
 
         if (null == serviceAccount) {
@@ -384,10 +384,11 @@ public class K8sDriver {
     private void createServiceAccountIfNeeded(GraphSpace graphSpace,
                                               Service service) {
         String namespace = namespace(graphSpace, service);
+        String serviceAccountName = namespace + SERVICE_ACCOUNT_NAME;
         ServiceAccount serviceAccount = this.client
                 .serviceAccounts()
                 .inNamespace(namespace)
-                .withName(SERVICE_ACCOUNT_NAME)
+                .withName(serviceAccountName)
                 .get();
 
         if (serviceAccount != null) {
@@ -397,7 +398,7 @@ public class K8sDriver {
         // Create service account
         serviceAccount = new ServiceAccountBuilder()
                 .withNewMetadata()
-                .withName(SERVICE_ACCOUNT_NAME)
+                .withName(serviceAccountName)
                 .withNamespace(namespace)
                 .endMetadata().build();
         this.client.serviceAccounts()
@@ -407,13 +408,13 @@ public class K8sDriver {
         // Bind service account
         Subject subject = new SubjectBuilder()
                 .withKind("ServiceAccount")
-                .withName(SERVICE_ACCOUNT_NAME)
+                .withName(serviceAccountName)
                 .withNamespace(namespace)
                 .build();
         ClusterRoleBinding clusterRoleBinding = new ClusterRoleBindingBuilder()
                 .withApiVersion(BINDING_API_VERSION)
                 .withNewMetadata()
-                .withName(SERVICE_ACCOUNT_NAME)
+                .withName(serviceAccountName)
                 .endMetadata()
 
                 .withNewRoleRef()
@@ -540,6 +541,7 @@ public class K8sDriver {
                                            Service service,
                                            List<String> metaServers,
                                            String cluster) {
+        String namespace = namespace(graphSpace, service);
         String deploymentName = deploymentName(graphSpace, service);
         String containerName = String.join(DELIMITER, deploymentName,
                                            CONTAINER);
@@ -588,7 +590,7 @@ public class K8sDriver {
                 .endMetadata()
 
                 .withNewSpec()
-                .withServiceAccountName(SERVICE_ACCOUNT_NAME)
+                .withServiceAccountName(namespace + SERVICE_ACCOUNT_NAME)
                 .withAutomountServiceAccountToken(true)
 
                 .addNewContainer()
