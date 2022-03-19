@@ -61,8 +61,6 @@ public class KoutTraverser extends OltpTraverser {
                             capacity, limit);
         }
 
-        boolean concurrent = depth >= this.concurrentDepth();
-
         Id labelId = this.getEdgeLabelId(label);
 
         Set<Id> latest = newIdSet();
@@ -81,11 +79,11 @@ public class KoutTraverser extends OltpTraverser {
             }
             if (nearest) {
                 latest = this.adjacentVerticesBatch(sourceV, latest, dir, labelId,
-                                               all, degree, remaining, concurrent);
+                                               all, degree, remaining);
                 all.addAll(latest);
             } else {
                 latest = this.adjacentVerticesBatch(sourceV, latest, dir, labelId,
-                                               null, degree, remaining, concurrent);
+                                               null, degree, remaining);
             }
             if (capacity != NO_LIMIT) {
                 // Update 'remaining' value to record remaining capacity
