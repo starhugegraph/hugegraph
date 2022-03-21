@@ -2286,9 +2286,10 @@ public class MetaManager {
         String key = this.kafkaPartitionCountKey();
         String result = this.metaDriver.get(key);
         try {
-            return Integer.parseInt(Optional.ofNullable(result).orElse("0"));
+            Integer count = Integer.parseInt(Optional.ofNullable(result).orElse("0"));
+            return count < 1 ? 1 : count;
         } catch (Exception e) {
-            return 0;
+            return 1;
         }
     }
 
