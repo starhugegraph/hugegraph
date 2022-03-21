@@ -478,6 +478,10 @@ public class HugeTask<V> extends FutureTask<V> {
         return false;
     }
 
+    public synchronized void overwriteStatus(TaskStatus status) {
+        this.status = status;
+    }
+
     protected void property(String key, Object value) {
         E.checkNotNull(key, "property key");
         switch (key) {
