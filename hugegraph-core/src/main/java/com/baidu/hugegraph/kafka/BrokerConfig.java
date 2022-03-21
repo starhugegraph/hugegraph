@@ -111,6 +111,7 @@ public final class BrokerConfig {
                     PD_CONFIG_MAP = map;                    
                 }
             } catch (Exception e) {
+                LOG.error("Meet error when load kafka config from pd {}", e);
                 PD_CONFIG_MAP = null;
             }
         }
@@ -182,10 +183,8 @@ public final class BrokerConfig {
     }
 
     private void updatePDRegisterInfo() {
-        LOG.info("====> Scorpiour: update pd register info for kafka");
         if (StringUtils.isNotBlank(BrokerConfig.PD_PEERS)) {
             try {
-                LOG.info("====> Scorpiour: going to register");
                 String kafkaHost = ConfigHolder.getKafkaHost();
                 String kafkaPort = ConfigHolder.getKafkaPort();
                 String clusterRole = ConfigHolder.getClusterRole().name();
@@ -208,7 +207,6 @@ public final class BrokerConfig {
                         .build()
                     )
                     .build();
-                LOG.info("====> Scorpiour: going to check if there's any registered kafka already");
                 Query query = Query.newBuilder()
                     .setAppName(KAFKA_APP_KEY)
                     .build();
@@ -216,18 +214,15 @@ public final class BrokerConfig {
                 // ignore if exists, otherwise register it
                 int count = nodes.getInfoCount();
                 if (count != 0) {
-                    LOG.info("====> Scorpiour: found {} registered, skip!", count);
                     return;
                 }
 
                 client.scheduleTask();
-                LOG.info("====> Scorpiour: schedule done");
                 this.client = client;
             } catch (Exception e) {
-                LOG.info("====> Scorpiour: meet error when register kafka to pd {}", e);
+                LOG.error("Meet error when register kafka to pd {}", e);
             }
         }
-        LOG.info("====> Scorpiour: register done");
     }
 
     private BrokerConfig() {
