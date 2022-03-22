@@ -50,13 +50,19 @@ public class SyncConfProducer extends ProducerClient<String, String> {
             String key = entry.getKey();
             String value = entry.getValue();
 
-            if (key.contains(MetaManager.META_PATH_TASK)
-                || key.contains(MetaManager.META_PATH_TASK_LOCK)
-                || key.contains(MetaManager.META_PATH_KAFKA)
-                || key.contains(MetaManager.META_PATH_DDS)
-            ) {
+            String[] keyParts = key.split(MetaManager.META_PATH_DELIMITER);
+
+            for(int i = keyParts.length - 1; i > 1; i--) {
+                String part = keyParts[i];
+                if (part.equals(MetaManager.META_PATH_TASK)
+                    || part.equals(MetaManager.META_PATH_TASK_LOCK)
+                    || part.equals(MetaManager.META_PATH_KAFKA)
+                    || part.equals(MetaManager.META_PATH_DDS)) {
+                // filter specified keys only appears after index 2
                 return;
+                }
             }
+            
 
             String graphSpace = null;
 

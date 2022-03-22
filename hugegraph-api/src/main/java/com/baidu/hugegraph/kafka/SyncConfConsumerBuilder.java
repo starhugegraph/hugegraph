@@ -93,7 +93,7 @@ public class SyncConfConsumerBuilder extends ConsumerBuilder<String, String> {
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, this.valueDeserializer.getName());
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, this.keyDeserializer.getName());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, this.groupId);
-        props.put(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, this.groupInstanceId);
+        //props.put(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, this.groupInstanceId);
         props.put("topic", topic);
 
         SyncConfConsumer consumer = new SyncConfConsumer(props);
