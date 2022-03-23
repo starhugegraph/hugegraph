@@ -20,10 +20,16 @@
 package com.baidu.hugegraph.kafka.consumer;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.baidu.hugegraph.kafka.topic.SyncConfTopic;
 import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.util.Log;
 import com.google.common.base.Strings;
@@ -32,6 +38,9 @@ import com.google.common.collect.ImmutableList;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 
 /**
  * Kafka consumer encapsulation & proxy
@@ -60,6 +69,34 @@ public abstract class ConsumerClient<K, V> {
         asyncExecutor = Executors.newSingleThreadExecutor();
         consumer = new KafkaConsumer<>(props);
         consumer.subscribe(ImmutableList.of(topic));
+    }
+
+    public final Map<TopicPartition, Long> getConsumerStackInfo() {
+        Map<String, List<PartitionInfo>> topicMap =  consumer.listTopics();
+        List<TopicPartition> tpList = new ArrayList<>();
+        List<PartitionInfo> partitions = topicMap.get(this.topic);
+        partitions.forEach((partition) -> {
+            tpList.add(new TopicPartition(partition.topic(), partition.partition()));
+        });
+
+        Map<TopicPartition, Long> endMap = consumer.endOffsets(tpList);
+
+        Map<TopicPartition, OffsetAndMetadata> committedMap = consumer.committed(new HashSet<>(tpList));
+
+        Map<TopicPartition, Long> stackedCount = new HashMap<>();
+
+        endMap.entrySet().forEach((entry) -> {
+            OffsetAndMetadata meta = committedMap.get(entry.getKey());
+            long end = entry.getValue();
+            long committed = meta.offset();
+            long diff = committed - end;
+
+            stackedCount.put(entry.getKey(), diff);
+
+            LOGGER.logCustomDebug("stacked {}", "Scorpiour", diff);
+        });
+
+        return stackedCount;
     }
 
     public final void consume() {

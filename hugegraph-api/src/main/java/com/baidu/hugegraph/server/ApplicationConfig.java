@@ -121,6 +121,7 @@ public class ApplicationConfig extends ResourceConfig {
                 @Override
                 public void onEvent(ApplicationEvent event) {
                     SyncConfConsumer confConsumer = null;
+                    StandardConsumer standardConsumer = null;
                     if (event.getType() == this.EVENT_INITED) {
                         manager = new GraphManager(conf, hub);
 
@@ -133,8 +134,8 @@ public class ApplicationConfig extends ResourceConfig {
                             confConsumer = new SyncConfConsumerBuilder().build();
                             confConsumer.consume();
 
-                            StandardConsumer consumer = ClientFactory.getInstance().getStandardConsumer();
-                            consumer.consume();
+                            standardConsumer = ClientFactory.getInstance().getStandardConsumer();
+                            standardConsumer.consume();
 
                             ClientFactory.getInstance().getSyncConfProducer();
                         }
@@ -142,6 +143,9 @@ public class ApplicationConfig extends ResourceConfig {
                     } else if (event.getType() == this.EVENT_DESTROYED) {
                         if (null != confConsumer) {
                             confConsumer.close();
+                        }
+                        if (null != standardConsumer) {
+                            standardConsumer.close();
                         }
                         if (BrokerConfig.getInstance().isSlave() || BrokerConfig.getInstance().isMaster()) {
                             SlaveServerWrapper.getInstance().close();
