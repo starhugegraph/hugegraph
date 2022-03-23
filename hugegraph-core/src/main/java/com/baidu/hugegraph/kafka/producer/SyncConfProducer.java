@@ -50,18 +50,29 @@ public class SyncConfProducer extends ProducerClient<String, String> {
             String key = entry.getKey();
             String value = entry.getValue();
 
-            if (key.contains(MetaManager.META_PATH_TASK)
-                || key.contains(MetaManager.META_PATH_TASK_LOCK)
-                || key.contains(MetaManager.META_PATH_KAFKA)
-                || key.contains(MetaManager.META_PATH_DDS)
-            ) {
-                return;
+            String[] keyParts = key.split(MetaManager.META_PATH_DELIMITER);
+            Boolean isGraphPath = false;
+            Boolean isGraphspacePath = false;
+            for(int i = keyParts.length - 1; i > 1; i--) {
+                String part = keyParts[i];
+                if (part.equals(MetaManager.META_PATH_TASK)
+                    || part.equals(MetaManager.META_PATH_TASK_LOCK)
+                    || part.equals(MetaManager.META_PATH_KAFKA)
+                    || part.equals(MetaManager.META_PATH_DDS)) {
+                    // filter specified keys only appears after index 2
+                    return;
+                } else if (part.equals(MetaManager.META_PATH_GRAPH)) {
+                    isGraphPath = true;
+                } else if (part.equals(MetaManager.META_PATH_GRAPHSPACE)) {
+                    isGraphspacePath = true;
+                }
             }
+            
 
             String graphSpace = null;
 
             // Check if graph is filtered, If it is true skip
-            if (key.contains(MetaManager.META_PATH_GRAPH)) {
+            if (isGraphPath) {
                 List<String> info = manager.extractGraphFromKey(key);
                 graphSpace = info.get(0);
                 String graph = info.get(1);
@@ -70,7 +81,7 @@ public class SyncConfProducer extends ProducerClient<String, String> {
                 }
             }
 
-            if (key.contains(MetaManager.META_PATH_GRAPHSPACE)) {
+            if (isGraphspacePath) {
                 if (Strings.isNullOrEmpty(graphSpace)) {
                     graphSpace = manager.extractGraphSpaceFromKey(key);
                 }
