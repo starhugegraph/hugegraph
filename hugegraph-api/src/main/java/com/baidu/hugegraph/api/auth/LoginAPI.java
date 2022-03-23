@@ -85,7 +85,8 @@ public class LoginAPI extends API {
             String token = authManager.loginUser(jsonLogin.name,
                                                  jsonLogin.password,
                                                  jsonLogin.expire);
-            LOGGER.getAuditLogger().logUserLogin(jsonLogin.name, "api", "/auth/login");
+            LOGGER.getAuditLogger().logUserLogin(jsonLogin.name, "api",
+                                                 "/auth/login");
             return manager.serializer()
                           .writeMap(ImmutableMap.of("token", token));
         } catch (AuthenticationException e) {
@@ -107,7 +108,7 @@ public class LoginAPI extends API {
 
         if (!auth.startsWith(AuthenticationFilter.BEARER_TOKEN_PREFIX)) {
             throw new BadRequestException(
-                  "Only HTTP Bearer authentication is supported");
+                      "Only HTTP Bearer authentication is supported");
         }
 
         String token = auth.substring(AuthenticationFilter.BEARER_TOKEN_PREFIX
@@ -156,7 +157,8 @@ public class LoginAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String kgLogin(@Context GraphManager manager,
                           KgJsonLogin jsonLogin) {
-        LOGGER.logCustomDebug("Kg user login: {}", RestServer.EXECUTOR, jsonLogin);
+        LOGGER.logCustomDebug("Kg user login: {}",
+                              RestServer.EXECUTOR, jsonLogin);
         checkCreatingBody(jsonLogin);
         String content = String.format("%s:%s", jsonLogin.name,
                                        DATE_FORMAT.format(new Date()));
@@ -167,14 +169,16 @@ public class LoginAPI extends API {
         AuthManager authManager = manager.authManager();
         HugeUser user = authManager.findUser(jsonLogin.name, false);
         if (user == null) {
-            LOGGER.logCustomDebug("Kg user not exist: {}, try to register.", RestServer.EXECUTOR, jsonLogin);
+            LOGGER.logCustomDebug("Kg user not exist: {}, try to register.",
+                                  RestServer.EXECUTOR, jsonLogin);
             user = new HugeUser(jsonLogin.name);
             user.password(StringEncoding.hashPassword(user.name()));
             user.description("KG user");
             authManager.createKgUser(user);
         }
         String token = authManager.createToken(jsonLogin.name, jsonLogin.expire);
-        LOGGER.getAuditLogger().logUserLogin(jsonLogin.name, "kglogin", "/auth/kglogin");
+        LOGGER.getAuditLogger().logUserLogin(jsonLogin.name, "kglogin",
+                                             "/auth/kglogin");
         return manager.serializer()
                       .writeMap(ImmutableMap.of("token", token));
     }

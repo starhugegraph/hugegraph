@@ -310,9 +310,6 @@ public class GraphsAPI extends API {
         HugeGraph g = graph(manager, graphSpace, graph);
         return JsonUtil.toJson(g.metadata(null, "compact"));
     }
-   private static final ConfigOption<String> PD_PEERS = new ConfigOption<>(
-            "pd.peers", "The addresses of pd nodes",disallowEmpty(),
-            "localhost");
 
     @PUT
     @Timed
