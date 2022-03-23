@@ -27,12 +27,17 @@ import com.baidu.hugegraph.kafka.BrokerConfig;
 import com.baidu.hugegraph.kafka.topic.SyncConfTopic;
 import com.baidu.hugegraph.kafka.topic.SyncConfTopicBuilder;
 import com.baidu.hugegraph.meta.MetaManager;
+import com.baidu.hugegraph.util.Log;
 import com.google.common.base.Strings;
+
+import org.slf4j.Logger;
 
 /**
  * Sync etcd service conf from master to slave
  */
 public class SyncConfProducer extends ProducerClient<String, String> {
+
+    private static final Logger LOG = Log.logger(ProducerClient.class);
 
     private final MetaManager manager = MetaManager.instance();
 
@@ -45,6 +50,7 @@ public class SyncConfProducer extends ProducerClient<String, String> {
     }
 
     private <T> void listenEtcdChanged(T response) {
+        LOG.info("===> Etcd change detected! going to sync");
         Map<String, String> map = manager.extractKVFromResponse(response);
         map.entrySet().forEach((entry) -> {
             String key = entry.getKey();
@@ -94,6 +100,7 @@ public class SyncConfProducer extends ProducerClient<String, String> {
                                             .setKey(key)
                                             .setValue(value)
                                             .build();
+            LOG.info("===> Going to produce {}", topic);
             this.produce(topic);
         });
     }

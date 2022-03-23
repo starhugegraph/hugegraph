@@ -36,26 +36,24 @@ import com.baidu.hugegraph.syncgateway.SyncMutationClient;
  */
 public class ClientFactory {
 
+    /**
+     * Producers
+     */
+    public final ProducerClient<String, ByteBuffer> standardProducer;
+    public final SyncConfProducer syncConfProducer;
+    /**
+     * Consumers
+     */
+    public final StandardConsumer standardConsumer;
+
     private static class ClientInstanceHolder {
         public static final ClientFactory factory = new ClientFactory();
-        /**
-         * Producers
-         */
-        public static final ProducerClient<String, ByteBuffer> standardProducer = 
-            new StandardProducerBuilder().build();
-        public static final SyncConfProducer syncConfProducer = new SyncConfProducerBuilder().build();
-        /**
-         * Consumers
-         */
-        public static final StandardConsumer standardConsumer = new StandardConsumerBuilder().build();
-        public static final SyncMutationClient syncMutationClient = new SyncMutationClient(
-                            MetaManager.instance().getKafkaSlaveServerHost(),
-                            MetaManager.instance().getKafkaSlaveServerPort());
-
     }
 
     private ClientFactory() {
-
+        standardProducer = new StandardProducerBuilder().build();
+        syncConfProducer = new SyncConfProducerBuilder().build();
+        standardConsumer = new StandardConsumerBuilder().build();
     }
 
     public static ClientFactory getInstance() {
@@ -63,18 +61,14 @@ public class ClientFactory {
     }
 
     public ProducerClient<String, ByteBuffer> getStandardProducer() {
-        return ClientInstanceHolder.standardProducer;
+        return this.standardProducer;
     }
 
     public StandardConsumer getStandardConsumer() {
-        return ClientInstanceHolder.standardConsumer;
-    }
-
-    public SyncMutationClient getSyncMutationClient() {
-        return ClientInstanceHolder.syncMutationClient;
+        return this.standardConsumer;
     }
 
     public SyncConfProducer getSyncConfProducer() {
-        return ClientInstanceHolder.syncConfProducer;
+        return this.syncConfProducer;
     }
 }

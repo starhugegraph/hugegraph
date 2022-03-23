@@ -38,7 +38,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 public class StandardConsumer extends ConsumerClient<String, ByteBuffer> {
     
     MetaManager manager = MetaManager.instance();
-    private SyncMutationClient client = ClientFactory.getInstance().getSyncMutationClient();
+    private SyncMutationClient client = new SyncMutationClient(
+                    MetaManager.instance().getKafkaSlaveServerHost(),
+                    MetaManager.instance().getKafkaSlaveServerPort());
 
     protected StandardConsumer(Properties props) {
         super(props);
@@ -49,9 +51,11 @@ public class StandardConsumer extends ConsumerClient<String, ByteBuffer> {
         if (BrokerConfig.getInstance().needKafkaSyncStorage()) {
             String[] graphInfo = HugeGraphSyncTopicBuilder.extractGraphs(record);
             String graphSpace = graphInfo[0];
-            String graphName = graphInfo[1];                       
+            String graphName = graphInfo[1];
+            ByteBuffer value = record.value();
+            byte[] raw = value.array();          
 
-            client.sendMutation(graphSpace, graphName, record.value().array());
+            client.sendMutation(graphSpace, graphName, raw);
             return true;
         }
         return false;
