@@ -78,13 +78,12 @@ public class TaskAPI extends API {
                                     @QueryParam("limit")
                                     @DefaultValue("100") long limit,
                                     @QueryParam("page") String page) {
-        LOGGER.logCustomDebug(
-            "Graph [{}] list tasks with status {}, ids {}, " +
-                  "limit {}, page {}",
-            RestServer.EXECUTOR, graph, status, ids, limit, page);
+        LOGGER.logCustomDebug("Graph [{}] list tasks with status {}, ids {}, " +
+                              "limit {}, page {}", RestServer.EXECUTOR, graph,
+                              status, ids, limit, page);
 
-        TaskScheduler scheduler = graph(manager, graphSpace, graph)
-                                  .taskScheduler();
+        TaskScheduler scheduler =
+                      graph(manager, graphSpace, graph).taskScheduler();
 
         Iterator<HugeTask<Object>> iter;
 
@@ -131,7 +130,8 @@ public class TaskAPI extends API {
                                    @PathParam("graphspace") String graphSpace,
                                    @PathParam("graph") String graph,
                                    @PathParam("id") long id) {
-        LOGGER.logCustomDebug("Graph [{}] get task: {}", RestServer.EXECUTOR, graph, id);
+        LOGGER.logCustomDebug("Graph [{}] get task: {}",
+                              RestServer.EXECUTOR, graph, id);
 
         TaskScheduler scheduler = graph(manager, graphSpace, graph)
                                   .taskScheduler();

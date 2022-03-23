@@ -81,8 +81,8 @@ public class BatchAPI extends API {
             throw new HugeException("The rest server is too busy to write");
         }
 
-        LOGGER.logCustomDebug(
-            "The batch writing threads is {}", RestServer.EXECUTOR, batchWriteThreads);
+        LOGGER.logCustomDebug("The batch writing threads is {}",
+                              RestServer.EXECUTOR, batchWriteThreads);
 
         try {
             R result = commit(g, callable);

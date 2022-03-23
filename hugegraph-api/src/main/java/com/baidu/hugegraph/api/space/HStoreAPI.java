@@ -23,33 +23,33 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.inject.Singleton;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
-import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
-import com.baidu.hugegraph.backend.store.hstore.HstoreOptions;
-import com.baidu.hugegraph.config.HugeConfig;
-import com.baidu.hugegraph.pd.client.PDConfig;
-import com.codahale.metrics.annotation.Timed;
-import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
+import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.api.API;
-import com.baidu.hugegraph.server.RestServer;
-import com.baidu.hugegraph.util.Log;
+import com.baidu.hugegraph.backend.store.hstore.HstoreOptions;
+import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.pd.client.PDClient;
+import com.baidu.hugegraph.pd.client.PDConfig;
 import com.baidu.hugegraph.pd.common.PDException;
 import com.baidu.hugegraph.pd.grpc.Metapb;
-import com.baidu.hugegraph.HugeException;
+import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.util.E;
+import com.baidu.hugegraph.util.Log;
+import com.codahale.metrics.annotation.Timed;
+import com.google.common.collect.ImmutableMap;
 
 @Path("hstore")
 @Singleton
@@ -64,14 +64,14 @@ public class HStoreAPI extends API {
 
         String pdPeers = config.get(HstoreOptions.PD_PEERS);
 
-        E.checkArgument(StringUtils.isNotEmpty(pdPeers), "Please set pd addrs" +
-                        " use config: pd.peers");
+        E.checkArgument(StringUtils.isNotEmpty(pdPeers),
+                        "Please set pd addrs use config: pd.peers");
 
-        this.client =
-                PDClient.create(PDConfig.of(pdPeers).setEnablePDNotify(false));
+        this.client = PDClient.create(PDConfig.of(pdPeers)
+                                              .setEnablePDNotify(false));
 
-        E.checkArgument(client != null, "Get pd client error, The hstore api " +
-                        "is not enable.");
+        E.checkArgument(client != null,
+                        "Get pd client error, The hstore api is not enable.");
 
         return this.client;
     }
@@ -202,8 +202,8 @@ public class HStoreAPI extends API {
         try {
             oldStore = client(config).getStore(id);
         } catch (PDException e) {
-            throw new HugeException(String.format("Get hstore node(%s) error", id),
-                                    e);
+            throw new HugeException(String.format(
+                      "Get hstore node(%s) error", id), e);
         }
 
         Metapb.Store newStore = Metapb.Store.newBuilder(oldStore)
@@ -231,8 +231,8 @@ public class HStoreAPI extends API {
         try {
             oldStore = client(config).getStore(id);
         } catch (PDException e) {
-            throw new HugeException(String.format("Get hstore node(%s) error", id),
-                                    e);
+            throw new HugeException(String.format(
+                      "Get hstore node(%s) error", id), e);
         }
         Metapb.Store newStore = Metapb.Store.newBuilder(oldStore)
                                             .setState(Metapb.StoreState.Tombstone)

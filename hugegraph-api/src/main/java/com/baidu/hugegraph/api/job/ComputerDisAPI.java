@@ -23,10 +23,10 @@ import static com.baidu.hugegraph.backend.query.Query.NO_LIMIT;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
 import javax.inject.Singleton;
 import javax.ws.rs.Consumes;

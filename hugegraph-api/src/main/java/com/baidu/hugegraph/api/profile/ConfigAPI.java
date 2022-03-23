@@ -1,8 +1,9 @@
 package com.baidu.hugegraph.api.profile;
 
-import com.baidu.hugegraph.api.API;
-import com.baidu.hugegraph.core.GraphManager;
-import com.codahale.metrics.annotation.Timed;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.security.RolesAllowed;
 import javax.inject.Singleton;
@@ -18,10 +19,9 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
-import java.util.Set;
-import java.util.HashSet;
-import java.util.Arrays;
-import java.util.Map;
+import com.baidu.hugegraph.api.API;
+import com.baidu.hugegraph.core.GraphManager;
+import com.codahale.metrics.annotation.Timed;
 
 @Path("graphspaces/{graphspace}/configs")
 @Singleton
@@ -48,7 +48,6 @@ public class ConfigAPI extends API {
                 "k8s.internal_algorithm",
                 "k8s.algorithms"
             ));
-
 
     @GET
     @Timed
@@ -95,11 +94,14 @@ public class ConfigAPI extends API {
                           Map<String, Object> extendProperties) {
         String serviceName = String.valueOf(extendProperties.get("name"));
 
-        Map<String, Object> properties = (Map<String, Object>)extendProperties.get("config");
+        Map<String, Object> properties =
+                (Map<String, Object>) extendProperties.get("config");
 
         // this.validateFields(properties);
 
-        Map<String, Object> result = manager.restProperties(graphSpace, serviceName, properties);
+        Map<String, Object> result = manager.restProperties(graphSpace,
+                                                            serviceName,
+                                                            properties);
         return manager.serializer().writeMap(result);
         
     }
@@ -195,16 +197,17 @@ public class ConfigAPI extends API {
     @SuppressWarnings("unused")
     private void validateFields(Map<String, Object> properties) {
         if (null == properties) {
-            throw new BadRequestException("Config is null while setting rest config");
+            throw new BadRequestException(
+                      "Config is null while setting rest config");
         }
         properties.keySet().forEach((key) -> {
             if (!REST_FIELDS.contains(key)) {
-                throw new BadRequestException("Invalid filed [" + key + "] while setting rest config");
+                throw new BadRequestException(
+                          "Invalid filed [" + key + "] while setting rest " +
+                          "config");
             }
         });
     }
 
-    private void checkRestUpdate(Map<String, Object> properties) {
-
-    }
+    private void checkRestUpdate(Map<String, Object> properties) {}
 }
