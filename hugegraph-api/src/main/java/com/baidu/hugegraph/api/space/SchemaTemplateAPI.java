@@ -34,13 +34,13 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.SecurityContext;
 
-import com.baidu.hugegraph.auth.HugeAuthenticator;
-import com.baidu.hugegraph.auth.HugePermission;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter;
+import com.baidu.hugegraph.auth.HugeAuthenticator;
+import com.baidu.hugegraph.auth.HugePermission;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.define.Checkable;
 import com.baidu.hugegraph.server.RestServer;
@@ -122,8 +122,8 @@ public class SchemaTemplateAPI extends API {
                         "Schema template '%s' does not exist", name);
 
         String username = manager.authManager().username();
-        String role = HugeAuthenticator.RequiredPerm.roleFor(graphSpace, "*",
-                                                             HugePermission.SPACE);
+        String role = HugeAuthenticator.RequiredPerm
+                .roleFor(graphSpace, "*", HugePermission.SPACE);
         if (st.creator().equals(username) || sc.isUserInRole(role)) {
             manager.dropSchemaTemplate(graphSpace, name);
         }
@@ -145,8 +145,8 @@ public class SchemaTemplateAPI extends API {
         }
 
         String username = manager.authManager().username();
-        String role = HugeAuthenticator.RequiredPerm.roleFor(graphSpace, "*",
-                                                             HugePermission.SPACE);
+        String role = HugeAuthenticator.RequiredPerm
+                .roleFor(graphSpace, "*", HugePermission.SPACE);
         if (old.creator().equals(username) || sc.isUserInRole(role)) {
             SchemaTemplate template = jsonSchemaTemplate.toSchemaTemplate();
             template.creator(old.creator());
