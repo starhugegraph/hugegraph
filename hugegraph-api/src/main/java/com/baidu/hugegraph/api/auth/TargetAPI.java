@@ -66,8 +66,7 @@ public class TargetAPI extends API {
                          @PathParam("graphspace") String graphSpace,
                          JsonTarget jsonTarget) {
         LOGGER.logCustomDebug("Graph space [{}] create target: {}",
-                    RestServer.EXECUTOR,
-                    graphSpace, jsonTarget);
+                              RestServer.EXECUTOR, graphSpace, jsonTarget);
         checkCreatingBody(jsonTarget);
         E.checkArgument(manager.graphSpace(graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
@@ -88,7 +87,7 @@ public class TargetAPI extends API {
                          @PathParam("id") String id,
                          JsonTarget jsonTarget) {
         LOGGER.logCustomDebug("Graph space [{}] update target: {}",
-                    RestServer.EXECUTOR, graphSpace, jsonTarget);
+                              RestServer.EXECUTOR, graphSpace, jsonTarget);
         checkUpdatingBody(jsonTarget);
         E.checkArgument(manager.graphSpace(graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
@@ -113,7 +112,7 @@ public class TargetAPI extends API {
                        @PathParam("graphspace") String graphSpace,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
         LOGGER.logCustomDebug("Graph space [{}] list targets",
-                    RestServer.EXECUTOR, graphSpace);
+                              RestServer.EXECUTOR, graphSpace);
 
         AuthManager authManager = manager.authManager();
         List<HugeTarget> targets = authManager.listAllTargets(graphSpace,
@@ -129,7 +128,7 @@ public class TargetAPI extends API {
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("id") String id) {
         LOGGER.logCustomDebug("Graph space [{}] get target: {}",
-                    RestServer.EXECUTOR, graphSpace, id);
+                              RestServer.EXECUTOR, graphSpace, id);
 
         AuthManager authManager = manager.authManager();
         HugeTarget target = authManager.getTarget(graphSpace,
@@ -145,7 +144,7 @@ public class TargetAPI extends API {
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("id") String id) {
         LOGGER.logCustomDebug("Graph space [{}] delete target: {}",
-                    RestServer.EXECUTOR, graphSpace, id);
+                              RestServer.EXECUTOR, graphSpace, id);
 
         try {
             AuthManager authManager = manager.authManager();

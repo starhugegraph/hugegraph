@@ -88,6 +88,7 @@ import com.baidu.hugegraph.exception.NotSupportException;
 import com.baidu.hugegraph.io.HugeGraphSONModule;
 import com.baidu.hugegraph.k8s.K8sManager;
 import com.baidu.hugegraph.k8s.K8sRegister;
+import com.baidu.hugegraph.kafka.BrokerConfig;
 import com.baidu.hugegraph.license.LicenseVerifier;
 import com.baidu.hugegraph.meta.MetaManager;
 import com.baidu.hugegraph.metrics.MetricsUtil;
@@ -170,6 +171,8 @@ public final class GraphManager {
         this.pdPeers = conf.get(ServerOptions.PD_PEERS);
         this.eventHub = hub;
         this.k8sApiEnabled = conf.get(ServerOptions.K8S_API_ENABLE);
+
+        BrokerConfig.setPdPeers(pdPeers);
 
         this.listenChanges();
 

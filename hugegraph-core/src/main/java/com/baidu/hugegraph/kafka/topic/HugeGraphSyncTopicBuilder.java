@@ -56,11 +56,14 @@ public class HugeGraphSyncTopicBuilder {
      * @return
      */
     private int calcPartition() {
-        int code = this.graphName.hashCode() % PARTITION_COUNT;
+        if (PARTITION_COUNT <= 1) {
+            return 0;
+        }
+        int code = this.graphName.hashCode() % (PARTITION_COUNT - 1);
         if (code < 0) {
             code = -code;
         }
-        return code;
+        return code + 1;
     }
 
     public HugeGraphSyncTopicBuilder setMutation(BackendMutation mutation) {

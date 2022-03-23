@@ -27,7 +27,6 @@ import java.util.Map;
 @Singleton
 public class ConfigAPI extends API {
 
-
     /**
      * Available rest fields
      */
@@ -81,7 +80,6 @@ public class ConfigAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @RolesAllowed({"admin", "$dynamic"})
     public String getRestConfigFields(@Context GraphManager manager) {
-
         return manager.serializer().writeList("fields", REST_FIELDS);
     }
 

@@ -23,8 +23,20 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
+import com.alipay.remoting.util.StringUtils;
 import com.alipay.sofa.jraft.util.concurrent.ConcurrentHashSet;
 import com.baidu.hugegraph.meta.MetaManager;
+import com.baidu.hugegraph.pd.client.DiscoveryClient;
+import com.baidu.hugegraph.pd.client.DiscoveryClientImpl;
+import com.baidu.hugegraph.pd.grpc.discovery.NodeInfo;
+import com.baidu.hugegraph.pd.grpc.discovery.NodeInfos;
+import com.baidu.hugegraph.pd.grpc.discovery.Query;
+import com.baidu.hugegraph.pd.grpc.discovery.RegisterType;
+import com.baidu.hugegraph.util.Log;
+
+import org.slf4j.Logger;
+
+import jersey.repackaged.com.google.common.collect.ImmutableMap;
 
 /**
  * BrokerConfig used to init producer and consumer
@@ -32,6 +44,8 @@ import com.baidu.hugegraph.meta.MetaManager;
  * @since 2022-01-18
  */
 public final class BrokerConfig {
+
+    private static final Logger LOG = Log.logger(BrokerConfig.class);
 
     private final MetaManager manager;
     private final String SYNC_BROKER_KEY;
@@ -45,36 +59,169 @@ public final class BrokerConfig {
     private final Set<String> filteredGraph = new ConcurrentHashSet<>();
     private final Set<String> filteredGraphSpace = new ConcurrentHashSet<>();
 
+    private static final String KAFKA_APP_KEY = "HUGEGRAPH_KAFKA_APP";
+
+    private static String PD_PEERS;
+
+    private static final String PD_KAFKA_HOST = "KAFKA_HOST";
+    private static final String PD_KAFKA_PORT = "KAFKA_PORT";
+    private static final String PD_KAFKA_CLUSTER_ROLE = "KAFKA_CLUSTER_ROLE";
+    private static final String PD_KAFKA_PARTITION_COUNT = "PD_KAFKA_PARTITION_COUNT";
+
+    private DiscoveryClient client;
+
+    public static void setPdPeers(String pdPeers) {
+        PD_PEERS = pdPeers;
+    }
+
     private static class ConfigHolder {
         public final static BrokerConfig instance = new BrokerConfig();
         public final static HugeGraphClusterRole clusterRole = ConfigHolder.getClusterRole();
         public final static String brokerHost = ConfigHolder.getKafkaHost();
         public final static String brokerPort = ConfigHolder.getKafkaPort();
-        public final static int partitionCount = 1;
+        public final static int partitionCount = ConfigHolder.getPartitionCount();
+
+        private static Map<String, String> PD_CONFIG_MAP = null;
+
+        private synchronized static void  loadPDRegisterInfo() {
+            if (null != PD_CONFIG_MAP) {
+                return;
+            }
+            try {
+                DiscoveryClient client = DiscoveryClientImpl.newBuilder()
+                    .setAppName(KAFKA_APP_KEY)
+                    .setCenterAddress(BrokerConfig.PD_PEERS)
+                    .setDelay(15 * 1000)
+                    .setLabels(new ImmutableMap.Builder<String, String>()
+                        .put(PD_KAFKA_HOST, ConfigHolder.getKafkaHost())
+                        .put(PD_KAFKA_PORT, ConfigHolder.getKafkaPort())
+                        .put(PD_KAFKA_CLUSTER_ROLE, ConfigHolder.getClusterRole().name())
+                        .put(PD_KAFKA_PARTITION_COUNT, ConfigHolder.getPartitionCount().toString())
+                        .build()
+                    )
+                    .build();
+                Query query = Query.newBuilder()
+                    .setAppName(KAFKA_APP_KEY)
+                    .build();
+                NodeInfos nodes = client.getNodeInfos(query);
+                int count = nodes.getInfoCount();
+                if (count > 0) {
+                    NodeInfo info = nodes.getInfo(0);
+                    Map<String, String> map = info.getLabelsMap();
+                    PD_CONFIG_MAP = map;                    
+                }
+            } catch (Exception e) {
+                LOG.error("Meet error when load kafka config from pd {}", e);
+                PD_CONFIG_MAP = null;
+            }
+        }
 
 
         private static HugeGraphClusterRole getClusterRole() {
             try {
                 MetaManager manager = MetaManager.instance();
                 if (!manager.isReady()) {
-                    return HugeGraphClusterRole.NONE;
+                    loadPDRegisterInfo();
+                    if (null != PD_CONFIG_MAP) {
+                        String clusterRole = PD_CONFIG_MAP.getOrDefault(PD_KAFKA_CLUSTER_ROLE, "NONE");
+                        return HugeGraphClusterRole.fromName(clusterRole);
+                    } else {
+                        return HugeGraphClusterRole.NONE;
+                    }
+                } else {
+                    String val = manager.getHugeGraphClusterRole();
+                    HugeGraphClusterRole role = HugeGraphClusterRole.fromName(val);
+                    return role;
                 }
-                String val = manager.getHugeGraphClusterRole();
-                HugeGraphClusterRole role = HugeGraphClusterRole.fromName(val);
-                return role;
             } catch (Exception e) {
                 return HugeGraphClusterRole.NONE;
             }
         }
 
         private static String getKafkaHost() {
-            String result = MetaManager.instance().getKafkaBrokerHost();
-            return result;
+            MetaManager manager = MetaManager.instance();
+            if (!manager.isReady()) {
+                loadPDRegisterInfo();
+                if (null != PD_CONFIG_MAP) {
+                    return PD_CONFIG_MAP.getOrDefault(PD_KAFKA_HOST, "");
+                } else {
+                    return "";
+                }
+            } else {
+                return manager.getKafkaBrokerHost();
+            }
         }
 
         private static String getKafkaPort() {
-            String result = MetaManager.instance().getKafkaBrokerPort();
-            return result;
+            MetaManager manager = MetaManager.instance();
+            if (!manager.isReady()) {
+                loadPDRegisterInfo();
+                if (null != PD_CONFIG_MAP) {
+                    return PD_CONFIG_MAP.getOrDefault(PD_KAFKA_PORT, "9092");
+                } else {
+                    return "";
+                }
+            } else {
+                return manager.getKafkaBrokerPort();
+            }
+        }
+        
+        private static Integer getPartitionCount() {
+            MetaManager manager = MetaManager.instance();
+            if (!manager.isReady()) {
+                loadPDRegisterInfo();
+                if (null != PD_CONFIG_MAP) {
+                    String partitionCount = PD_CONFIG_MAP.getOrDefault(PD_KAFKA_PARTITION_COUNT, "1");
+                    return Integer.parseInt(partitionCount);
+                } else {
+                    return 1;
+                }
+            } else {
+                return manager.getPartitionCount();
+            }
+        }
+    }
+
+    private void updatePDRegisterInfo() {
+        if (StringUtils.isNotBlank(BrokerConfig.PD_PEERS)) {
+            try {
+                String kafkaHost = ConfigHolder.getKafkaHost();
+                String kafkaPort = ConfigHolder.getKafkaPort();
+                String clusterRole = ConfigHolder.getClusterRole().name();
+                int partitionCount = ConfigHolder.getPartitionCount();
+
+                String address = kafkaHost + ":" + kafkaPort;
+                DiscoveryClient client = DiscoveryClientImpl.newBuilder()
+                    .setAppName(KAFKA_APP_KEY)
+                    .setCenterAddress(BrokerConfig.PD_PEERS)
+                    .setAddress(address)
+                    .setVersion("1.0.0")
+                    .setType(RegisterType.Heartbeat)
+                    .setId(KAFKA_APP_KEY)
+                    .setDelay(15 * 1000)
+                    .setLabels(new ImmutableMap.Builder<String, String>()
+                        .put(PD_KAFKA_HOST, kafkaHost)
+                        .put(PD_KAFKA_PORT, kafkaPort)
+                        .put(PD_KAFKA_CLUSTER_ROLE, clusterRole)
+                        .put(PD_KAFKA_PARTITION_COUNT, String.valueOf(partitionCount))
+                        .build()
+                    )
+                    .build();
+                Query query = Query.newBuilder()
+                    .setAppName(KAFKA_APP_KEY)
+                    .build();
+                NodeInfos nodes = client.getNodeInfos(query);
+                // ignore if exists, otherwise register it
+                int count = nodes.getInfoCount();
+                if (count != 0) {
+                    return;
+                }
+
+                client.scheduleTask();
+                this.client = client;
+            } catch (Exception e) {
+                LOG.error("Meet error when register kafka to pd {}", e);
+            }
         }
     }
 
@@ -84,12 +231,20 @@ public final class BrokerConfig {
         this.SYNC_STORAGE_KEY = manager.kafkaSyncStorageKey();
         this.FILTER_GRAPH_KEY = manager.kafkaFilterGraphKey();
         this.FILTER_GRAPH_SPACE_KEY = manager.kafkaFilterGraphspaceKey();
-        
-        this.updateNeedSyncBroker();
-        this.updateNeedSyncStorage();
-        if (manager.isReady()) {
+
+        // If no etcd set, only send to broker, sync storage is not used here
+        if (!manager.isReady()) {
+            needSyncBroker = true;
+            needSyncStorage = false;
+        } else {
+            this.updateNeedSyncBroker();
+            this.updateNeedSyncStorage();
             manager.listenKafkaConfig(this::kafkaConfigEventHandler);
+            // sync config to pd
+
+            updatePDRegisterInfo();
         }
+
     }
 
     private <T> void kafkaConfigEventHandler(T response) {

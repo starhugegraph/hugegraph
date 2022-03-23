@@ -17,7 +17,6 @@
  * under the License.
  */
 
-
 package com.baidu.hugegraph.api.filter;
 
 import com.baidu.hugegraph.auth.HugePermission;
@@ -35,7 +34,6 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.Optional;
 
-
 /**
  * AccessLogFilter performs as a middleware that log all the http accesses.
  * @since 2021-11-24
@@ -52,9 +50,9 @@ public class AccessLogFilter implements ContainerResponseFilter {
      * @param responseContext responseContext
      */
     @Override
-    public void filter(
-            ContainerRequestContext requestContext,
-            ContainerResponseContext responseContext) throws IOException {
+    public void filter(ContainerRequestContext requestContext,
+                       ContainerResponseContext responseContext)
+                throws IOException {
         // Grab corresponding request / response info from context;
         String method = requestContext.getRequest().getMethod();
         String path = requestContext.getUriInfo().getPath();
@@ -65,14 +63,18 @@ public class AccessLogFilter implements ContainerResponseFilter {
         String roles = HugePermission.NONE.string();
 
         // Calculate response time
-        Date accessTime = Optional.ofNullable(requestContext.getDate()).orElse(DateUtil.DATE_ZERO);
-        Date finalizeTime = Optional.ofNullable(responseContext.getDate()).orElse(DateUtil.DATE_ZERO);
-        long responseTime = finalizeTime.equals(DateUtil.DATE_ZERO) ? 0 : finalizeTime.getTime() - accessTime.getTime();
+        Date accessTime = Optional.ofNullable(requestContext.getDate())
+                                  .orElse(DateUtil.DATE_ZERO);
+        Date finalizeTime = Optional.ofNullable(responseContext.getDate())
+                                    .orElse(DateUtil.DATE_ZERO);
+        long responseTime = finalizeTime.equals(DateUtil.DATE_ZERO) ? 0 :
+                            finalizeTime.getTime() - accessTime.getTime();
 
         // Grab user info
         SecurityContext securityContext = requestContext.getSecurityContext();
         if (securityContext instanceof AuthenticationFilter.Authorizer) {
-            AuthenticationFilter.Authorizer authorizer = (AuthenticationFilter.Authorizer)securityContext;
+            AuthenticationFilter.Authorizer authorizer =
+                    (AuthenticationFilter.Authorizer) securityContext;
             userName = authorizer.username();
             userId = authorizer.userId();
             roles = authorizer.role().toString();
@@ -80,6 +82,7 @@ public class AccessLogFilter implements ContainerResponseFilter {
 
         // build log string
         // TODO by Scorpiour: Use Formatted log template to replace hard-written string when logging
-        LOG.info("{} /{} Status: {} - user: {} {} - roles: {} in {} ms", method, path, code, userId, userName, roles, responseTime);
+        LOG.info("{} /{} Status: {} - user: {} {} - roles: {} in {} ms",
+                 method, path, code, userId, userName, roles, responseTime);
     }
 }
