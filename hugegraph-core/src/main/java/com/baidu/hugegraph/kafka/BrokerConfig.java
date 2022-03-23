@@ -225,18 +225,18 @@ public final class BrokerConfig {
         this.SYNC_STORAGE_KEY = manager.kafkaSyncStorageKey();
         this.FILTER_GRAPH_KEY = manager.kafkaFilterGraphKey();
         this.FILTER_GRAPH_SPACE_KEY = manager.kafkaFilterGraphspaceKey();
+        
 
-        // If no etcd set, only send to broker, sync storage is not used here
-        if (!manager.isReady()) {
-            needSyncBroker = true;
-            needSyncStorage = false;
-        } else {
+        if (manager.isReady()) {
             this.updateNeedSyncBroker();
             this.updateNeedSyncStorage();
             manager.listenKafkaConfig(this::kafkaConfigEventHandler);
             // sync config to pd
 
             updatePDRegisterInfo();
+        } else {
+            needSyncBroker = true;
+            needSyncStorage = false;
         }
 
     }
