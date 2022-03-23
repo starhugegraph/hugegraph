@@ -177,7 +177,7 @@ public final class BrokerConfig {
     }
 
     private void updatePDRegisterInfo() {
-        if (StringUtils.isNotBlank(BrokerConfig.PD_PEERS)) {
+        if (StringUtils.isNotBlank(BrokerConfig.PD_PEERS) && (isMaster() || isSlave())) {
             try {
                 String kafkaHost = ConfigHolder.getKafkaHost();
                 String kafkaPort = ConfigHolder.getKafkaPort();
