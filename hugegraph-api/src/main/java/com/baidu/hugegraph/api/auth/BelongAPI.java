@@ -67,7 +67,7 @@ public class BelongAPI extends API {
                          @PathParam("graphspace") String graphSpace,
                          JsonBelong jsonBelong) {
         LOGGER.logCustomDebug("Graph space [{}] create belong: {}",
-                  graphSpace, jsonBelong);
+                              graphSpace, jsonBelong);
         checkCreatingBody(jsonBelong);
         E.checkArgument(manager.graphSpace(graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
@@ -88,8 +88,7 @@ public class BelongAPI extends API {
                          @PathParam("id") String id,
                          JsonBelong jsonBelong) {
         LOGGER.logCustomDebug("Graph space [{}] update belong: {}",
-                    RestServer.EXECUTOR,
-                    graphSpace, jsonBelong);
+                              RestServer.EXECUTOR, graphSpace, jsonBelong);
         checkUpdatingBody(jsonBelong);
         E.checkArgument(manager.graphSpace(graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
@@ -116,9 +115,9 @@ public class BelongAPI extends API {
                        @QueryParam("user") String user,
                        @QueryParam("group") String group,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
-        LOGGER.logCustomDebug("Graph space [{}] list belongs by user {} or group {}",
-                    RestServer.EXECUTOR,
-                    graphSpace, user, group);
+        LOGGER.logCustomDebug("Graph space [{}] list belongs by user {} or " +
+                              "group {}", RestServer.EXECUTOR,
+                              graphSpace, user, group);
         E.checkArgument(user == null || group == null,
                         "Can't pass both user and group at the same time");
 
@@ -146,8 +145,7 @@ public class BelongAPI extends API {
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("id") String id) {
         LOGGER.logCustomDebug("Graph space [{}] get belong: {}",
-                    RestServer.EXECUTOR,
-                    graphSpace, id);
+                              RestServer.EXECUTOR, graphSpace, id);
 
         AuthManager authManager = manager.authManager();
         HugeBelong belong = authManager.getBelong(graphSpace,
@@ -164,8 +162,7 @@ public class BelongAPI extends API {
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("id") String id) {
         LOGGER.logCustomDebug("Graph space [{}] delete belong: {}",
-                    RestServer.EXECUTOR,
-                    graphSpace, id);
+                              RestServer.EXECUTOR, graphSpace, id);
 
         try {
             AuthManager authManager = manager.authManager();
