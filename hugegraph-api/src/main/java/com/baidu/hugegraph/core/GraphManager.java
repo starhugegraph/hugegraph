@@ -894,7 +894,7 @@ public final class GraphManager {
                 try {
                     this.registerK8StoPd();
                 } catch (Exception e) {
-
+                    LOG.error("Register K8s info to PD failed: {}", e);
                 }
             }
             // Persist to etcd
@@ -931,7 +931,7 @@ public final class GraphManager {
             try {
                 this.registerK8StoPd();
             } catch (Exception e) {
-
+                LOG.error("Register K8s info to PD failed: {}", e);
             }
         }
     }
