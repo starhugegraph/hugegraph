@@ -108,7 +108,7 @@ public class K8sManager {
             return Collections.EMPTY_SET;
         }
         return this.k8sDriver.createOltpService(graphSpace, service,
-                                               metaServers, cluster);
+                                                metaServers, cluster);
     }
 
     @SuppressWarnings("unchecked")
