@@ -464,7 +464,7 @@ public class HugeGraphSONModule extends TinkerPopJacksonModule {
             String description = null;
             String type = null;
             String deploymentType = null;
-            String status = null;
+            String status = "UNKNOWN";
 
             Number count = 0;
             Number running = 0;

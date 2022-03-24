@@ -277,11 +277,18 @@ public class K8sDriver {
         if (null == deployment) {
             throw new HugeException("Cannot start OLTP service since deployment is not created!");
         }
-                // start service
+        // start service
+        this.client.apps()
+                    .deployments()
+                    .inNamespace(namespace)
+                    .withName(deploymentName)
+                    .scale(service.count());
         return this.createService(graphSpace, service);
+
     }
 
     public void stopOltpService(GraphSpace graphSpace, Service service) {
+        
         String serviceName = serviceName(graphSpace, service);
         String namespace = namespace(graphSpace, service);
         this.client.services().inNamespace(namespace)
@@ -298,6 +305,18 @@ public class K8sDriver {
         if (svc != null) {
             throw new HugeException("Failed to stop service: %s", svc);
         }
+        String deploymentName = deploymentName(graphSpace, service);
+        Deployment deployment = this.client.apps().deployments()
+                        .inNamespace(namespace)
+                        .withName(deploymentName)
+                        .get();
+        if (null != deployment) {
+            this.client.apps().deployments()
+                        .inNamespace(namespace)
+                        .withName(deploymentName)
+                        .scale(0);
+        }
+        
     }
 
     public void deleteOltpService(GraphSpace graphSpace, Service service) {
