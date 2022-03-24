@@ -409,7 +409,7 @@ public final class GraphManager {
                                     Service.ServiceType.OLTP,
                                     this.serviceID));
         // register self to pd, should prior to etcd due to pdServiceId info
-        this.registerServiceToPd(service);
+        this.registerServiceToPd(this.serviceGraphSpace, service);
 
         if (!this.services.containsKey(serviceName(this.serviceGraphSpace,
                                                    this.serviceID))) {
@@ -778,7 +778,7 @@ public final class GraphManager {
         }
     }
 
-    private void registerServiceToPd(Service service) {
+    private void registerServiceToPd(String graphSpace, Service service) {
         try {
             PdRegister register = PdRegister.getInstance();
             RegisterConfig config = new RegisterConfig()
@@ -787,7 +787,7 @@ public final class GraphManager {
                     .setUrls(service.urls())
                     .setLabelMap(ImmutableMap.of(
                             PdRegisterLabel.REGISTER_TYPE.name(), PdRegisterType.DDS.name(),
-                            PdRegisterLabel.GRAPHSPACE.name(), this.serviceGraphSpace,
+                            PdRegisterLabel.GRAPHSPACE.name(), graphSpace,
                             PdRegisterLabel.SERVICE_NAME.name(), service.name(),
                             PdRegisterLabel.SERVICE_ID.name(), service.serviceId()
                     ));
@@ -889,7 +889,7 @@ public final class GraphManager {
             service.serviceId(serviceId(graphSpace, service.type(),
                                         service.name()));
             // Register to pd. The order here is important since pdServiceId will be stored in etcd
-            this.registerServiceToPd(service);
+            this.registerServiceToPd(graphSpace, service);
             if (service.k8s()) {
                 try {
                     this.registerK8StoPd();
@@ -926,7 +926,7 @@ public final class GraphManager {
         service.status(Service.Status.STARTING);
         this.metaManager.updateServiceConfig(graphSpace, service);
         this.metaManager.notifyServiceUpdate(graphSpace, service.name());
-        this.registerServiceToPd(service);
+        this.registerServiceToPd(graphSpace, service);
         if (service.k8s()) {
             try {
                 this.registerK8StoPd();
