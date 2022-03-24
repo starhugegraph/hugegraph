@@ -110,6 +110,8 @@ public class ApplicationConfig extends ResourceConfig {
                                       implements Factory<GraphManager> {
 
         private GraphManager manager = null;
+        private SyncConfConsumer confConsumer = null;
+        private StandardConsumer standardConsumer = null;
 
         public GraphManagerFactory(HugeConfig conf, EventHub hub) {
             register(new ApplicationEventListener() {
@@ -120,17 +122,13 @@ public class ApplicationConfig extends ResourceConfig {
 
                 @Override
                 public void onEvent(ApplicationEvent event) {
-                    SyncConfConsumer confConsumer = null;
-                    StandardConsumer standardConsumer = null;
                     if (event.getType() == this.EVENT_INITED) {
                         manager = new GraphManager(conf, hub);
 
-                        if (BrokerConfig.getInstance().isSlave()) {
-                            confConsumer = new SyncConfConsumerBuilder().build();
-                            confConsumer.consume();
+                        if (BrokerConfig.getInstance().isKafkaEnabled()) {
 
                             SlaveServerWrapper.getInstance().init(manager);
-                        } else if (BrokerConfig.getInstance().isMaster()) {
+
                             confConsumer = new SyncConfConsumerBuilder().build();
                             confConsumer.consume();
 
@@ -141,13 +139,14 @@ public class ApplicationConfig extends ResourceConfig {
                         }
 
                     } else if (event.getType() == this.EVENT_DESTROYED) {
-                        if (null != confConsumer) {
-                            confConsumer.close();
-                        }
-                        if (null != standardConsumer) {
-                            standardConsumer.close();
-                        }
-                        if (BrokerConfig.getInstance().isSlave() || BrokerConfig.getInstance().isMaster()) {
+                        if (BrokerConfig.getInstance().isKafkaEnabled()) {
+                            if (null != confConsumer) {
+                                confConsumer.close();
+                            }
+                            if (null != standardConsumer) {
+                                standardConsumer.close();
+                            }
+
                             SlaveServerWrapper.getInstance().close();
                         }
                         if (manager != null) {
