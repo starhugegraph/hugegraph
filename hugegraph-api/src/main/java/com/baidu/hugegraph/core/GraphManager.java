@@ -793,6 +793,7 @@ public final class GraphManager {
             String ddsHost = this.metaManager.getDDSHost();
             if (!Strings.isNullOrEmpty(ddsHost)) {
                 config.setDdsHost(ddsHost);
+                config.setDdsSlave(BrokerConfig.getInstance().isSlave());
             }
 
             String pdServiceId = register.registerService(config);
@@ -834,6 +835,7 @@ public final class GraphManager {
             String ddsHost = this.metaManager.getDDSHost();
             if (!Strings.isNullOrEmpty(ddsHost)) {
                 config.setDdsHost(ddsHost);
+                config.setDdsSlave(BrokerConfig.getInstance().isSlave());
             }
             this.pdK8sServiceId = pdRegister.registerService(config);
         } catch (Exception e) {
