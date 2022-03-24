@@ -57,8 +57,6 @@ public class ServiceApi extends API {
 
     private static final Logger LOG = Log.logger(RestServer.class);
 
-    private static final String CONFIRM_DROP = "I'm sure to delete the service";
-
     private static final String CLUSTER_IP = "ClusterIP";
     private static final String NODE_PORT = "NodePort";
 
@@ -177,15 +175,12 @@ public class ServiceApi extends API {
     @RolesAllowed({"admin"})
     public void delete(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
-                       @PathParam("name") String name,
-                       @QueryParam("confirm_message") String message) {
+                       @PathParam("name") String name) {
         LOG.debug("Remove service by name '{}' for graph space",
                   name, graphSpace);
         E.checkArgument(space(manager, graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
 
-        E.checkArgument(CONFIRM_DROP.equals(message),
-                        "Please take the message: %s", CONFIRM_DROP);
         manager.dropService(graphSpace, name);
     }
 
