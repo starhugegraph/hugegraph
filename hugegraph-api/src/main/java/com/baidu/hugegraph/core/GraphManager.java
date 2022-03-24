@@ -98,6 +98,7 @@ import com.baidu.hugegraph.serializer.Serializer;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.space.GraphSpace;
 import com.baidu.hugegraph.space.Service;
+import com.baidu.hugegraph.space.Service.Status;
 import com.baidu.hugegraph.task.TaskManager;
 import com.baidu.hugegraph.type.define.CollectionType;
 import com.baidu.hugegraph.type.define.GraphMode;
@@ -408,7 +409,8 @@ public final class GraphManager {
                                     Service.ServiceType.OLTP,
                                     this.serviceID));
         // register self to pd, should prior to etcd due to pdServiceId info
-        this.registerServiceToPd(service);
+        this.registerServiceToPd(this.serviceGraphSpace, service);
+
         if (!this.services.containsKey(serviceName(this.serviceGraphSpace,
                                                    this.serviceID))) {
             // register to etcd
@@ -776,7 +778,7 @@ public final class GraphManager {
         }
     }
 
-    private void registerServiceToPd(Service service) {
+    private void registerServiceToPd(String graphSpace, Service service) {
         try {
             PdRegister register = PdRegister.getInstance();
             RegisterConfig config = new RegisterConfig()
@@ -785,7 +787,7 @@ public final class GraphManager {
                     .setUrls(service.urls())
                     .setLabelMap(ImmutableMap.of(
                             PdRegisterLabel.REGISTER_TYPE.name(), PdRegisterType.DDS.name(),
-                            PdRegisterLabel.GRAPHSPACE.name(), this.serviceGraphSpace,
+                            PdRegisterLabel.GRAPHSPACE.name(), graphSpace,
                             PdRegisterLabel.SERVICE_NAME.name(), service.name(),
                             PdRegisterLabel.SERVICE_ID.name(), service.serviceId()
                     ));
@@ -887,11 +889,21 @@ public final class GraphManager {
             service.serviceId(serviceId(graphSpace, service.type(),
                                         service.name()));
             // Register to pd. The order here is important since pdServiceId will be stored in etcd
-            this.registerServiceToPd(service);
+            this.registerServiceToPd(graphSpace, service);
+            if (service.k8s()) {
+                try {
+                    this.registerK8StoPd();
+                } catch (Exception e) {
+                    LOG.error("Register K8s info to PD failed: {}", e);
+                }
+            }
             // Persist to etcd
             this.metaManager.addServiceConfig(graphSpace, service);
             this.metaManager.notifyServiceAdd(graphSpace, name);
             this.services.put(serviceName(graphSpace, name), service);
+        } catch (Exception e) {
+            LOG.error("Create service failed {}", e);
+            throw e;
         } finally {
             this.metaManager.unlock(lock, this.cluster, graphSpace, name);
         }
@@ -900,6 +912,7 @@ public final class GraphManager {
     }
 
     public void startService(String graphSpace, Service service) {
+        service.status(Status.STARTING);
         List<String> endpoints = this.config.get(ServerOptions.META_ENDPOINTS);
         GraphSpace gs = this.graphSpace(graphSpace);
         Set<String> urls = this.k8sManager.startService(gs, service, endpoints,
@@ -913,7 +926,14 @@ public final class GraphManager {
         service.status(Service.Status.STARTING);
         this.metaManager.updateServiceConfig(graphSpace, service);
         this.metaManager.notifyServiceUpdate(graphSpace, service.name());
-        this.registerServiceToPd(service);
+        this.registerServiceToPd(graphSpace, service);
+        if (service.k8s()) {
+            try {
+                this.registerK8StoPd();
+            } catch (Exception e) {
+                LOG.error("Register K8s info to PD failed: {}", e);
+            }
+        }
     }
 
     public void stopService(String graphSpace, String name) {
