@@ -192,7 +192,7 @@ public class K8sDriver {
     public Namespace createNamespace(String name, Map<String, String> labels) {
         Namespace namespace = new NamespaceBuilder()
                 .withNewMetadata()
-                .withName(name)
+                .withName(validateNamespaceName(name))
                 .addToLabels(labels)
                 .endMetadata()
                 .build();
@@ -699,6 +699,10 @@ public class K8sDriver {
                 throw new AssertionError(String.format(
                           "Invalid service type '%s'", service.type()));
         }
+    }
+
+    private static String validateNamespaceName(String namespace) {
+        return namespace.replace("_", "-").toLowerCase();
     }
 
     private static String deploymentName(GraphSpace graphSpace,
