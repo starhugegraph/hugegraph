@@ -321,6 +321,10 @@ public final class BrokerConfig {
         return HugeGraphClusterRole.SLAVE.equals(ConfigHolder.clusterRole);
     }
 
+    public Boolean isKafkaEnabled() {
+        return this.isMaster() || this.isSlave();
+    }
+
     public String getSyncGroupId() {
         return  "hugegraph-sync-consumer-group";
     }
