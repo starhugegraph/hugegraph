@@ -100,6 +100,8 @@ public class ProducerClient<K, V> {
                 producer.send(record); //.get();
             } catch (Exception e) {
                 System.out.println(e.getStackTrace());
+            } finally {
+                producer.flush();
             }
         });
     }

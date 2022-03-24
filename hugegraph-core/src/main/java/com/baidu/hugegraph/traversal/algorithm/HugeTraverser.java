@@ -213,7 +213,12 @@ public class HugeTraverser {
                 List<Query> queryList = new ArrayList<>(batchSize);
                 do {
                     Id sourceId = this.sources.next();
-                    queryList.add(GraphTransaction.constructEdgesQuery(sourceId, this.dir, this.labels));
+                    Query query = GraphTransaction.constructEdgesQuery(sourceId, this.dir, this.labels);
+                    if (this.limit != NO_LIMIT) {
+                        query.limit(this.limit);
+                    }
+                    query.withProperties(this.withEdgeProperties);
+                    queryList.add(query);
                 } while (queryList.size() < batchSize && this.sources.hasNext());
 
                 List<Iterator<Edge>> its = graph().edges(queryList);

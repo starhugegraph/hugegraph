@@ -35,7 +35,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  */
 public class SyncConfConsumer extends ConsumerClient<String, String> {
 
-    private final SyncMutationClient client = ClientFactory.getInstance().getSyncMutationClient();
+    private final SyncMutationClient client = new SyncMutationClient(
+                            MetaManager.instance().getKafkaSlaveServerHost(),
+                            MetaManager.instance().getKafkaSlaveServerPort());
     private final MetaManager manager = MetaManager.instance();
 
     protected SyncConfConsumer(Properties props) {

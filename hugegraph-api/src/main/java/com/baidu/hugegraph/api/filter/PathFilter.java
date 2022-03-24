@@ -63,7 +63,6 @@ public class PathFilter implements ContainerRequestFilter {
             "auth",
             "hstore",
             "pd"
-
     );
 
     @Override

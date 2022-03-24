@@ -60,7 +60,6 @@ public class ServiceApi extends API {
     private static final String CONFIRM_DROP = "I'm sure to delete the service";
 
     private static final String CLUSTER_IP = "ClusterIP";
-    private static final String LOAD_BALANCER = "LoadBalancer";
     private static final String NODE_PORT = "NodePort";
 
     @GET
@@ -259,13 +258,11 @@ public class ServiceApi extends API {
                                 "The urls must be null or empty when " +
                                 "deployment type is %s",
                                 this.deploymentType);
-                E.checkArgument(this.routeType != null &&
-                                !StringUtils.isEmpty(this.routeType),
+                E.checkArgument(!StringUtils.isEmpty(this.routeType),
                                 "The route type of service can't be null or " +
                                 "empty");
                 E.checkArgument(NODE_PORT.equals(this.routeType) ||
-                                CLUSTER_IP.equals(this.routeType) ||
-                                LOAD_BALANCER.equals(this.routeType),
+                                CLUSTER_IP.equals(this.routeType),
                                 "Invalid route type '%s'", this.routeType);
             }
         }

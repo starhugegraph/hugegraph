@@ -88,6 +88,7 @@ import com.baidu.hugegraph.exception.NotSupportException;
 import com.baidu.hugegraph.io.HugeGraphSONModule;
 import com.baidu.hugegraph.k8s.K8sManager;
 import com.baidu.hugegraph.k8s.K8sRegister;
+import com.baidu.hugegraph.kafka.BrokerConfig;
 import com.baidu.hugegraph.license.LicenseVerifier;
 import com.baidu.hugegraph.meta.MetaManager;
 import com.baidu.hugegraph.metrics.MetricsUtil;
@@ -170,6 +171,8 @@ public final class GraphManager {
         this.pdPeers = conf.get(ServerOptions.PD_PEERS);
         this.eventHub = hub;
         this.k8sApiEnabled = conf.get(ServerOptions.K8S_API_ENABLE);
+
+        BrokerConfig.setPdPeers(pdPeers);
 
         this.listenChanges();
 
@@ -790,6 +793,7 @@ public final class GraphManager {
             String ddsHost = this.metaManager.getDDSHost();
             if (!Strings.isNullOrEmpty(ddsHost)) {
                 config.setDdsHost(ddsHost);
+                config.setDdsSlave(BrokerConfig.getInstance().isSlave());
             }
 
             String pdServiceId = register.registerService(config);
@@ -831,6 +835,7 @@ public final class GraphManager {
             String ddsHost = this.metaManager.getDDSHost();
             if (!Strings.isNullOrEmpty(ddsHost)) {
                 config.setDdsHost(ddsHost);
+                config.setDdsSlave(BrokerConfig.getInstance().isSlave());
             }
             this.pdK8sServiceId = pdRegister.registerService(config);
         } catch (Exception e) {
@@ -877,6 +882,7 @@ public final class GraphManager {
                     service.port(Integer.valueOf(parts[parts.length - 1]));
                 }
                 service.urls(urls);
+                service.status(Service.Status.STARTING);
             }
             service.serviceId(serviceId(graphSpace, service.type(),
                                         service.name()));
@@ -904,6 +910,9 @@ public final class GraphManager {
             service.port(Integer.valueOf(parts[parts.length - 1]));
         }
         service.urls(urls);
+        service.status(Service.Status.STARTING);
+        this.metaManager.updateServiceConfig(graphSpace, service);
+        this.metaManager.notifyServiceUpdate(graphSpace, service.name());
         this.registerServiceToPd(service);
     }
 
@@ -913,7 +922,9 @@ public final class GraphManager {
             GraphSpace gs = this.graphSpace(graphSpace);
             k8sManager.stopService(gs, service);
             service.running(0);
+            service.status(Service.Status.STOPPED);
             this.metaManager.updateServiceConfig(graphSpace, service);
+            this.metaManager.notifyServiceUpdate(graphSpace, service.name());
             if (!Strings.isNullOrEmpty(service.pdServiceId())) {
                 PdRegister.getInstance().unregister(service.pdServiceId());
             }
@@ -1164,6 +1175,10 @@ public final class GraphManager {
         int running = this.k8sManager.podsRunning(gs, service);
         if (service.running() != running) {
             service.running(running);
+            this.metaManager.updateServiceConfig(graphSpace, service);
+        }
+        if (service.running() != 0) {
+            service.status(Service.Status.RUNNING);
             this.metaManager.updateServiceConfig(graphSpace, service);
         }
         return service;

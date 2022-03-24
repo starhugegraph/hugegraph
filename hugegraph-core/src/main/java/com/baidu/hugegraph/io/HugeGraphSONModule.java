@@ -464,6 +464,7 @@ public class HugeGraphSONModule extends TinkerPopJacksonModule {
             String description = null;
             String type = null;
             String deploymentType = null;
+            String status = null;
 
             Number count = 0;
             Number running = 0;
@@ -495,6 +496,8 @@ public class HugeGraphSONModule extends TinkerPopJacksonModule {
                     type = jsonParser.getText();
                 } else if ("deployment_type".equals(fieldName)) {
                     deploymentType = jsonParser.getText();
+                } else if ("status".equals(fieldName)) {
+                    status = jsonParser.getText();
                 } else if ("count".equals(fieldName)) {
                     count = jsonParser.getNumberValue();
                 } else if ("running".equals(fieldName)) {
@@ -554,6 +557,7 @@ public class HugeGraphSONModule extends TinkerPopJacksonModule {
                                routeType,
                                port.intValue(),
                                urls);
+            service.status(Service.Status.valueOf(status));
             service.serviceId(serviceId);
             service.pdServiceId(pdServiceId);
             service.createTime(createTime);

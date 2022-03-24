@@ -115,8 +115,9 @@ public class AccessAPI extends API {
                        @QueryParam("group") String group,
                        @QueryParam("target") String target,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
-        LOGGER.logCustomDebug("Graph space [{}] list belongs by group {} or target {}",
-                RestServer.EXECUTOR, graphSpace, group, target);
+        LOGGER.logCustomDebug("Graph space [{}] list belongs by group {} or " +
+                              "target {}", RestServer.EXECUTOR,
+                              graphSpace, group, target);
         E.checkArgument(group == null || target == null,
                         "Can't pass both group and target at the same time");
 
@@ -144,7 +145,7 @@ public class AccessAPI extends API {
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("id") String id) {
         LOGGER.logCustomDebug("Graph space [{}] get access: {}",
-                RestServer.EXECUTOR, graphSpace, id);
+                              RestServer.EXECUTOR, graphSpace, id);
 
         AuthManager authManager = manager.authManager();
         HugeAccess access = authManager.getAccess(graphSpace,
@@ -161,7 +162,7 @@ public class AccessAPI extends API {
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("id") String id) {
         LOGGER.logCustomDebug("Graph space [{}] delete access: {}",
-                RestServer.EXECUTOR, graphSpace, id);
+                              RestServer.EXECUTOR, graphSpace, id);
 
         try {
             AuthManager authManager = manager.authManager();

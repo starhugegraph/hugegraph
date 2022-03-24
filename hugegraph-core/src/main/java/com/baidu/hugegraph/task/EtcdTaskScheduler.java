@@ -130,12 +130,7 @@ public class EtcdTaskScheduler extends TaskScheduler {
                 ImmutableSet.of(
                     TaskStatus.RESTORING, TaskStatus.QUEUED))
             .build();
- 
 
-    /**
-     * Indicates that if the task has been checked already to reduce load
-     */
-    private final Set<String> checkedTasks = new HashSet<>();
 
     public EtcdTaskScheduler(
         HugeGraphParams graph,
@@ -589,7 +584,16 @@ public class EtcdTaskScheduler extends TaskScheduler {
     }
 
     private long incompleteTaskCount() {
-        return this.taskMap.values().stream().filter(task -> !TaskStatus.COMPLETED_STATUSES.contains(task.status())).count();
+        long incompleteTaskCount = 0;
+        MetaManager manager = MetaManager.instance();
+        for(Map.Entry<Id, HugeTask<?>> entry : this.taskMap.entrySet()) {
+            Id taskId = entry.getKey();
+            TaskStatus status = manager.getTaskStatus(this.graphSpace, this.graphName, taskId);
+            if (!TaskStatus.COMPLETED_STATUSES.contains(status)) {
+                incompleteTaskCount++;
+            }
+        }
+        return incompleteTaskCount;
     }
 
     @Override
@@ -892,10 +896,7 @@ public class EtcdTaskScheduler extends TaskScheduler {
 
         // Since the etcd event is not a single task, we should cope with them one by one
         for(Map.Entry<String, String> entry : events.entrySet()) {
-            // If the task has been checked already, skip
-            if (this.checkedTasks.contains(entry.getKey())) {
-                continue;
-            }
+
             String currentContext = TaskManager.getContext();
             try {
                 // Deserialize task

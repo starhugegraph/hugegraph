@@ -77,6 +77,7 @@ import com.baidu.hugegraph.event.EventHub;
 import com.baidu.hugegraph.event.EventListener;
 import com.baidu.hugegraph.exception.NotAllowException;
 import com.baidu.hugegraph.io.HugeGraphIoRegistry;
+import com.baidu.hugegraph.kafka.BrokerConfig;
 import com.baidu.hugegraph.perf.PerfUtil.Watched;
 import com.baidu.hugegraph.schema.EdgeLabel;
 import com.baidu.hugegraph.schema.IndexLabel;
@@ -173,6 +174,15 @@ public class StandardHugeGraph implements HugeGraph {
     private Date updateTime;
 
     public StandardHugeGraph(HugeConfig config) {
+
+        /**
+         * pd.peers passed from config is required for the case of isolated instantiate
+         */
+        if (config.containsKey("pd.peers")) {
+            String pdPeers = config.getString("pd.peers");
+            BrokerConfig.setPdPeers(pdPeers);
+        }
+
         this.params = new StandardHugeGraphParams();
         this.configuration = config;
         this.graphSpace = config.get(CoreOptions.GRAPH_SPACE);

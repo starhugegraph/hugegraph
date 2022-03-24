@@ -43,6 +43,7 @@ public class Service {
     private ServiceType type;
     private DeploymentType deploymentType;
     private String description;
+    private Status status;
     private int count;
     private int running;
 
@@ -72,6 +73,7 @@ public class Service {
         this.name = name;
         this.type = type;
         this.deploymentType = deploymentType;
+        this.status = Status.UNKNOWN;
         this.count = DEFAULT_COUNT;
         this.running = 0;
         this.routeType = DEFAULT_ROUTE_TYPE;
@@ -95,6 +97,7 @@ public class Service {
         this.name = name;
         this.description = description;
         this.type = type;
+        this.status = Status.UNKNOWN;
         this.deploymentType = deploymentType;
         this.count = count;
         this.running = running;
@@ -136,6 +139,14 @@ public class Service {
 
     public void deploymentType(DeploymentType deploymentType) {
         this.deploymentType = deploymentType;
+    }
+
+    public Status status() {
+        return this.status;
+    }
+
+    public void status(Status status) {
+        this.status = status;
     }
 
     public int count() {
@@ -260,6 +271,7 @@ public class Service {
         infos.put("type", this.type);
         infos.put("deployment_type", this.deploymentType);
         infos.put("description", this.description);
+        infos.put("status", this.status);
         infos.put("count", this.count);
         infos.put("running", this.running);
 
@@ -306,5 +318,12 @@ public class Service {
         OLTP,
         OLAP,
         STORAGE
+    }
+
+    public enum Status {
+        UNKNOWN,
+        STARTING,
+        RUNNING,
+        STOPPED
     }
 }

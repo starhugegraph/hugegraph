@@ -104,6 +104,7 @@ public class MetaManager {
     public static final String META_PATH_KAFKA = "KAFKA";
     public static final String META_PATH_HOST = "BROKER_HOST";
     public static final String META_PATH_PORT = "BROKER_PORT";
+    public static final String META_PATH_PARTITION_COUNT = "PARTITION_COUNT";
     public static final String META_PATH_DATA_SYNC_ROLE = "DATA_SYNC_ROLE";
     public static final String META_PATH_SLAVE_SERVER_HOST = "SLAVE_SERVER_HOST";
     public static final String META_PATH_SLAVE_SERVER_PORT = "SLAVE_SERVER_PORT";
@@ -903,6 +904,11 @@ public class MetaManager {
     private String kafkaPortKey() {
         // HUGEGRAPH/{cluster}/KAFKA/BROKER_PORT
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_KAFKA, META_PATH_PORT);
+    }
+
+    private String kafkaPartitionCountKey() {
+        // HUGEGRAPH/{cluster}/KAFKA/PARTITION_COUNT
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_KAFKA, META_PATH_PARTITION_COUNT);
     }
 
     private String kafkaSlaveHostKey() {
@@ -1927,7 +1933,10 @@ public class MetaManager {
         }
         String statusListKey = this.taskStatusKey(graphSpace, graphName, id.asString(), status);
         String jsonStr = this.metaDriver.get(statusListKey);
-        return parseTask(jsonStr, graphSpace, graphName);
+        HugeTask<V> task = parseTask(jsonStr, graphSpace, graphName);
+        task.overwriteStatus(status);
+
+        return task;
     }
     
     /**
@@ -2271,6 +2280,17 @@ public class MetaManager {
     public String getKafkaBrokerPort() {
         String key = this.kafkaPortKey();
         return this.metaDriver.get(key);
+    }
+
+    public Integer getPartitionCount() {
+        String key = this.kafkaPartitionCountKey();
+        String result = this.metaDriver.get(key);
+        try {
+            Integer count = Integer.parseInt(Optional.ofNullable(result).orElse("0"));
+            return count < 1 ? 1 : count;
+        } catch (Exception e) {
+            return 1;
+        }
     }
 
     public String getKafkaSlaveServerHost() {

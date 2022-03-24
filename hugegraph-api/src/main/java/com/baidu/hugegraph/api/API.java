@@ -88,25 +88,21 @@ public class API {
         }
     }
 
-    private static final HugeGraphLogger LOGGER
-            = Log.getLogger(RestServer.class);
+    private static final HugeGraphLogger LOGGER = Log.getLogger(RestServer.class);
 
     public static final String CHARSET = "UTF-8";
 
     public static final String APPLICATION_JSON = MediaType.APPLICATION_JSON;
-    public static final String APPLICATION_JSON_WITH_CHARSET =
-                               APPLICATION_JSON + ";charset=" + CHARSET;
+    public static final String APPLICATION_JSON_WITH_CHARSET = APPLICATION_JSON + ";charset=" + CHARSET;
     public static final String APPLICATION_TEXT_WITH_CHARSET = MediaType.TEXT_PLAIN + ";charset=" + CHARSET;
-    public static final String JSON = MediaType.APPLICATION_JSON_TYPE
-                                               .getSubtype();
+    public static final String JSON = MediaType.APPLICATION_JSON_TYPE.getSubtype();
 
     public static final String ACTION_APPEND = "append";
     public static final String ACTION_ELIMINATE = "eliminate";
     public static final String ACTION_CLEAR = "clear";
 
     public static final String USER_NAME_PATTERN = "^[0-9a-zA-Z_]{5,16}$";
-    public static final String USER_PASSWORD_PATTERN =
-           "[a-zA-Z0-9~!@#$%^&*()_+|<>,.?/:;'`\"\\[\\]{}\\\\]{5,16}";
+    public static final String USER_PASSWORD_PATTERN = "[a-zA-Z0-9~!@#$%^&*()_+|<>,.?/:;'`\"\\[\\]{}\\\\]{5,16}";
 
     private static final Meter succeedMeter =
                          MetricsUtil.registerMeter(API.class, "commit-succeed");
