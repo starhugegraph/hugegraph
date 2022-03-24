@@ -880,6 +880,7 @@ public final class GraphManager {
                     service.port(Integer.valueOf(parts[parts.length - 1]));
                 }
                 service.urls(urls);
+                service.status(Service.Status.STARTING);
             }
             service.serviceId(serviceId(graphSpace, service.type(),
                                         service.name()));
@@ -907,6 +908,9 @@ public final class GraphManager {
             service.port(Integer.valueOf(parts[parts.length - 1]));
         }
         service.urls(urls);
+        service.status(Service.Status.STARTING);
+        this.metaManager.updateServiceConfig(graphSpace, service);
+        this.metaManager.notifyServiceUpdate(graphSpace, service.name());
         this.registerServiceToPd(service);
     }
 
@@ -916,7 +920,9 @@ public final class GraphManager {
             GraphSpace gs = this.graphSpace(graphSpace);
             k8sManager.stopService(gs, service);
             service.running(0);
+            service.status(Service.Status.STOPPED);
             this.metaManager.updateServiceConfig(graphSpace, service);
+            this.metaManager.notifyServiceUpdate(graphSpace, service.name());
             if (!Strings.isNullOrEmpty(service.pdServiceId())) {
                 PdRegister.getInstance().unregister(service.pdServiceId());
             }
@@ -1167,6 +1173,10 @@ public final class GraphManager {
         int running = this.k8sManager.podsRunning(gs, service);
         if (service.running() != running) {
             service.running(running);
+            this.metaManager.updateServiceConfig(graphSpace, service);
+        }
+        if (service.running() != 0) {
+            service.status(Service.Status.RUNNING);
             this.metaManager.updateServiceConfig(graphSpace, service);
         }
         return service;
