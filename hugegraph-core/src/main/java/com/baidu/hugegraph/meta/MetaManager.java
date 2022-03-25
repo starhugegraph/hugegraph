@@ -378,6 +378,9 @@ public class MetaManager {
         if (parts.length < 4) {
             return null;
         }
+        if (parts[3].equals(META_PATH_CONF)) {
+            return parts.length < 5 ? null : parts[4];
+        }
         return parts[3];
     }
 
@@ -931,13 +934,13 @@ public class MetaManager {
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_KAFKA, META_PATH_SYNC_STORAGE);
     }
 
-    public String kafkaFilterGraphKey() {
+    public String kafkaFilterGraphspaceKey() {
         // HUGEGRAPH/{cluster}/KAFKA-FILTER/GRAPHSPACE
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
                 this.cluster, META_PATH_KAFKA_FILTER, META_PATH_GRAPHSPACE);
     }
 
-    public String kafkaFilterGraphspaceKey() {
+    public String kafkaFilterGraphKey() {
         // HUGEGRAPH/{cluster}/KAFKA-FILTER/FILTER/GRAPH
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
                 this.cluster, META_PATH_KAFKA_FILTER, META_PATH_GRAPH);

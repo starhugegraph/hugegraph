@@ -362,10 +362,10 @@ public final class BrokerConfig {
     }
 
     public boolean graphSpaceFiltered(String graphSpace) {
-        return !filteredGraphSpace.contains(graphSpace);
+        return filteredGraphSpace.contains(graphSpace);
     }
 
     public boolean graphFiltered(String graphSpace, String graph) {
-        return !this.filteredGraph.contains(graph);
+        return this.filteredGraph.contains(graph);
     }
 }

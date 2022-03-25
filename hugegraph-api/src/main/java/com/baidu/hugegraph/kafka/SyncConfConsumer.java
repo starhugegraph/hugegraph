@@ -26,14 +26,18 @@ import com.baidu.hugegraph.kafka.consumer.ConsumerClient;
 import com.baidu.hugegraph.kafka.topic.SyncConfTopicBuilder;
 import com.baidu.hugegraph.meta.MetaManager;
 import com.baidu.hugegraph.syncgateway.SyncMutationClient;
+import com.baidu.hugegraph.util.Log;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.slf4j.Logger;
 
 /**
  * @author Scorpiour
  * @since 2022-02-02
  */
 public class SyncConfConsumer extends ConsumerClient<String, String> {
+
+    private static final Logger LOG = Log.logger(SyncConfConsumer.class);
 
     private final SyncMutationClient client = new SyncMutationClient(
                             MetaManager.instance().getKafkaSlaveServerHost(),
@@ -52,10 +56,15 @@ public class SyncConfConsumer extends ConsumerClient<String, String> {
             List<String> etcdKV = SyncConfTopicBuilder.extractKeyValue(record);
             String etcdKey = etcdKV.get(0);
             String etcdVal = etcdKV.get(1);
+
+            LOG.info("====> Scorpiour: prepare to sync conf key {}  value {}", etcdKey, etcdVal);
+
             if (config.isMaster()) {
+                LOG.info("====> Scorpiour: Master node, go to send grpc");
                 String space = config.getConfPrefix();
                 client.sendMutation(space, etcdKey, etcdVal.getBytes());
             } else if (config.isSlave()) {
+                LOG.info("====> Scorpiour: Slave node, persist to etcd now");
                  manager.putOrDeleteRaw(etcdKey, etcdVal);
             }
             return true;

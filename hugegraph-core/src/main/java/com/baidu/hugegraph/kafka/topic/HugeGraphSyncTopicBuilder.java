@@ -25,12 +25,16 @@ import java.security.InvalidParameterException;
 import com.baidu.hugegraph.backend.store.BackendMutation;
 import com.baidu.hugegraph.backend.store.raft.StoreSerializer;
 import com.baidu.hugegraph.kafka.BrokerConfig;
+import com.baidu.hugegraph.util.Log;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.slf4j.Logger;
 
 
 
 public class HugeGraphSyncTopicBuilder {
+
+    private static final Logger LOG = Log.logger(HugeGraphSyncTopicBuilder.class);
 
     private String graphName;
     private String graphSpace;
@@ -47,7 +51,7 @@ public class HugeGraphSyncTopicBuilder {
     }
 
     private String makeKey() {
-        // HUGEGRAPH/{graphSpace}/{graphName}
+        // {graphSpace}/{graphName}
         return String.join(DELIM, this.graphSpace, this.graphName);
     }
 
@@ -87,6 +91,7 @@ public class HugeGraphSyncTopicBuilder {
 
         byte[] value = StoreSerializer.writeMutation(mutation);
         ByteBuffer buffer = ByteBuffer.wrap(value);
+        LOG.info("====> Scorpiour: build mutation wrap , key {} , size {}", key, value.length);
         HugeGraphSyncTopic topic = new HugeGraphSyncTopic(key, buffer, this.calcPartition());
 
         return topic;

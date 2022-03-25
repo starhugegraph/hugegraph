@@ -143,7 +143,7 @@ public class KafkaAPI extends API {
                                        List<String> graphs) {
 
         MetaManager meta = MetaManager.instance();
-        meta.updateKafkaFilteredGraphspace(graphs);
+        meta.updateKafkaFilteredGraph(graphs);
         return graphs;
     }
 
