@@ -410,14 +410,10 @@ public final class GraphManager {
                                     this.serviceID));
 
         String serviceName = serviceName(this.serviceGraphSpace, this.serviceID);
-
-        if (!this.services.containsKey(serviceName(this.serviceGraphSpace,
-                                                   this.serviceID))) {
-            // register to etcd
-            this.metaManager.addServiceConfig(this.serviceGraphSpace, service);
-            this.metaManager.notifyServiceAdd(this.serviceGraphSpace,
-                                              this.serviceID);
-            // add to local cache since even-handler has not been registered now
+        Boolean newAdded = false;
+        if (!this.services.containsKey(serviceName)) {
+            newAdded = true;
+            // add to local cache
             this.services.put(serviceName(this.serviceGraphSpace,
                                           service.name()), service);
         }
@@ -431,6 +427,12 @@ public final class GraphManager {
                 } catch (Exception e) {
                     LOG.error("Register K8s info to PD failed: {}", e);
                 }
+            }
+            if (newAdded) {
+                 // Register to etcd since even-handler has not been registered now
+                this.metaManager.addServiceConfig(this.serviceGraphSpace, service);
+                this.metaManager.notifyServiceAdd(this.serviceGraphSpace,
+                                                this.serviceID);
             }
         }
         
