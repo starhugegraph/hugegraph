@@ -613,6 +613,11 @@ public class StandardHugeGraph implements HugeGraph {
     }
 
     @Override
+    public Vertex addVertex(Vertex vertex) {
+        return this.graphTransaction().addVertex((HugeVertex) vertex);
+    }
+
+    @Override
     public void removeVertex(Vertex vertex) {
         this.graphTransaction().removeVertex((HugeVertex) vertex);
     }
@@ -1096,7 +1101,8 @@ public class StandardHugeGraph implements HugeGraph {
         return config.get(option);
     }
 
-    private void closeTx() {
+    @Override
+    public void closeTx() {
         try {
             if (this.tx.isOpen()) {
                 this.tx.close();
