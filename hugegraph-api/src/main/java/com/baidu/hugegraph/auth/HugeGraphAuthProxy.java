@@ -562,6 +562,15 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     @Override
+    public void closeTx() {
+    }
+
+    @Override
+    public Vertex addVertex(Vertex vertex) {
+        return vertex;
+    }
+
+    @Override
     public HugeFeatures features() {
         // Can't verifyPermission() here, will be called by rollbackAll()
         //verifyStatusPermission();
