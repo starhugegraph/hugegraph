@@ -87,8 +87,9 @@ public final class BrokerConfig {
             if (null != PD_CONFIG_MAP) {
                 return;
             }
+            DiscoveryClient client = null;
             try {
-                DiscoveryClient client = DiscoveryClientImpl.newBuilder()
+                client = DiscoveryClientImpl.newBuilder()
                     .setAppName(KAFKA_APP_KEY)
                     .setCenterAddress(BrokerConfig.PD_PEERS)
                     .setDelay(15 * 1000)
@@ -107,6 +108,10 @@ public final class BrokerConfig {
             } catch (Exception e) {
                 LOG.error("Meet error when load kafka config from pd {}", e);
                 PD_CONFIG_MAP = null;
+            } finally {
+                if (null != client) {
+                    client.close();
+                }
             }
         }
 
@@ -185,22 +190,25 @@ public final class BrokerConfig {
                 int partitionCount = ConfigHolder.getPartitionCount();
 
                 String address = kafkaHost + ":" + kafkaPort;
-                DiscoveryClient client = DiscoveryClientImpl.newBuilder()
-                    .setAppName(KAFKA_APP_KEY)
-                    .setCenterAddress(BrokerConfig.PD_PEERS)
-                    .setAddress(address)
-                    .setVersion("1.0.0")
-                    .setType(RegisterType.Heartbeat)
-                    .setId(KAFKA_APP_KEY)
-                    .setDelay(15 * 1000)
-                    .setLabels(new ImmutableMap.Builder<String, String>()
-                        .put(PD_KAFKA_HOST, kafkaHost)
-                        .put(PD_KAFKA_PORT, kafkaPort)
-                        .put(PD_KAFKA_CLUSTER_ROLE, clusterRole)
-                        .put(PD_KAFKA_PARTITION_COUNT, String.valueOf(partitionCount))
-                        .build()
-                    )
-                    .build();
+                if (null == this.client) {
+                    DiscoveryClient client = DiscoveryClientImpl.newBuilder()
+                        .setAppName(KAFKA_APP_KEY)
+                        .setCenterAddress(BrokerConfig.PD_PEERS)
+                        .setAddress(address)
+                        .setVersion("1.0.0")
+                        .setType(RegisterType.Heartbeat)
+                        .setId(KAFKA_APP_KEY)
+                        .setDelay(15 * 1000)
+                        .setLabels(new ImmutableMap.Builder<String, String>()
+                            .put(PD_KAFKA_HOST, kafkaHost)
+                            .put(PD_KAFKA_PORT, kafkaPort)
+                            .put(PD_KAFKA_CLUSTER_ROLE, clusterRole)
+                            .put(PD_KAFKA_PARTITION_COUNT, String.valueOf(partitionCount))
+                            .build()
+                        )
+                        .build();
+                    this.client = client;
+                }
                 Query query = Query.newBuilder()
                     .setAppName(KAFKA_APP_KEY)
                     .build();
@@ -212,7 +220,7 @@ public final class BrokerConfig {
                 }
 
                 client.scheduleTask();
-                this.client = client;
+
             } catch (Exception e) {
                 LOG.error("Meet error when register kafka to pd {}", e);
             }
@@ -354,10 +362,10 @@ public final class BrokerConfig {
     }
 
     public boolean graphSpaceFiltered(String graphSpace) {
-        return filteredGraphSpace.contains(graphSpace);
+        return !filteredGraphSpace.contains(graphSpace);
     }
 
     public boolean graphFiltered(String graphSpace, String graph) {
-        return this.filteredGraph.contains(graph);
+        return !this.filteredGraph.contains(graph);
     }
 }

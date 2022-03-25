@@ -62,7 +62,8 @@ public class PathFilter implements ContainerRequestFilter {
             "auth/managers",
             "auth",
             "hstore",
-            "pd"
+            "pd",
+            "kafka"
     );
 
     @Override

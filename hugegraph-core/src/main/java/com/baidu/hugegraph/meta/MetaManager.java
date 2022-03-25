@@ -110,7 +110,7 @@ public class MetaManager {
     public static final String META_PATH_SLAVE_SERVER_PORT = "SLAVE_SERVER_PORT";
     public static final String META_PATH_SYNC_BROKER = "SYNC_BROKER";
     public static final String META_PATH_SYNC_STORAGE = "SYNC_STORAGE";
-    public static final String META_PATH_KAFKA_FILTER = "FILTER";
+    public static final String META_PATH_KAFKA_FILTER = "KAFKA-FILTER";
 
     private static final String TASK_STATUS_POSTFIX = "Status";
     private static final String TASK_PROGRESS_POSTFIX = "Progress";
@@ -932,15 +932,15 @@ public class MetaManager {
     }
 
     public String kafkaFilterGraphKey() {
-        // HUGEGRAPH/{cluster}/KAFKA/FILTER/GRAPHSPACE
+        // HUGEGRAPH/{cluster}/KAFKA-FILTER/GRAPHSPACE
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
-                this.cluster, META_PATH_KAFKA, META_PATH_KAFKA_FILTER, META_PATH_GRAPHSPACE);
+                this.cluster, META_PATH_KAFKA_FILTER, META_PATH_GRAPHSPACE);
     }
 
     public String kafkaFilterGraphspaceKey() {
-        // HUGEGRAPH/{cluster}/KAFKA/FILTER/GRAPH
+        // HUGEGRAPH/{cluster}/KAFKA-FILTER/FILTER/GRAPH
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
-                this.cluster, META_PATH_KAFKA, META_PATH_KAFKA_FILTER, META_PATH_GRAPH);
+                this.cluster, META_PATH_KAFKA_FILTER, META_PATH_GRAPH);
     }
 
     /**
@@ -2303,6 +2303,42 @@ public class MetaManager {
         String portStr = this.metaDriver.get(key);
         int port = Integer.parseInt(portStr);
         return port;
+    }
+
+
+    public List<String> getKafkaFilteredGraphspace() {
+        String key = this.kafkaFilterGraphspaceKey();
+
+        String raw = this.metaDriver.get(key);
+        if (raw == null) {
+            return Collections.EMPTY_LIST;
+        }
+        String[] parts = raw.split(",");
+        return Arrays.asList(parts);
+    }
+
+    public List<String> getKafkaFilteredGraph() {
+        String key = this.kafkaFilterGraphKey();
+
+        String raw = this.metaDriver.get(key);
+        if (raw == null) {
+            return Collections.EMPTY_LIST;
+        }
+        String[] parts = raw.split(",");
+        return Arrays.asList(parts);
+    }
+
+    public void updateKafkaFilteredGraphspace(List<String> graphSpaces) {
+        String key = this.kafkaFilterGraphspaceKey();
+        String val = String.join(",", graphSpaces);
+        this.metaDriver.put(key, val);
+
+    }
+
+    public void updateKafkaFilteredGraph(List<String> graphs) {
+        String key = this.kafkaFilterGraphKey();
+        String val = String.join(",", graphs);
+        this.metaDriver.put(key, val);
     }
 
     public enum MetaDriverType {
