@@ -171,6 +171,8 @@ public interface HugeGraph extends Graph {
     public void serverStarted();
     public boolean started();
     public boolean closed();
+    public void closeTx();
+    public Vertex addVertex(Vertex vertex);
 
     public <T> T metadata(HugeType type, String meta, Object... args);
 

@@ -562,6 +562,18 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     @Override
+    public void closeTx() {
+        this.hugegraph.closeTx();
+    }
+
+    @Override
+    public Vertex addVertex(Vertex vertex) {
+        return verifyElemPermission(HugePermission.WRITE, () -> {
+            return (HugeVertex)this.hugegraph.addVertex(vertex);
+        });
+    }
+
+    @Override
     public HugeFeatures features() {
         // Can't verifyPermission() here, will be called by rollbackAll()
         //verifyStatusPermission();
