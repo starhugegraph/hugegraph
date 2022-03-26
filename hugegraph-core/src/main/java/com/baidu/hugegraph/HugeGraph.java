@@ -170,6 +170,7 @@ public interface HugeGraph extends Graph {
     public void waitStarted();
     public void serverStarted();
     public boolean started();
+    public void started(boolean started);
     public boolean closed();
     public void closeTx();
     public Vertex addVertex(Vertex vertex);
