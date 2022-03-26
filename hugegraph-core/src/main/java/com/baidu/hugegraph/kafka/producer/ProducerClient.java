@@ -29,10 +29,12 @@ import java.util.concurrent.Future;
 import com.baidu.hugegraph.kafka.BrokerConfig;
 import com.baidu.hugegraph.kafka.topic.TopicBase;
 // import com.baidu.hugegraph.util.Log;
+import com.baidu.hugegraph.util.Log;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.slf4j.Logger;
 
 // import org.slf4j.Logger;
 /**
@@ -42,7 +44,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
  */
 public class ProducerClient<K, V> {
 
-    // private static final Logger LOG = Log.logger(ProducerClient.class);
+    private static final Logger LOG = Log.logger(ProducerClient.class);
 
     private final KafkaProducer<K, V> producer;
     private volatile boolean closing = false;
@@ -92,6 +94,7 @@ public class ProducerClient<K, V> {
 
         return asyncExecutor.submit(() -> {
             try {
+                LOG.info("====> Scorpiour going to send {} key {} via partition {}",topic.getTopic(), topic.getKey(), topic.getPartition());
                 ProducerRecord<K, V> record = new ProducerRecord<>(
                             topic.getTopic(),
                             topic.getPartition(),

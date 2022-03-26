@@ -58,6 +58,7 @@ public abstract class ConsumerClient<K, V> {
 
     private volatile boolean closing = false;
     private final ExecutorService asyncExecutor;
+    private volatile Map<TopicPartition, Long> stackMap = null;
 
     protected ConsumerClient(Properties props) {
         String topic = props.getProperty("topic");
@@ -71,37 +72,49 @@ public abstract class ConsumerClient<K, V> {
         consumer.subscribe(ImmutableList.of(topic));
     }
 
-    public final Map<TopicPartition, Long> getConsumerStackInfo() {
+    public Map<TopicPartition, Long> getStackMap() {
+        return this.stackMap;
+    }
+
+    protected final void getConsumerStackInfo() {
         Map<String, List<PartitionInfo>> topicMap =  consumer.listTopics();
-        List<TopicPartition> tpList = new ArrayList<>();
-        List<PartitionInfo> partitions = topicMap.get(this.topic);
-        partitions.forEach((partition) -> {
-            tpList.add(new TopicPartition(partition.topic(), partition.partition()));
-        });
-
-        Map<TopicPartition, Long> endMap = consumer.endOffsets(tpList);
-
-        Map<TopicPartition, OffsetAndMetadata> committedMap = consumer.committed(new HashSet<>(tpList));
-
         Map<TopicPartition, Long> stackedCount = new HashMap<>();
+        for(Map.Entry<String, List<PartitionInfo>> entry : topicMap.entrySet()) {
+            List<TopicPartition> tpList = new ArrayList<>();
+            List<PartitionInfo> partitions = topicMap.get(entry.getKey());
+            partitions.forEach((partition) -> {
+                tpList.add(new TopicPartition(partition.topic(), partition.partition()));
+            });
 
-        endMap.entrySet().forEach((entry) -> {
-            OffsetAndMetadata meta = committedMap.get(entry.getKey());
-            long end = entry.getValue();
-            long committed = meta.offset();
-            long diff = committed - end;
+            Map<TopicPartition, Long> endMap = consumer.endOffsets(tpList);
 
-            stackedCount.put(entry.getKey(), diff);
+            Map<TopicPartition, OffsetAndMetadata> committedMap = consumer.committed(new HashSet<>(tpList));
 
-            LOGGER.logCustomDebug("stacked {}", "Scorpiour", diff);
-        });
+            endMap.entrySet().forEach((subEntry) -> {
+                OffsetAndMetadata meta = committedMap.get(subEntry.getKey());
+                if (meta == null) {
+                    return;
+                }
+                long end = subEntry.getValue();
+                long committed = meta.offset();
+                long diff = committed - end;
 
-        return stackedCount;
+                stackedCount.put(subEntry.getKey(), diff);
+            });
+        }
+
+        this.stackMap = stackedCount;
     }
 
     public final void consume() {
         asyncExecutor.submit(() -> {
-            while(!closing) {
+            int counter = 0;
+            while(!this.closing) {
+                if (counter >= 300) {
+                    getConsumerStackInfo();
+                    counter = 0;
+                }
+                counter++;
                 boolean commit = false;
                 try {
                     ConsumerRecords<K, V> records = consumer.poll(Duration.ofMillis(1000));
@@ -115,8 +128,8 @@ public abstract class ConsumerClient<K, V> {
                             }
                         }
                     }
-                } catch (Throwable t) {
-                    
+                } catch (Exception e) {
+                    LOGGER.logCriticalError(e, "Consume failed!");
                 } finally {
                     if (commit) {
                         consumer.commitAsync();

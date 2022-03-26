@@ -1470,6 +1470,7 @@ public final class GraphManager {
     }
 
     private <T> void graphAddHandler(T response) {
+        LOG.info("====> Scorpiour: detect graph added!");
         List<String> names = this.metaManager
                                  .extractGraphsFromResponse(response);
         for (String graphName : names) {

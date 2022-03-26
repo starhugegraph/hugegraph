@@ -278,13 +278,10 @@ public class EtcdTaskScheduler extends TaskScheduler {
         E.checkArgumentNotNull(task, "Task can't be null");
 
         if (task.status() == TaskStatus.NEW && Strings.isNullOrEmpty(task.context())) {
-            LOGGER.logCustomDebug("attach context to task {} ", "Scorpiour", task.id().asString());
             String currentContext = TaskManager.getContext();
             if (!Strings.isNullOrEmpty(currentContext)) {
                 task.context(TaskManager.getContext());
             }
-        } else {
-            LOGGER.logCustomDebug("task {} has context already", "Scorpiour", task.id().asString());
         }
 
         if (task.callable() instanceof EphemeralJob) {

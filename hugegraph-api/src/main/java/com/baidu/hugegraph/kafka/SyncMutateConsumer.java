@@ -27,8 +27,10 @@ import com.baidu.hugegraph.backend.store.BackendMutation;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.kafka.consumer.StandardConsumer;
 import com.baidu.hugegraph.kafka.topic.HugeGraphMutateTopicBuilder;
+import com.baidu.hugegraph.util.Log;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.slf4j.Logger;
 
 /**
  * Used to consume HugeGraphMutateTopic, that is used to apply mutate to storage
@@ -37,6 +39,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * @since 2022-01-22
  */
 public class SyncMutateConsumer extends StandardConsumer {
+
+    private static final Logger LOG = Log.logger(SyncMutateConsumer.class);
 
     private GraphManager manager;
     private HugeGraph graph;
@@ -57,19 +61,33 @@ public class SyncMutateConsumer extends StandardConsumer {
     @Override
     protected boolean handleRecord(ConsumerRecord<String, ByteBuffer> record) {
 
+        LOG.info("====> Scorpiour: handle record of apply mutation, key {} , size {}", record.key(), record.value().array().length);
+
         if (BrokerConfig.getInstance().needKafkaSyncStorage()) {
+
+            LOG.info("====> Scorpiour: going to pre-check");
             if (null == this.manager && null == this.graph) {
+                LOG.info("====> Scorpiour: pre-check failed! {}, {}", this.manager, this.graph);
                 return true;
             }
-
+            LOG.info("====> Scorpiour: going to extract graph info");
             String[] graphInfo = HugeGraphMutateTopicBuilder.extractGraphs(record);
             String graphSpace = graphInfo[0];
             String graphName = graphInfo[1];
 
-            HugeGraph graph = this.graph == null ? manager.graph(graphSpace, graphName) : this.graph;
+            LOG.info("====> Scorpiour: extract graphSpace {}, graph {}", graphSpace, graphName);
+
+            HugeGraph graph = manager.graph(graphSpace, graphName);
+            if (null == graph) {
+                LOG.info("====> Scorpiour: graph is {}, consume failed!");
+                return false;
+            }
             BackendMutation mutation = HugeGraphMutateTopicBuilder.buildMutation(record.value());
+            LOG.info("====> Scorpiour: going to apply mutation");
             graph.applyMutation(mutation);
+            LOG.info("====> Scorpiour: going to commit");
             graph.tx().commit();
+            LOG.info("====> Scorpiour: commit done");
             return true;
         }
         return false;
