@@ -983,6 +983,10 @@ public final class GraphManager {
 
     public HugeGraph createGraph(String graphSpace, String name, String creator,
                                  Map<String, Object> configs, boolean init) {
+        boolean grpcThread = Thread.currentThread().getName().contains("grpc");
+        if (grpcThread) {
+            HugeGraphAuthProxy.setAdmin();
+        }
         checkGraphName(name);
         GraphSpace gs = this.graphSpace(graphSpace);
         if (!gs.tryOfferGraph()) {
@@ -1044,6 +1048,9 @@ public final class GraphManager {
         }
         String schemas = this.schemaTemplate(graphSpace, schema).schema();
         prepareSchema(graph, schemas);
+        if (grpcThread) {
+            HugeGraphAuthProxy.resetContext();
+        }
         return graph;
     }
 
@@ -1467,12 +1474,15 @@ public final class GraphManager {
         List<String> names = this.metaManager
                                  .extractGraphsFromResponse(response);
         for (String graphName : names) {
+            LOG.info("Accept graph add signal from etcd for {}", graphName);
             if (this.graphs.containsKey(graphName) ||
                 this.creatingGraphs.contains(graphName)) {
                 this.creatingGraphs.remove(graphName);
                 continue;
             }
 
+            LOG.info("Not exist in cache, Starting construct graph {}",
+                     graphName);
             String[] parts = graphName.split(DELIMITER);
             Map<String, Object> config =
                     this.metaManager.getGraphConfig(parts[0], parts[1]);
@@ -1481,13 +1491,14 @@ public final class GraphManager {
                              GraphSpace.DEFAULT_CREATOR_NAME :
                              String.valueOf(objc);
 
-
             // Create graph without init
             try {
                 HugeGraph graph = this.createGraph(parts[0], parts[1], creator,
                                                    config, false);
-                graph.serverStarted();
-                graph.tx().close();
+                graph.started(true);
+                if (graph.tx().isOpen()) {
+                    graph.tx().close();
+                }
             } catch (HugeException e) {
                 if (!this.startIgnoreSingleGraphError) {
                     throw e;
