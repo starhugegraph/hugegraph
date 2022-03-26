@@ -562,6 +562,18 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     @Override
+    public void closeTx() {
+        this.hugegraph.closeTx();
+    }
+
+    @Override
+    public Vertex addVertex(Vertex vertex) {
+        return verifyElemPermission(HugePermission.WRITE, () -> {
+            return (HugeVertex)this.hugegraph.addVertex(vertex);
+        });
+    }
+
+    @Override
     public HugeFeatures features() {
         // Can't verifyPermission() here, will be called by rollbackAll()
         //verifyStatusPermission();
@@ -697,6 +709,12 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     public boolean started() {
         this.verifyAdminPermission();
         return this.hugegraph.started();
+    }
+
+    @Override
+    public void started(boolean started) {
+        this.verifyAdminPermission();
+        this.hugegraph.started(started);
     }
 
     @Override
@@ -999,7 +1017,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         Object role = context.user().role();
         ResourceObject<V> ro = fetcher.get();
         String action = actionPerm.string();
-
         V result = ro.operated();
         // Verify role permission
         if (!RolePerm.match(role, actionPerm, ro)) {
@@ -1013,12 +1030,10 @@ public final class HugeGraphAuthProxy implements HugeGraph {
                 result = null;
             }
         }
-
         // Check resource detail if needed
         if (result != null && checker != null && !checker.get()) {
             result = null;
         }
-
         // Log user action, limit rate for each user
         Id usrId = context.user().userId();
         RateLimiter auditLimiter = this.auditLimiters.getOrFetch(usrId, id -> {
@@ -1033,7 +1048,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
             }
 
         }
-
         // result = null means no permission, throw if needed
         if (result == null && throwIfNoPerm) {
             String error = String.format("Permission denied: %s %s",
@@ -1352,13 +1366,17 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     private static final ThreadLocal<Context> contexts =
                                               new InheritableThreadLocal<>();
 
-    protected static final Context setContext(Context context) {
+    public static final Context setContext(Context context) {
         Context old = contexts.get();
         contexts.set(context);
         return old;
     }
 
-    protected static final void resetContext() {
+    public static Context setAdmin() {
+        return setContext(Context.admin());
+    }
+
+    public static final void resetContext() {
         contexts.remove();
     }
 

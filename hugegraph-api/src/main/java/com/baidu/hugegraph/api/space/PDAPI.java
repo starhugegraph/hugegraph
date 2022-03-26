@@ -91,9 +91,10 @@ public class PDAPI extends API {
             m.getRaftUrl();
 
             Map<String, Object> memberInfo = new HashMap<>();
-            memberInfo.put("ip", m.getRaftUrl());
+            memberInfo.put("ip", m.getGrpcUrl());
             memberInfo.put("state", m.getState().name());
-            memberInfo.put("is_leader", membersResponse.getLeader().equals(m));
+            memberInfo.put("is_leader", membersResponse.getLeader().getGrpcUrl()
+                                                       .equals(m.getGrpcUrl()));
 
             members.add(memberInfo);
         }
