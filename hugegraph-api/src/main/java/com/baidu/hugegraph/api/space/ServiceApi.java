@@ -43,6 +43,7 @@ import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.define.Checkable;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.space.Service;
 import com.baidu.hugegraph.util.E;
@@ -55,7 +56,9 @@ import com.google.common.collect.ImmutableMap;
 @Singleton
 public class ServiceApi extends API {
 
-    private static final Logger LOG = Log.logger(RestServer.class);
+    private static final HugeGraphLogger LOGGER = Log.getLogger(RestServer.class);
+
+    private static final String CONFIRM_DROP = "I'm sure to delete the service";
 
     private static final String CLUSTER_IP = "ClusterIP";
     private static final String NODE_PORT = "NodePort";
@@ -67,7 +70,6 @@ public class ServiceApi extends API {
     public Object list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @Context SecurityContext sc) {
-        LOG.debug("List all services for graph space {}", graphSpace);
         E.checkArgument(space(manager, graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
 
@@ -82,8 +84,6 @@ public class ServiceApi extends API {
     public Object get(@Context GraphManager manager,
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("name") String name) {
-        LOG.debug("Get service by name '{}' for graph space {}",
-                  name, graphSpace);
         E.checkArgument(space(manager, graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
 
@@ -99,8 +99,7 @@ public class ServiceApi extends API {
     public String create(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          JsonService jsonService) {
-        LOG.debug("Create service {} for graph space: '{}'",
-                  jsonService, graphSpace);
+
         E.checkArgument(space(manager, graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
 
@@ -112,6 +111,7 @@ public class ServiceApi extends API {
         
         Service service = manager.createService(graphSpace,
                                                 temp);
+        LOGGER.getAuditLogger().logAddService(service.serviceId(), "");
         return manager.serializer().writeService(service);
     }
 
@@ -123,7 +123,6 @@ public class ServiceApi extends API {
     @Path("k8s-register")
     @RolesAllowed({"admin", "$dynamic"})
     public void registerK8S(@Context GraphManager manager) throws Exception {
-        LOG.debug("Register external K8S info to pd");
         manager.registerK8StoPd();
     }
 
@@ -146,6 +145,7 @@ public class ServiceApi extends API {
             throw new BadRequestException("Cannot stop service in Manual mode");
         }
         manager.stopService(graphSpace, serviceName);
+        LOGGER.getAuditLogger().logStopService(service.serviceId());
 
     }
 
@@ -165,6 +165,7 @@ public class ServiceApi extends API {
         if (0 == service.running()) {
             manager.startService(graphSpace, service);
         }
+        LOGGER.getAuditLogger().logStartService(service.serviceId());
 
     }
 
@@ -175,13 +176,17 @@ public class ServiceApi extends API {
     @RolesAllowed({"admin"})
     public void delete(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
-                       @PathParam("name") String name) {
-        LOG.debug("Remove service by name '{}' for graph space",
-                  name, graphSpace);
+                       @PathParam("name") String name,
+                       @QueryParam("confirm_message") String message) {
         E.checkArgument(space(manager, graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
 
+        E.checkArgument(CONFIRM_DROP.equals(message),
+                        "Please take the message: %s", CONFIRM_DROP);
+        Service service = service(manager, graphSpace, name);
         manager.dropService(graphSpace, name);
+
+        LOGGER.getAuditLogger().logRemoveService(service.serviceId(), "");
     }
 
     private static class JsonService implements Checkable {
