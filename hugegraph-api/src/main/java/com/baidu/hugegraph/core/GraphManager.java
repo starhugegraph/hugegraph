@@ -408,19 +408,34 @@ public final class GraphManager {
         service.serviceId(serviceId(this.serviceGraphSpace,
                                     Service.ServiceType.OLTP,
                                     this.serviceID));
-        // register self to pd, should prior to etcd due to pdServiceId info
-        this.registerServiceToPd(this.serviceGraphSpace, service);
 
-        if (!this.services.containsKey(serviceName(this.serviceGraphSpace,
-                                                   this.serviceID))) {
-            // register to etcd
-            this.metaManager.addServiceConfig(this.serviceGraphSpace, service);
-            this.metaManager.notifyServiceAdd(this.serviceGraphSpace,
-                                              this.serviceID);
-            // add to local cache since even-handler has not been registered now
+        String serviceName = serviceName(this.serviceGraphSpace, this.serviceID);
+        Boolean newAdded = false;
+        if (!this.services.containsKey(serviceName)) {
+            newAdded = true;
+            // add to local cache
             this.services.put(serviceName(this.serviceGraphSpace,
                                           service.name()), service);
         }
+        Service self = services.get(serviceName);
+        if (null != self) {
+            // register self to pd, should prior to etcd due to pdServiceId info
+            this.registerServiceToPd(this.serviceGraphSpace, self);
+            if (self.k8s()) {
+                try {
+                    this.registerK8StoPd();
+                } catch (Exception e) {
+                    LOG.error("Register K8s info to PD failed: {}", e);
+                }
+            }
+            if (newAdded) {
+                 // Register to etcd since even-handler has not been registered now
+                this.metaManager.addServiceConfig(this.serviceGraphSpace, service);
+                this.metaManager.notifyServiceAdd(this.serviceGraphSpace,
+                                                this.serviceID);
+            }
+        }
+        
     }
 
     private static String serviceId(String graphSpace, Service.ServiceType type,
@@ -888,15 +903,7 @@ public final class GraphManager {
             }
             service.serviceId(serviceId(graphSpace, service.type(),
                                         service.name()));
-            // Register to pd. The order here is important since pdServiceId will be stored in etcd
-            this.registerServiceToPd(graphSpace, service);
-            if (service.k8s()) {
-                try {
-                    this.registerK8StoPd();
-                } catch (Exception e) {
-                    LOG.error("Register K8s info to PD failed: {}", e);
-                }
-            }
+
             // Persist to etcd
             this.metaManager.addServiceConfig(graphSpace, service);
             this.metaManager.notifyServiceAdd(graphSpace, name);
@@ -926,14 +933,6 @@ public final class GraphManager {
         service.status(Service.Status.STARTING);
         this.metaManager.updateServiceConfig(graphSpace, service);
         this.metaManager.notifyServiceUpdate(graphSpace, service.name());
-        this.registerServiceToPd(graphSpace, service);
-        if (service.k8s()) {
-            try {
-                this.registerK8StoPd();
-            } catch (Exception e) {
-                LOG.error("Register K8s info to PD failed: {}", e);
-            }
-        }
     }
 
     public void stopService(String graphSpace, String name) {
