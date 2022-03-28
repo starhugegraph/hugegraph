@@ -268,6 +268,7 @@ public class EdgeAPI extends BatchAPI {
 
     @GET
     @Timed
+    @Compress
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
                             "$action=edge_read"})
