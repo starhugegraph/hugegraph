@@ -430,12 +430,11 @@ public final class GraphManager {
             }
             if (newAdded) {
                  // Register to etcd since even-handler has not been registered now
-                this.metaManager.addServiceConfig(this.serviceGraphSpace, service);
+                this.metaManager.addServiceConfig(this.serviceGraphSpace, self);
                 this.metaManager.notifyServiceAdd(this.serviceGraphSpace,
-                                                this.serviceID);
+                                                  this.serviceID);
             }
         }
-        
     }
 
     private static String serviceId(String graphSpace, Service.ServiceType type,
