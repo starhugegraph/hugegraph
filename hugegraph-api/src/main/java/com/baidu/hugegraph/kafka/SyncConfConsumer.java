@@ -57,14 +57,10 @@ public class SyncConfConsumer extends ConsumerClient<String, String> {
             String etcdKey = etcdKV.get(0);
             String etcdVal = etcdKV.get(1);
 
-            LOG.info("====> Scorpiour: prepare to sync conf key {}  value {}", etcdKey, etcdVal);
-
             if (config.isMaster()) {
-                LOG.info("====> Scorpiour: Master node, go to send grpc");
                 String space = config.getConfPrefix();
                 client.sendMutation(space, etcdKey, etcdVal.getBytes());
             } else if (config.isSlave()) {
-                LOG.info("====> Scorpiour: Slave node, persist to etcd now");
                  manager.putOrDeleteRaw(etcdKey, etcdVal);
             }
             return true;
