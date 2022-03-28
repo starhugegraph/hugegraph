@@ -109,8 +109,7 @@ public class ServiceApi extends API {
         Service temp = jsonService.toService(username);
 
         
-        Service service = manager.createService(graphSpace,
-                                                temp);
+        Service service = manager.createService(graphSpace, temp);
         LOGGER.getAuditLogger().logAddService(service.serviceId(), "");
         return manager.serializer().writeService(service);
     }

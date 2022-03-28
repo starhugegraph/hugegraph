@@ -54,7 +54,8 @@ public class Service {
     private String routeType;
     private int port;
 
-    private Set<String> urls;
+    private Set<String> urls = new HashSet<>();
+    private Set<String> serverUrls = new HashSet<>();
 
     private String serviceId;
     private String pdServiceId;
@@ -219,11 +220,25 @@ public class Service {
     }
 
     public Set<String> urls() {
+        if (this.urls == null) {
+            this.urls = new HashSet<>();
+        }
         return this.urls;
     }
 
     public void urls(Set<String> urls) {
         this.urls = urls;
+    }
+
+    public Set<String> serverUrls() {
+        if (this.serverUrls == null) {
+            this.serverUrls = new HashSet<>();
+        }
+        return this.serverUrls;
+    }
+
+    public void serverUrls(Set<String> urls) {
+        this.serverUrls = urls;
     }
 
     public void url(String url) {
