@@ -423,7 +423,7 @@ public final class GraphManager {
             this.registerServiceToPd(this.serviceGraphSpace, self);
             if (self.k8s()) {
                 try {
-                    this.registerK8StoPd();
+                    this.registerK8StoPd(self);
                 } catch (Exception e) {
                     LOG.error("Register K8s info to PD failed: {}", e);
                 }
@@ -822,7 +822,7 @@ public final class GraphManager {
         }
     }
 
-    public void registerK8StoPd() throws Exception {
+    public void registerK8StoPd(Service service) throws Exception {
         try {
             PdRegister pdRegister = PdRegister.getInstance();
             K8sRegister k8sRegister = K8sRegister.instance();
@@ -849,9 +849,8 @@ public final class GraphManager {
                 .setLabelMap(ImmutableMap.of(
                         PdRegisterLabel.REGISTER_TYPE.name(), PdRegisterType.NODE_PORT.name(),
                         PdRegisterLabel.GRAPHSPACE.name(), this.serviceGraphSpace,
-                        PdRegisterLabel.SERVICE_NAME.name(), serviceDTO.getMetadata().getName(),
-                        PdRegisterLabel.SERVICE_ID.name(),
-                            serviceDTO.getMetadata().getNamespace() + "-" + serviceDTO.getMetadata().getName()
+                        PdRegisterLabel.SERVICE_NAME.name(), service.name(),
+                        PdRegisterLabel.SERVICE_ID.name(), service.serviceId()
                 ));
 
             String ddsHost = this.metaManager.getDDSHost();
@@ -1475,7 +1474,6 @@ public final class GraphManager {
     }
 
     private <T> void graphAddHandler(T response) {
-        LOG.info("====> Scorpiour: detect graph added!");
         List<String> names = this.metaManager
                                  .extractGraphsFromResponse(response);
         for (String graphName : names) {

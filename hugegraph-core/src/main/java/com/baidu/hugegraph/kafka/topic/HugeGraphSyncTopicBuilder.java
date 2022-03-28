@@ -91,7 +91,6 @@ public class HugeGraphSyncTopicBuilder {
 
         byte[] value = StoreSerializer.writeMutation(mutation);
         ByteBuffer buffer = ByteBuffer.wrap(value);
-        LOG.info("====> Scorpiour: build mutation wrap , key {} , size {}", key, value.length);
         HugeGraphSyncTopic topic = new HugeGraphSyncTopic(key, buffer, this.calcPartition());
 
         return topic;

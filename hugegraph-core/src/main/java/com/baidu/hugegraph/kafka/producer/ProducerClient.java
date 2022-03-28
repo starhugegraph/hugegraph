@@ -94,7 +94,6 @@ public class ProducerClient<K, V> {
 
         return asyncExecutor.submit(() -> {
             try {
-                LOG.info("====> Scorpiour going to send {} key {} via partition {}",topic.getTopic(), topic.getKey(), topic.getPartition());
                 ProducerRecord<K, V> record = new ProducerRecord<>(
                             topic.getTopic(),
                             topic.getPartition(),
