@@ -899,10 +899,12 @@ public final class GraphManager {
                                    gs, service, endpoints, this.cluster);
                 if (!urls.isEmpty()) {
                     String url = urls.iterator().next();
-                    String[] parts = url.split(":");
+                    String[] parts = url.split(",");
                     service.port(Integer.valueOf(parts[parts.length - 1]));
+                    service.urls().add(parts[0]);
+                } else {
+                    service.urls(urls);
                 }
-                service.urls(urls);
                 service.status(Service.Status.STARTING);
             }
             service.serviceId(serviceId(graphSpace, service.type(),
@@ -930,10 +932,12 @@ public final class GraphManager {
                                                         this.cluster);
         if (!urls.isEmpty()) {
             String url = urls.iterator().next();
-            String[] parts = url.split(":");
+            String[] parts = url.split(",");
             service.port(Integer.valueOf(parts[parts.length - 1]));
+            service.urls().add(parts[0]);
+        } else {
+            service.urls(urls);
         }
-        service.urls(urls);
         service.status(Service.Status.STARTING);
         this.metaManager.updateServiceConfig(graphSpace, service);
         this.metaManager.notifyServiceUpdate(graphSpace, service.name());

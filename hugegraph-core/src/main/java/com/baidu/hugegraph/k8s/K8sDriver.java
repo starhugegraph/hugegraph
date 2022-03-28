@@ -550,7 +550,7 @@ public class K8sDriver {
         for (ServicePort port : service.getSpec().getPorts()) {
             int actualPort = routeType.equals(NODE_PORT) ?
                              port.getNodePort() : port.getPort();
-            urls.add(clusterIP + COLON + actualPort);
+            urls.add(clusterIP + COLON + HG_PORT + COMMA + actualPort);
         }
         return urls;
     }
