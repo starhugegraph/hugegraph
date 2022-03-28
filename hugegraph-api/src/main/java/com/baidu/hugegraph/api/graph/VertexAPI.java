@@ -227,7 +227,6 @@ public class VertexAPI extends BatchAPI {
 
     @GET
     @Timed
-    @Compress
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
                             "$action=vertex_read"})

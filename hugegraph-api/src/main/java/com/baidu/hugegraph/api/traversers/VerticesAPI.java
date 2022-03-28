@@ -58,7 +58,6 @@ public class VerticesAPI extends API {
 
     @GET
     @Timed
-    @Compress
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
@@ -83,7 +82,6 @@ public class VerticesAPI extends API {
     @GET
     @Timed
     @Path("shards")
-    @Compress
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String shards(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
@@ -100,7 +98,6 @@ public class VerticesAPI extends API {
     @GET
     @Timed
     @Path("scan")
-    @Compress
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public String scan(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
