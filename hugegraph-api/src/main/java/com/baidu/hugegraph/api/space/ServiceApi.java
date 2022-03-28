@@ -123,7 +123,7 @@ public class ServiceApi extends API {
     @Path("k8s-register")
     @RolesAllowed({"admin", "$dynamic"})
     public void registerK8S(@Context GraphManager manager) throws Exception {
-        manager.registerK8StoPd();
+        // manager.registerK8StoPd();
     }
 
     @PUT
