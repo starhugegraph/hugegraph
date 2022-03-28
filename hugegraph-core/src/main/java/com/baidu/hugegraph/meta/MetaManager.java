@@ -1937,8 +1937,10 @@ public class MetaManager {
         String statusListKey = this.taskStatusKey(graphSpace, graphName, id.asString(), status);
         String jsonStr = this.metaDriver.get(statusListKey);
         HugeTask<V> task = parseTask(jsonStr, graphSpace, graphName);
+        if (null == task) {
+            return null;
+        }
         task.overwriteStatus(status);
-
         return task;
     }
     
