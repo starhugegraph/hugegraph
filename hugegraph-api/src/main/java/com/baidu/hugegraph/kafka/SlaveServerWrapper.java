@@ -64,6 +64,7 @@ public class SlaveServerWrapper {
 
     private void initConsumer(GraphManager manager) {
         SyncMutateConsumerBuilder.setGraphManager(manager);
+        consumer.setGraphManager(manager);
         consumer.consume();
     }
 

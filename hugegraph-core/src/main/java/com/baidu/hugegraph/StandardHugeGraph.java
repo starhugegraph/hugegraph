@@ -323,6 +323,11 @@ public class StandardHugeGraph implements HugeGraph {
     }
 
     @Override
+    public void started(boolean started) {
+        this.started = started;
+    }
+
+    @Override
     public boolean closed() {
         if (this.closed && !this.tx.closed()) {
             LOG.warn("The tx is not closed while graph '{}' is closed", this);
@@ -610,6 +615,11 @@ public class StandardHugeGraph implements HugeGraph {
     @Override
     public Vertex addVertex(Object... keyValues) {
         return this.graphTransaction().addVertex(keyValues);
+    }
+
+    @Override
+    public Vertex addVertex(Vertex vertex) {
+        return this.graphTransaction().addVertex((HugeVertex) vertex);
     }
 
     @Override
@@ -1096,7 +1106,8 @@ public class StandardHugeGraph implements HugeGraph {
         return config.get(option);
     }
 
-    private void closeTx() {
+    @Override
+    public void closeTx() {
         try {
             if (this.tx.isOpen()) {
                 this.tx.close();

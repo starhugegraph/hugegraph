@@ -206,6 +206,8 @@ public class K8sManager {
                 throw new HugeException("Cannot generate yaml config for operator: template load failed");
             }
 
+            namespace = namespace.replace("_", "-").toLowerCase();
+
             String nextNamespace = "namespace: " + namespace;
             String content = this.operatorTemplate.replaceAll(TEMPLATE_NAMESPACE, nextNamespace);
 
@@ -233,6 +235,8 @@ public class K8sManager {
     public void loadResourceQuota(String namespace, int cpuLimit, int memoryLimit) throws HugeException {
         Yaml yaml = new Yaml();
         FileInputStream inputStream = null;
+
+        namespace = namespace.replace("_", "-").toLowerCase();
 
         try {
 

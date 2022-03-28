@@ -46,7 +46,7 @@ public class HugeGraphMutateTopicBuilder {
     }
 
     private String makeKey() {
-        // HUGEGRAPH/{graphSpace}/{graphName}
+        // {graphSpace}/{graphName}
         return String.join(DELIM, this.graphSpace, this.graphName);
     }
 

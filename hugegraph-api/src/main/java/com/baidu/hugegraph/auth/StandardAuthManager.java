@@ -31,6 +31,7 @@ import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.util.StringEncoding;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.jsonwebtoken.Claims;
 import org.slf4j.Logger;
@@ -369,8 +370,12 @@ public class StandardAuthManager implements AuthManager {
             HugeTarget target = this.metaManager.findTarget(graphSpace,
                                 IdGenerator.of(DEFAULT_SPACE_TARGET_KEY));
             if (target == null) {
+                ImmutableList<HugeResource> spaceReseources =
+                        ImmutableList.of(new HugeResource(ResourceType.ALL, null,
+                                                          null));
                 target = new HugeTarget(DEFAULT_SPACE_TARGET_KEY,
-                                        graphSpace, ALL_GRAPHS);
+                                        graphSpace, ALL_GRAPHS,
+                                        spaceReseources);
                 this.updateCreator(target);
                 target.create(target.update());
                 this.metaManager.createTarget(graphSpace, target);

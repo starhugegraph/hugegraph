@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.baidu.hugegraph.kafka.BrokerConfig;
+import com.baidu.hugegraph.meta.MetaManager;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.logging.log4j.util.Strings;
@@ -56,8 +57,17 @@ public class SyncConfTopicBuilder {
      * 使用graph的hashCode来计算partition，确保一个graph总在同一个partition内
      * @return
      */
-    private int calcPartition() {
-        return 0;
+    private int calcPartition(String graphName) {
+
+        if (Strings.isBlank(graphName) || PARTITION_COUNT <= 1) {
+            return 0;
+        }
+        int code = graphName.hashCode() % PARTITION_COUNT;
+        if (code < 0) {
+            code = -code;
+        }
+        return code;
+
     }
 
     public SyncConfTopicBuilder setKey(String key) {
@@ -72,8 +82,16 @@ public class SyncConfTopicBuilder {
     }
 
     public SyncConfTopic build() {
+        String[] keyParts = this.key.split(MetaManager.META_PATH_DELIMITER);
+        String graphName = null;
+        if (keyParts.length == 5 && keyParts[3] == MetaManager.META_PATH_GRAPH) {
+            graphName = this.value;
+        } else if (keyParts.length == 6 && keyParts[4] == MetaManager.META_PATH_GRAPH_CONF) {
+            graphName = keyParts[5];
+        }
+
         String key = this.makeKey();
-        SyncConfTopic topic = new SyncConfTopic(key, this.value, this.calcPartition());
+        SyncConfTopic topic = new SyncConfTopic(key, this.value, this.calcPartition(graphName));
 
         return topic;
     }

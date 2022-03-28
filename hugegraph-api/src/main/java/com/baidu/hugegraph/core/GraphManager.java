@@ -98,6 +98,7 @@ import com.baidu.hugegraph.serializer.Serializer;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.space.GraphSpace;
 import com.baidu.hugegraph.space.Service;
+import com.baidu.hugegraph.space.Service.Status;
 import com.baidu.hugegraph.task.TaskManager;
 import com.baidu.hugegraph.type.define.CollectionType;
 import com.baidu.hugegraph.type.define.GraphMode;
@@ -407,18 +408,34 @@ public final class GraphManager {
         service.serviceId(serviceId(this.serviceGraphSpace,
                                     Service.ServiceType.OLTP,
                                     this.serviceID));
-        // register self to pd, should prior to etcd due to pdServiceId info
-        this.registerServiceToPd(service);
-        if (!this.services.containsKey(serviceName(this.serviceGraphSpace,
-                                                   this.serviceID))) {
-            // register to etcd
-            this.metaManager.addServiceConfig(this.serviceGraphSpace, service);
-            this.metaManager.notifyServiceAdd(this.serviceGraphSpace,
-                                              this.serviceID);
-            // add to local cache since even-handler has not been registered now
+
+        String serviceName = serviceName(this.serviceGraphSpace, this.serviceID);
+        Boolean newAdded = false;
+        if (!this.services.containsKey(serviceName)) {
+            newAdded = true;
+            // add to local cache
             this.services.put(serviceName(this.serviceGraphSpace,
                                           service.name()), service);
         }
+        Service self = services.get(serviceName);
+        if (null != self) {
+            // register self to pd, should prior to etcd due to pdServiceId info
+            this.registerServiceToPd(this.serviceGraphSpace, self);
+            if (self.k8s()) {
+                try {
+                    this.registerK8StoPd();
+                } catch (Exception e) {
+                    LOG.error("Register K8s info to PD failed: {}", e);
+                }
+            }
+            if (newAdded) {
+                 // Register to etcd since even-handler has not been registered now
+                this.metaManager.addServiceConfig(this.serviceGraphSpace, service);
+                this.metaManager.notifyServiceAdd(this.serviceGraphSpace,
+                                                this.serviceID);
+            }
+        }
+        
     }
 
     private static String serviceId(String graphSpace, Service.ServiceType type,
@@ -776,7 +793,7 @@ public final class GraphManager {
         }
     }
 
-    private void registerServiceToPd(Service service) {
+    private void registerServiceToPd(String graphSpace, Service service) {
         try {
             PdRegister register = PdRegister.getInstance();
             RegisterConfig config = new RegisterConfig()
@@ -785,7 +802,7 @@ public final class GraphManager {
                     .setUrls(service.urls())
                     .setLabelMap(ImmutableMap.of(
                             PdRegisterLabel.REGISTER_TYPE.name(), PdRegisterType.DDS.name(),
-                            PdRegisterLabel.GRAPHSPACE.name(), this.serviceGraphSpace,
+                            PdRegisterLabel.GRAPHSPACE.name(), graphSpace,
                             PdRegisterLabel.SERVICE_NAME.name(), service.name(),
                             PdRegisterLabel.SERVICE_ID.name(), service.serviceId()
                     ));
@@ -817,10 +834,15 @@ public final class GraphManager {
             ServiceDTO serviceDTO = gson.fromJson(rawConfig, ServiceDTO.class);
             RegisterConfig config = new RegisterConfig();
 
+            String nodeName = System.getenv("MY_NODE_NAME");
+            if (Strings.isNullOrEmpty(nodeName)) {
+                nodeName = serviceDTO.getSpec().getClusterIP();
+            }
+
             config
                 .setNodePort(serviceDTO.getSpec().getPorts()
                                        .get(0).getNodePort().toString())
-                .setNodeName(serviceDTO.getSpec().getClusterIP())
+                .setNodeName(nodeName)
                 .setAppName(this.cluster)
                 .setGrpcAddress(this.pdPeers)
                 .setVersion(serviceDTO.getMetadata().getResourceVersion())
@@ -886,12 +908,14 @@ public final class GraphManager {
             }
             service.serviceId(serviceId(graphSpace, service.type(),
                                         service.name()));
-            // Register to pd. The order here is important since pdServiceId will be stored in etcd
-            this.registerServiceToPd(service);
+
             // Persist to etcd
             this.metaManager.addServiceConfig(graphSpace, service);
             this.metaManager.notifyServiceAdd(graphSpace, name);
             this.services.put(serviceName(graphSpace, name), service);
+        } catch (Exception e) {
+            LOG.error("Create service failed {}", e);
+            throw e;
         } finally {
             this.metaManager.unlock(lock, this.cluster, graphSpace, name);
         }
@@ -900,6 +924,7 @@ public final class GraphManager {
     }
 
     public void startService(String graphSpace, Service service) {
+        service.status(Status.STARTING);
         List<String> endpoints = this.config.get(ServerOptions.META_ENDPOINTS);
         GraphSpace gs = this.graphSpace(graphSpace);
         Set<String> urls = this.k8sManager.startService(gs, service, endpoints,
@@ -913,7 +938,6 @@ public final class GraphManager {
         service.status(Service.Status.STARTING);
         this.metaManager.updateServiceConfig(graphSpace, service);
         this.metaManager.notifyServiceUpdate(graphSpace, service.name());
-        this.registerServiceToPd(service);
     }
 
     public void stopService(String graphSpace, String name) {
@@ -963,6 +987,10 @@ public final class GraphManager {
 
     public HugeGraph createGraph(String graphSpace, String name, String creator,
                                  Map<String, Object> configs, boolean init) {
+        boolean grpcThread = Thread.currentThread().getName().contains("grpc");
+        if (grpcThread) {
+            HugeGraphAuthProxy.setAdmin();
+        }
         checkGraphName(name);
         GraphSpace gs = this.graphSpace(graphSpace);
         if (!gs.tryOfferGraph()) {
@@ -1024,6 +1052,9 @@ public final class GraphManager {
         }
         String schemas = this.schemaTemplate(graphSpace, schema).schema();
         prepareSchema(graph, schemas);
+        if (grpcThread) {
+            HugeGraphAuthProxy.resetContext();
+        }
         return graph;
     }
 
@@ -1444,15 +1475,19 @@ public final class GraphManager {
     }
 
     private <T> void graphAddHandler(T response) {
+        LOG.info("====> Scorpiour: detect graph added!");
         List<String> names = this.metaManager
                                  .extractGraphsFromResponse(response);
         for (String graphName : names) {
+            LOG.info("Accept graph add signal from etcd for {}", graphName);
             if (this.graphs.containsKey(graphName) ||
                 this.creatingGraphs.contains(graphName)) {
                 this.creatingGraphs.remove(graphName);
                 continue;
             }
 
+            LOG.info("Not exist in cache, Starting construct graph {}",
+                     graphName);
             String[] parts = graphName.split(DELIMITER);
             Map<String, Object> config =
                     this.metaManager.getGraphConfig(parts[0], parts[1]);
@@ -1461,13 +1496,14 @@ public final class GraphManager {
                              GraphSpace.DEFAULT_CREATOR_NAME :
                              String.valueOf(objc);
 
-
             // Create graph without init
             try {
                 HugeGraph graph = this.createGraph(parts[0], parts[1], creator,
                                                    config, false);
-                graph.serverStarted();
-                graph.tx().close();
+                graph.started(true);
+                if (graph.tx().isOpen()) {
+                    graph.tx().close();
+                }
             } catch (HugeException e) {
                 if (!this.startIgnoreSingleGraphError) {
                     throw e;
