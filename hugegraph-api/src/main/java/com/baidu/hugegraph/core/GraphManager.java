@@ -834,10 +834,15 @@ public final class GraphManager {
             ServiceDTO serviceDTO = gson.fromJson(rawConfig, ServiceDTO.class);
             RegisterConfig config = new RegisterConfig();
 
+            String nodeName = System.getenv("MY_NODE_NAME");
+            if (Strings.isNullOrEmpty(nodeName)) {
+                nodeName = serviceDTO.getSpec().getClusterIP();
+            }
+
             config
                 .setNodePort(serviceDTO.getSpec().getPorts()
                                        .get(0).getNodePort().toString())
-                .setNodeName(serviceDTO.getSpec().getClusterIP())
+                .setNodeName(nodeName)
                 .setAppName(this.cluster)
                 .setGrpcAddress(this.pdPeers)
                 .setVersion(serviceDTO.getMetadata().getResourceVersion())
