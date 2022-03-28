@@ -297,6 +297,7 @@ public class Service {
         infos.put("route_type", this.routeType);
         infos.put("port", this.port);
         infos.put("urls", this.urls);
+        infos.put("server_urls", this.serverUrls);
 
         infos.put("service_id", this.serviceId);
         infos.put("pd_service_id", this.pdServiceId);

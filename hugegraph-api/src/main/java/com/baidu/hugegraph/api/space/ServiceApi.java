@@ -87,8 +87,9 @@ public class ServiceApi extends API {
         E.checkArgument(space(manager, graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
 
-        return manager.serializer().writeService(
-                                    service(manager, graphSpace, name));
+        Service service = service(manager, graphSpace, name);
+        service.serverUrls(manager.getServiceUrls(graphSpace, name));
+        return manager.serializer().writeService(service);
     }
 
     @POST

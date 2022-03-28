@@ -477,6 +477,7 @@ public class HugeGraphSONModule extends TinkerPopJacksonModule {
             Number port = 8080;
 
             Set<String> urls = new HashSet<>();
+            Set<String> serverUrls = new HashSet<>();
 
             String serviceId = null;
             String pdServiceId = null;
@@ -513,6 +514,11 @@ public class HugeGraphSONModule extends TinkerPopJacksonModule {
                 } else if ("port".equals(fieldName)) {
                     port = jsonParser.getNumberValue();
                 } else if ("urls".equals(fieldName)) {
+                    while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
+                        String urlString = jsonParser.getText();
+                        urls.addAll(Arrays.asList(urlString.split(",")));
+                    }
+                } else if ("server_urls".equals(fieldName)) {
                     while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
                         String urlString = jsonParser.getText();
                         urls.addAll(Arrays.asList(urlString.split(",")));
@@ -557,6 +563,7 @@ public class HugeGraphSONModule extends TinkerPopJacksonModule {
                                routeType,
                                port.intValue(),
                                urls);
+            service.serverUrls(serverUrls);
             service.status(Service.Status.valueOf(status));
             service.serviceId(serviceId);
             service.pdServiceId(pdServiceId);
