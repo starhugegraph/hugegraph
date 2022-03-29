@@ -50,6 +50,7 @@ import com.baidu.hugegraph.pd.client.PDConfig;
 import com.baidu.hugegraph.pd.grpc.discovery.NodeInfo;
 import com.baidu.hugegraph.pd.grpc.discovery.NodeInfos;
 import com.baidu.hugegraph.pd.grpc.discovery.Query;
+import com.baidu.hugegraph.pd.grpc.discovery.RegisterType;
 import com.baidu.hugegraph.registerimpl.PdRegister;
 import com.baidu.hugegraph.space.SchemaTemplate;
 import com.baidu.hugegraph.traversal.optimize.HugeScriptTraversal;
@@ -1233,7 +1234,18 @@ public final class GraphManager {
         return service;
     }
 
-    public Set<String> getServiceUrls(String graphSpace, String service) {
+    public Set<String> getServiceDdsUrls(String graphSpace, String service) {
+        return this.getServiceUrls(graphSpace, service, PdRegisterType.DDS);
+    }
+
+    public Set<String> getServiceNodePortUrls(String graphSpace,
+                                              String service) {
+        return this.getServiceUrls(graphSpace, service,
+                                   PdRegisterType.NODE_PORT);
+    }
+
+    public Set<String> getServiceUrls(String graphSpace, String service,
+                                      PdRegisterType registerType) {
         Map<String, String>  configs = new HashMap<>();
         if (StringUtils.isNotEmpty(graphSpace)) {
             configs.put(PdRegisterLabel.REGISTER_TYPE.name(), graphSpace);
@@ -1241,7 +1253,7 @@ public final class GraphManager {
         if (StringUtils.isNotEmpty(service)) {
             configs.put(PdRegisterLabel.SERVICE_NAME.name(), service);
         }
-        configs.put(PdRegisterLabel.REGISTER_TYPE.name(), "NODE_PORT");
+        configs.put(PdRegisterLabel.REGISTER_TYPE.name(), registerType.name());
         Query query = Query.newBuilder().setAppName(cluster)
                            .putAllLabels(configs)
                            .build();

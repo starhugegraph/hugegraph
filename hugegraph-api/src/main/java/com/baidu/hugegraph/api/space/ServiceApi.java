@@ -37,7 +37,6 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.SecurityContext;
 
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
 
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
@@ -88,7 +87,8 @@ public class ServiceApi extends API {
                         "The graph space '%s' is not exist", graphSpace);
 
         Service service = service(manager, graphSpace, name);
-        service.serverUrls(manager.getServiceUrls(graphSpace, name));
+        service.serverUrls(manager.getServiceDdsUrls(graphSpace, name));
+        service.serverUrls(manager.getServiceNodePortUrls(graphSpace, name));
         return manager.serializer().writeService(service);
     }
 
@@ -166,7 +166,6 @@ public class ServiceApi extends API {
             manager.startService(graphSpace, service);
         }
         LOGGER.getAuditLogger().logStartService(service.serviceId());
-
     }
 
     @DELETE

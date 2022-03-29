@@ -55,7 +55,8 @@ public class Service {
     private int port;
 
     private Set<String> urls = new HashSet<>();
-    private Set<String> serverUrls = new HashSet<>();
+    private Set<String> serverDdsUrls = new HashSet<>();
+    private Set<String> serverNodePortUrls = new HashSet<>();
 
     private String serviceId;
     private String pdServiceId;
@@ -230,15 +231,26 @@ public class Service {
         this.urls = urls;
     }
 
-    public Set<String> serverUrls() {
-        if (this.serverUrls == null) {
-            this.serverUrls = new HashSet<>();
+    public Set<String> serverDdsUrls() {
+        if (this.serverDdsUrls == null) {
+            this.serverDdsUrls = new HashSet<>();
         }
-        return this.serverUrls;
+        return this.serverDdsUrls;
     }
 
-    public void serverUrls(Set<String> urls) {
-        this.serverUrls = urls;
+    public void serverDdsUrls(Set<String> urls) {
+        this.serverDdsUrls = urls;
+    }
+
+    public Set<String> serverNodePortUrls() {
+        if (this.serverNodePortUrls == null) {
+            this.serverNodePortUrls = new HashSet<>();
+        }
+        return this.serverNodePortUrls;
+    }
+
+    public void serverNodePortUrls(Set<String> urls) {
+        this.serverNodePortUrls = urls;
     }
 
     public void url(String url) {
@@ -297,7 +309,8 @@ public class Service {
         infos.put("route_type", this.routeType);
         infos.put("port", this.port);
         infos.put("urls", this.urls);
-        infos.put("server_urls", this.serverUrls);
+        infos.put("server_dds_urls", this.serverDdsUrls);
+        infos.put("server_node_port_urls", this.serverNodePortUrls);
 
         infos.put("service_id", this.serviceId);
         infos.put("pd_service_id", this.pdServiceId);
