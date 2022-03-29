@@ -39,12 +39,18 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import com.baidu.hugegraph.k8s.K8sDriver;
 import com.baidu.hugegraph.k8s.K8sDriverProxy;
 import com.baidu.hugegraph.meta.lock.LockResult;
+import com.baidu.hugegraph.pd.client.DiscoveryClientImpl;
 import com.baidu.hugegraph.pd.client.PDClient;
 import com.baidu.hugegraph.pd.client.PDConfig;
+import com.baidu.hugegraph.pd.grpc.discovery.NodeInfo;
+import com.baidu.hugegraph.pd.grpc.discovery.NodeInfos;
+import com.baidu.hugegraph.pd.grpc.discovery.Query;
+import com.baidu.hugegraph.pd.grpc.discovery.RegisterType;
 import com.baidu.hugegraph.registerimpl.PdRegister;
 import com.baidu.hugegraph.space.SchemaTemplate;
 import com.baidu.hugegraph.traversal.optimize.HugeScriptTraversal;
@@ -150,6 +156,8 @@ public final class GraphManager {
 
     private String pdK8sServiceId;
 
+    private DiscoveryClientImpl pdClient;
+
     public GraphManager(HugeConfig conf, EventHub hub) {
 
         LOG.info("Init graph manager");
@@ -173,7 +181,16 @@ public final class GraphManager {
         this.eventHub = hub;
         this.k8sApiEnabled = conf.get(ServerOptions.K8S_API_ENABLE);
 
-        BrokerConfig.setPdPeers(pdPeers);
+        BrokerConfig.setPdPeers(this.pdPeers);
+
+        try {
+            this.pdClient = DiscoveryClientImpl
+                    .newBuilder()
+                    .setCenterAddress(this.pdPeers) // pd grpc端口
+                    .build();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         this.listenChanges();
 
@@ -1215,6 +1232,39 @@ public final class GraphManager {
             this.metaManager.updateServiceConfig(graphSpace, service);
         }
         return service;
+    }
+
+    public Set<String> getServiceDdsUrls(String graphSpace, String service) {
+        return this.getServiceUrls(graphSpace, service, PdRegisterType.DDS);
+    }
+
+    public Set<String> getServiceNodePortUrls(String graphSpace,
+                                              String service) {
+        return this.getServiceUrls(graphSpace, service,
+                                   PdRegisterType.NODE_PORT);
+    }
+
+    public Set<String> getServiceUrls(String graphSpace, String service,
+                                      PdRegisterType registerType) {
+        Map<String, String>  configs = new HashMap<>();
+        if (StringUtils.isNotEmpty(graphSpace)) {
+            configs.put(PdRegisterLabel.REGISTER_TYPE.name(), graphSpace);
+        }
+        if (StringUtils.isNotEmpty(service)) {
+            configs.put(PdRegisterLabel.SERVICE_NAME.name(), service);
+        }
+        configs.put(PdRegisterLabel.REGISTER_TYPE.name(), registerType.name());
+        Query query = Query.newBuilder().setAppName(cluster)
+                           .putAllLabels(configs)
+                           .build();
+        NodeInfos nodeInfos = this.pdClient.getNodeInfos(query);
+        for (NodeInfo nodeInfo : nodeInfos.getInfoList()) {
+            LOG.info("node app name {}, node address: {}",
+                     nodeInfo.getAppName(), nodeInfo.getAddress());
+        }
+        return nodeInfos.getInfoList().stream()
+                                     .map(nodeInfo -> nodeInfo.getAddress())
+                                     .collect(Collectors.toSet());
     }
 
     public Set<HugeGraph> graphs() {
