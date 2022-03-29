@@ -547,7 +547,7 @@ public class HugeGraphSONModule extends TinkerPopJacksonModule {
                     }
                 } else {
                     // throw new HugeException("Invalid field '%s'", fieldName);
-                    LOGGER.logCriticalError(new HugeException("Invalid field %", fieldName), "Deserialize Service");
+                    LOGGER.logCriticalError(new HugeException("Invalid field %s", fieldName), "Deserialize Service");
                 }
             }
             jsonParser.close();

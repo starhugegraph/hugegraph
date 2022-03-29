@@ -47,6 +47,7 @@ import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.pd.client.DiscoveryClientImpl;
 import com.baidu.hugegraph.pd.client.PDClient;
 import com.baidu.hugegraph.pd.client.PDConfig;
+import com.baidu.hugegraph.pd.grpc.discovery.NodeInfo;
 import com.baidu.hugegraph.pd.grpc.discovery.NodeInfos;
 import com.baidu.hugegraph.pd.grpc.discovery.Query;
 import com.baidu.hugegraph.registerimpl.PdRegister;
@@ -1245,7 +1246,10 @@ public final class GraphManager {
                            .putAllLabels(configs)
                            .build();
         NodeInfos nodeInfos = this.pdClient.getNodeInfos(query);
-
+        for (NodeInfo nodeInfo : nodeInfos.getInfoList()) {
+            LOG.info("node app name {}, node address: {}",
+                     nodeInfo.getAppName(), nodeInfo.getAddress());
+        }
         return nodeInfos.getInfoList().stream()
                                      .map(nodeInfo -> nodeInfo.getAddress())
                                      .collect(Collectors.toSet());
