@@ -77,7 +77,7 @@ public class UserAPI extends API {
         HugeUser user = jsonUser.build();
         AuthManager authManager = manager.authManager();
         user.id(authManager.createUser(user, true));
-        LOGGER.getAuditLogger().logCreateUser(user.idString(), RestServer.EXECUTOR);
+        LOGGER.getAuditLogger().logCreateUser(user.idString(), manager.authManager().username());
         return manager.serializer().writeAuthElement(user);
     }
 
@@ -104,7 +104,7 @@ public class UserAPI extends API {
             LOGGER.getAuditLogger().logUpdatePassword(user.idString());
         }
         user = authManager.updateUser(user, true);
-        LOGGER.getAuditLogger().logUpdateUser(user.idString(), RestServer.EXECUTOR);
+        LOGGER.getAuditLogger().logUpdateUser(user.idString(), authManager.username());
         return manager.serializer().writeAuthElement(user);
     }
 
@@ -158,7 +158,7 @@ public class UserAPI extends API {
         try {
             AuthManager authManager = manager.authManager();
             authManager.deleteUser(IdGenerator.of(id), true);
-            LOGGER.getAuditLogger().logDeleteUser(id, RestServer.EXECUTOR);
+            LOGGER.getAuditLogger().logDeleteUser(id, authManager.username());
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid user id: " + id);
         }
