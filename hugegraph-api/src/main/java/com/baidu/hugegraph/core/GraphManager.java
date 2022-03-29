@@ -1235,12 +1235,12 @@ public final class GraphManager {
     public Set<String> getServiceUrls(String graphSpace, String service) {
         Map<String, String>  configs = new HashMap<>();
         if (StringUtils.isNotEmpty(graphSpace)) {
-            configs.put("GRAPHSPACE", graphSpace);
+            configs.put(PdRegisterLabel.REGISTER_TYPE.name(), graphSpace);
         }
         if (StringUtils.isNotEmpty(service)) {
-            configs.put("SERVICE_NAME", service);
+            configs.put(PdRegisterLabel.SERVICE_NAME.name(), service);
         }
-        configs.put("REGISTER_TYPE", "NODE_PORT");
+        configs.put(PdRegisterLabel.REGISTER_TYPE.name(), "NODE_PORT");
         Query query = Query.newBuilder().setAppName(cluster)
                            .putAllLabels(configs)
                            .build();
