@@ -87,8 +87,9 @@ public class ServiceApi extends API {
                         "The graph space '%s' is not exist", graphSpace);
 
         Service service = service(manager, graphSpace, name);
-        service.serverUrls(manager.getServiceDdsUrls(graphSpace, name));
-        service.serverUrls(manager.getServiceNodePortUrls(graphSpace, name));
+        service.serverDdsUrls(manager.getServiceDdsUrls(graphSpace, name));
+        service.serverNodePortUrls(
+                manager.getServiceNodePortUrls(graphSpace, name));
         return manager.serializer().writeService(service);
     }
 
