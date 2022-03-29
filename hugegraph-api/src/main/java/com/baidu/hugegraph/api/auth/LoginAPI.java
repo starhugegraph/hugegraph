@@ -111,12 +111,13 @@ public class LoginAPI extends API {
                       "Only HTTP Bearer authentication is supported");
         }
 
+        String username = manager.authManager().username();
+
         String token = auth.substring(AuthenticationFilter.BEARER_TOKEN_PREFIX
                                                           .length());
         AuthManager authManager = manager.authManager();
-        UserWithRole userWithRole = authManager.validateUser(token);
         authManager.logoutUser(token);
-        LOGGER.getAuditLogger().logUserLogout(userWithRole.username());
+        LOGGER.getAuditLogger().logUserLogout(username);
     }
 
     @GET

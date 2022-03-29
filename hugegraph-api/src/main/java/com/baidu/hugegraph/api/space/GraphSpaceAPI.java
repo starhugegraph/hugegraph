@@ -113,7 +113,7 @@ public class GraphSpaceAPI extends API {
         GraphSpace space = manager.createGraphSpace(
                            jsonGraphSpace.toGraphSpace(creator));
         LOGGER.getAuditLogger().logCreateTenant(space.name(),
-                                                RestServer.EXECUTOR);
+                                                creator);
         return manager.serializer().writeGraphSpace(space);
     }
 
@@ -239,7 +239,7 @@ public class GraphSpaceAPI extends API {
                 exist.refreshUpdate();
                 GraphSpace space = manager.createGraphSpace(exist);
                 LOGGER.getAuditLogger().logUpdateTenant(exist.name(),
-                                                        RestServer.EXECUTOR);
+                                                        manager.authManager().username());
                 return space.info();
             case GRAPH_SPACE_ACTION_CLEAR:
                 LOGGER.logCustomDebug("Clear graph space: '{}'",
@@ -247,7 +247,7 @@ public class GraphSpaceAPI extends API {
 
                 manager.clearGraphSpace(name);
                 LOGGER.getAuditLogger().logUpdateTenant(name,
-                                                        RestServer.EXECUTOR);
+                                                        manager.authManager().username());
                 return ImmutableMap.of(name, "cleared");
             default:
                 throw new AssertionError(String.format("Invalid action: '%s'",
@@ -264,7 +264,7 @@ public class GraphSpaceAPI extends API {
                        @PathParam("name") String name) {
         LOGGER.logCustomDebug("Remove graph space by name '{}'",
                               RestServer.EXECUTOR, name);
-        LOGGER.getAuditLogger().logRemoveTenant(name, RestServer.EXECUTOR);
+        LOGGER.getAuditLogger().logRemoveTenant(name, manager.authManager().username());
         manager.dropGraphSpace(name);
     }
 
