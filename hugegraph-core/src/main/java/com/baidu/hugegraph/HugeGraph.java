@@ -277,4 +277,6 @@ public interface HugeGraph extends Graph {
     }
 
     public void applyMutation(BackendMutation mutation);
+
+    public void updatePropertyKey(PropertyKey old, PropertyKey upadte);
 }

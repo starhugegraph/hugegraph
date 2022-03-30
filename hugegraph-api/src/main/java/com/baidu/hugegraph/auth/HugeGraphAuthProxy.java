@@ -795,6 +795,11 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     @Override
+    public void updatePropertyKey(PropertyKey old, PropertyKey update) {
+        this.hugegraph.updatePropertyKey(old, update);
+    }
+
+    @Override
     public String creator() {
         this.verifyAnyPermission();
         return this.hugegraph.creator();

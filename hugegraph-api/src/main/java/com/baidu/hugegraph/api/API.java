@@ -99,6 +99,7 @@ public class API {
 
     public static final String ACTION_APPEND = "append";
     public static final String ACTION_ELIMINATE = "eliminate";
+    public static final String ACTION_UPDATE = "update";
     public static final String ACTION_CLEAR = "clear";
 
     public static final String USER_NAME_PATTERN = "^[0-9a-zA-Z_]{5,16}$";

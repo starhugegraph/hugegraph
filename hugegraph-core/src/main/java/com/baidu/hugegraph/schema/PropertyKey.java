@@ -500,6 +500,8 @@ public class PropertyKey extends SchemaElement implements Propfiable {
 
         TaskWithSchema createWithTask();
 
+        PropertyKey updatePk(PropertyKey old);
+
         Builder asText();
 
         Builder asInt();
