@@ -82,6 +82,9 @@ public class EtcdTaskScheduler extends TaskScheduler {
     // Mark if a task has been visited, filter duplicate events
     private final Set<String> visitedTasks = new ConcurrentHashSet<>();
 
+    // Count the task processed by current scheduler
+    private final Set<Id> processedTasks = new ConcurrentHashSet<>();
+
     // Mark if a task is processed by current node
     private final Map<Id, HugeTask<?>> taskMap = new ConcurrentHashMap<>();
 
@@ -245,7 +248,7 @@ public class EtcdTaskScheduler extends TaskScheduler {
                 }
                 // Update retry
                 EtcdTaskScheduler.updateTaskRetry(this.graphSpace(), this.graphName, task);
-                executor.submit(new TaskRunner<>(task, this.graph));
+                executor.submit(new TaskRunner<>(task, this.graph, this.processedTasks));
             }
         }
     }
@@ -583,8 +586,7 @@ public class EtcdTaskScheduler extends TaskScheduler {
     private long incompleteTaskCount() {
         long incompleteTaskCount = 0;
         MetaManager manager = MetaManager.instance();
-        for(Map.Entry<Id, HugeTask<?>> entry : this.taskMap.entrySet()) {
-            Id taskId = entry.getKey();
+        for(Id taskId : this.processedTasks) {
             TaskStatus status = manager.getTaskStatus(this.graphSpace, this.graphName, taskId);
             if (!TaskStatus.COMPLETED_STATUSES.contains(status)) {
                 incompleteTaskCount++;
@@ -749,11 +751,13 @@ public class EtcdTaskScheduler extends TaskScheduler {
         private final String graphSpace;
         private final String graphName;
 
-        public TaskRunner(HugeTask<V> task, HugeGraphParams graph) {
+        public TaskRunner(HugeTask<V> task, HugeGraphParams graph, Set<Id> processedTasks) {
             this.task = task;
             this.graph = graph;
             this.graphSpace = this.graph.graph().graphSpace();
             this.graphName = this.graph.graph().name();
+
+            processedTasks.add(task.id());
         }
 
         @Override
@@ -767,13 +771,10 @@ public class EtcdTaskScheduler extends TaskScheduler {
                     return;
                 }
 
-                // Detect if task is mark to hanging
-                //synchronized(task) {
-                    if (task.status() == TaskStatus.HANGING) {
-                        EtcdTaskScheduler.updateTaskStatus(graphSpace, this.graphName, task, TaskStatus.HANGING);
-                        return;
-                    }
-                //}
+                if (task.status() == TaskStatus.HANGING) {
+                    EtcdTaskScheduler.updateTaskStatus(graphSpace, this.graphName, task, TaskStatus.HANGING);
+                    return;
+                }
 
                 EtcdTaskScheduler.updateTaskStatus(graphSpace, this.graphName, task, TaskStatus.RUNNING);
 
@@ -785,8 +786,9 @@ public class EtcdTaskScheduler extends TaskScheduler {
                 if (!Strings.isNullOrEmpty(result) ) {
                     task.scheduler().save(task);
                 }
+                TaskStatus nextStatus = TaskStatus.COMPLETED_STATUSES.contains(task.status()) ? task.status() : TaskStatus.SUCCESS;
                 EtcdTaskScheduler.updateTaskProgress(graphSpace, this.graphName, task, task.progress());
-                EtcdTaskScheduler.updateTaskStatus(graphSpace, this.graphName, task, TaskStatus.SUCCESS);
+                EtcdTaskScheduler.updateTaskStatus(graphSpace, this.graphName, task, nextStatus);
                 
             } catch (Exception e) {
                 LOGGER.logCriticalError(e, String.format("task %d %s failed due to fatal error", task.id().asString(), task.name()));
@@ -961,7 +963,7 @@ public class EtcdTaskScheduler extends TaskScheduler {
                     task.overwriteContext(taskContext);
                     TaskManager.setContext(task.context());
                     // run it
-                    executor.submit(new TaskRunner<>(task, this.graph));
+                    executor.submit(new TaskRunner<>(task, this.graph, this.processedTasks));
                 }
             } catch (Exception e) {
                 LOGGER.logCriticalError(e, "Handle task failed");
