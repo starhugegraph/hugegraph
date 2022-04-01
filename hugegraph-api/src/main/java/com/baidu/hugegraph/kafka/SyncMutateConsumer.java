@@ -61,33 +61,23 @@ public class SyncMutateConsumer extends StandardConsumer {
     @Override
     protected boolean handleRecord(ConsumerRecord<String, ByteBuffer> record) {
 
-        LOG.info("====> Scorpiour: handle record of apply mutation, key {} , size {}", record.key(), record.value().array().length);
-
         if (BrokerConfig.getInstance().needKafkaSyncStorage()) {
 
-            LOG.info("====> Scorpiour: going to pre-check");
             if (null == this.manager && null == this.graph) {
-                LOG.info("====> Scorpiour: pre-check failed! {}, {}", this.manager, this.graph);
                 return true;
             }
-            LOG.info("====> Scorpiour: going to extract graph info");
             String[] graphInfo = HugeGraphMutateTopicBuilder.extractGraphs(record);
             String graphSpace = graphInfo[0];
             String graphName = graphInfo[1];
 
-            LOG.info("====> Scorpiour: extract graphSpace {}, graph {}", graphSpace, graphName);
 
             HugeGraph graph = manager.graph(graphSpace, graphName);
             if (null == graph) {
-                LOG.info("====> Scorpiour: graph is {}, consume failed!");
                 return false;
             }
             BackendMutation mutation = HugeGraphMutateTopicBuilder.buildMutation(record.value());
-            LOG.info("====> Scorpiour: going to apply mutation");
             graph.applyMutation(mutation);
-            LOG.info("====> Scorpiour: going to commit");
             graph.tx().commit();
-            LOG.info("====> Scorpiour: commit done");
             return true;
         }
         return false;

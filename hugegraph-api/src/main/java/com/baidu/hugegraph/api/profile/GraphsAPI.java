@@ -166,7 +166,7 @@ public class GraphsAPI extends API {
         LOGGER.getServerLogger()
               .logCreateGraph(name, graph.configuration().toString());
         LOGGER.getAuditLogger()
-              .logCreateGraph(graphSpace, name, RestServer.EXECUTOR);
+              .logCreateGraph(graphSpace, name, creator);
         return result;
     }
 
@@ -208,8 +208,9 @@ public class GraphsAPI extends API {
         String action = (String) actionMap.get(GRAPH_ACTION);
         switch (action) {
             case GRAPH_ACTION_CLEAR:
+                String username = manager.authManager().username();
                 HugeGraph g = graph(manager, graphSpace, name);
-                if ((Boolean) actionMap.get(CLEAR_SCHEMA)) {
+                if ((Boolean) actionMap.getOrDefault(CLEAR_SCHEMA, false)) {
                     g.truncateBackend();
                 } else {
                     g.truncateGraph();
@@ -218,7 +219,7 @@ public class GraphsAPI extends API {
                 g.tx().commit();
                 manager.meta().notifyGraphClear(graphSpace, name);
                 LOGGER.getAuditLogger()
-                    .logClearGraph(graphSpace, name, RestServer.EXECUTOR);
+                    .logClearGraph(graphSpace, name, username);
                 return ImmutableMap.of(name, "cleared");
             case GRAPH_ACTION_RELOAD:
                 manager.reload(graphSpace, name);

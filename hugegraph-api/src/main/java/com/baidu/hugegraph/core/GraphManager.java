@@ -39,12 +39,18 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import com.baidu.hugegraph.k8s.K8sDriver;
 import com.baidu.hugegraph.k8s.K8sDriverProxy;
 import com.baidu.hugegraph.meta.lock.LockResult;
+import com.baidu.hugegraph.pd.client.DiscoveryClientImpl;
 import com.baidu.hugegraph.pd.client.PDClient;
 import com.baidu.hugegraph.pd.client.PDConfig;
+import com.baidu.hugegraph.pd.grpc.discovery.NodeInfo;
+import com.baidu.hugegraph.pd.grpc.discovery.NodeInfos;
+import com.baidu.hugegraph.pd.grpc.discovery.Query;
+import com.baidu.hugegraph.pd.grpc.discovery.RegisterType;
 import com.baidu.hugegraph.registerimpl.PdRegister;
 import com.baidu.hugegraph.space.SchemaTemplate;
 import com.baidu.hugegraph.traversal.optimize.HugeScriptTraversal;
@@ -150,6 +156,8 @@ public final class GraphManager {
 
     private String pdK8sServiceId;
 
+    private DiscoveryClientImpl pdClient;
+
     public GraphManager(HugeConfig conf, EventHub hub) {
 
         LOG.info("Init graph manager");
@@ -173,7 +181,16 @@ public final class GraphManager {
         this.eventHub = hub;
         this.k8sApiEnabled = conf.get(ServerOptions.K8S_API_ENABLE);
 
-        BrokerConfig.setPdPeers(pdPeers);
+        BrokerConfig.setPdPeers(this.pdPeers);
+
+        try {
+            this.pdClient = DiscoveryClientImpl
+                    .newBuilder()
+                    .setCenterAddress(this.pdPeers) // pd grpc端口
+                    .build();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         this.listenChanges();
 
@@ -423,19 +440,18 @@ public final class GraphManager {
             this.registerServiceToPd(this.serviceGraphSpace, self);
             if (self.k8s()) {
                 try {
-                    this.registerK8StoPd();
+                    this.registerK8StoPd(self);
                 } catch (Exception e) {
                     LOG.error("Register K8s info to PD failed: {}", e);
                 }
             }
             if (newAdded) {
                  // Register to etcd since even-handler has not been registered now
-                this.metaManager.addServiceConfig(this.serviceGraphSpace, service);
+                this.metaManager.addServiceConfig(this.serviceGraphSpace, self);
                 this.metaManager.notifyServiceAdd(this.serviceGraphSpace,
-                                                this.serviceID);
+                                                  this.serviceID);
             }
         }
-        
     }
 
     private static String serviceId(String graphSpace, Service.ServiceType type,
@@ -822,7 +838,7 @@ public final class GraphManager {
         }
     }
 
-    public void registerK8StoPd() throws Exception {
+    public void registerK8StoPd(Service service) throws Exception {
         try {
             PdRegister pdRegister = PdRegister.getInstance();
             K8sRegister k8sRegister = K8sRegister.instance();
@@ -849,9 +865,8 @@ public final class GraphManager {
                 .setLabelMap(ImmutableMap.of(
                         PdRegisterLabel.REGISTER_TYPE.name(), PdRegisterType.NODE_PORT.name(),
                         PdRegisterLabel.GRAPHSPACE.name(), this.serviceGraphSpace,
-                        PdRegisterLabel.SERVICE_NAME.name(), serviceDTO.getMetadata().getName(),
-                        PdRegisterLabel.SERVICE_ID.name(),
-                            serviceDTO.getMetadata().getNamespace() + "-" + serviceDTO.getMetadata().getName()
+                        PdRegisterLabel.SERVICE_NAME.name(), service.name(),
+                        PdRegisterLabel.SERVICE_ID.name(), service.serviceId()
                 ));
 
             String ddsHost = this.metaManager.getDDSHost();
@@ -900,10 +915,12 @@ public final class GraphManager {
                                    gs, service, endpoints, this.cluster);
                 if (!urls.isEmpty()) {
                     String url = urls.iterator().next();
-                    String[] parts = url.split(":");
+                    String[] parts = url.split(",");
                     service.port(Integer.valueOf(parts[parts.length - 1]));
+                    service.urls().add(parts[0]);
+                } else {
+                    service.urls(urls);
                 }
-                service.urls(urls);
                 service.status(Service.Status.STARTING);
             }
             service.serviceId(serviceId(graphSpace, service.type(),
@@ -931,10 +948,12 @@ public final class GraphManager {
                                                         this.cluster);
         if (!urls.isEmpty()) {
             String url = urls.iterator().next();
-            String[] parts = url.split(":");
+            String[] parts = url.split(",");
             service.port(Integer.valueOf(parts[parts.length - 1]));
+            service.urls().add(parts[0]);
+        } else {
+            service.urls(urls);
         }
-        service.urls(urls);
         service.status(Service.Status.STARTING);
         this.metaManager.updateServiceConfig(graphSpace, service);
         this.metaManager.notifyServiceUpdate(graphSpace, service.name());
@@ -1215,6 +1234,39 @@ public final class GraphManager {
         return service;
     }
 
+    public Set<String> getServiceDdsUrls(String graphSpace, String service) {
+        return this.getServiceUrls(graphSpace, service, PdRegisterType.DDS);
+    }
+
+    public Set<String> getServiceNodePortUrls(String graphSpace,
+                                              String service) {
+        return this.getServiceUrls(graphSpace, service,
+                                   PdRegisterType.NODE_PORT);
+    }
+
+    public Set<String> getServiceUrls(String graphSpace, String service,
+                                      PdRegisterType registerType) {
+        Map<String, String>  configs = new HashMap<>();
+        if (StringUtils.isNotEmpty(graphSpace)) {
+            configs.put(PdRegisterLabel.REGISTER_TYPE.name(), graphSpace);
+        }
+        if (StringUtils.isNotEmpty(service)) {
+            configs.put(PdRegisterLabel.SERVICE_NAME.name(), service);
+        }
+        configs.put(PdRegisterLabel.REGISTER_TYPE.name(), registerType.name());
+        Query query = Query.newBuilder().setAppName(cluster)
+                           .putAllLabels(configs)
+                           .build();
+        NodeInfos nodeInfos = this.pdClient.getNodeInfos(query);
+        for (NodeInfo nodeInfo : nodeInfos.getInfoList()) {
+            LOG.info("node app name {}, node address: {}",
+                     nodeInfo.getAppName(), nodeInfo.getAddress());
+        }
+        return nodeInfos.getInfoList().stream()
+                                     .map(nodeInfo -> nodeInfo.getAddress())
+                                     .collect(Collectors.toSet());
+    }
+
     public Set<HugeGraph> graphs() {
         Set<HugeGraph> graphs = new HashSet<>();
         for (Graph g : this.graphs.values()) {
@@ -1475,7 +1527,6 @@ public final class GraphManager {
     }
 
     private <T> void graphAddHandler(T response) {
-        LOG.info("====> Scorpiour: detect graph added!");
         List<String> names = this.metaManager
                                  .extractGraphsFromResponse(response);
         for (String graphName : names) {

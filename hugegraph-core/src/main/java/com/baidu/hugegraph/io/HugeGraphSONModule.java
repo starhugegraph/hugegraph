@@ -477,6 +477,8 @@ public class HugeGraphSONModule extends TinkerPopJacksonModule {
             Number port = 8080;
 
             Set<String> urls = new HashSet<>();
+            Set<String> serverDdsUrls = new HashSet<>();
+            Set<String> serverNodePortUrls = new HashSet<>();
 
             String serviceId = null;
             String pdServiceId = null;
@@ -517,6 +519,16 @@ public class HugeGraphSONModule extends TinkerPopJacksonModule {
                         String urlString = jsonParser.getText();
                         urls.addAll(Arrays.asList(urlString.split(",")));
                     }
+                } else if ("server_dds_urls".equals(fieldName)) {
+                    while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
+                        String urlString = jsonParser.getText();
+                        serverDdsUrls.addAll(Arrays.asList(urlString.split(",")));
+                    }
+                } else if ("server_node_port_urls".equals(fieldName)) {
+                    while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
+                        String urlString = jsonParser.getText();
+                        serverNodePortUrls.addAll(Arrays.asList(urlString.split(",")));
+                    }
                 } else if("service_id".equals(fieldName)) {
                     serviceId = jsonParser.getText();
                 } else if("pd_service_id".equals(fieldName)) {
@@ -541,7 +553,7 @@ public class HugeGraphSONModule extends TinkerPopJacksonModule {
                     }
                 } else {
                     // throw new HugeException("Invalid field '%s'", fieldName);
-                    LOGGER.logCriticalError(new HugeException("Invalid field %", fieldName), "Deserialize Service");
+                    LOGGER.logCriticalError(new HugeException("Invalid field %s", fieldName), "Deserialize Service");
                 }
             }
             jsonParser.close();
@@ -557,6 +569,8 @@ public class HugeGraphSONModule extends TinkerPopJacksonModule {
                                routeType,
                                port.intValue(),
                                urls);
+            service.serverDdsUrls(serverDdsUrls);
+            service.serverNodePortUrls(serverNodePortUrls);
             service.status(Service.Status.valueOf(status));
             service.serviceId(serviceId);
             service.pdServiceId(pdServiceId);
