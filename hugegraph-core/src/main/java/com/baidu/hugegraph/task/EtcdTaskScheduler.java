@@ -407,10 +407,12 @@ public class EtcdTaskScheduler extends TaskScheduler {
 
         if (null != persisted) {
             this.taskMap.put(id, persisted);
+            persisted.callable().task(persisted);
+            persisted.callable().graph(this.graph());
+            if (TaskStatus.COMPLETED_STATUSES.contains(persisted.status())) {
+                EtcdTaskScheduler.updateTaskStatus(graphSpace, graphName, persisted, persisted.status());
+            }
         }
-
-        persisted.callable().task(persisted);
-        persisted.callable().graph(this.graph());
 
         return persisted;
     }
@@ -438,9 +440,12 @@ public class EtcdTaskScheduler extends TaskScheduler {
             if (callable instanceof SysTaskCallable) {
                 ((SysTaskCallable<?>)callable).params(this.graph);
             }
-            task.status(manager.getTaskStatus(this.graphSpace(), this.graphName, task));
+
             HugeTask<V> persisted = persistedMap.get(task.id());
             if (null != persisted) {
+                if (TaskStatus.COMPLETED_STATUSES.contains(persisted.status())) {
+                    task.overwriteStatus(persisted.status());
+                }
                 task.overwriteResult(persisted.result());
             }
         });
