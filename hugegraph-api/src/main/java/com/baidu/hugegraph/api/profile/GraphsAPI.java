@@ -210,7 +210,7 @@ public class GraphsAPI extends API {
             case GRAPH_ACTION_CLEAR:
                 String username = manager.authManager().username();
                 HugeGraph g = graph(manager, graphSpace, name);
-                if ((Boolean) actionMap.get(CLEAR_SCHEMA)) {
+                if ((Boolean) actionMap.getOrDefault(CLEAR_SCHEMA, false)) {
                     g.truncateBackend();
                 } else {
                     g.truncateGraph();
