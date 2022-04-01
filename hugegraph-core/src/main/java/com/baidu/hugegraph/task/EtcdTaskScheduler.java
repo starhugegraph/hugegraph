@@ -790,7 +790,6 @@ public class EtcdTaskScheduler extends TaskScheduler {
                 LOGGER.logCriticalError(e, String.format("task %d %s failed due to fatal error", task.id().asString(), task.name()));
                 EtcdTaskScheduler.updateTaskStatus(graphSpace, this.graphName, task, TaskStatus.FAILED);
             } catch (Throwable t) {
-                System.out.println("====> Scorpiour: caught throwable ," + t.toString());
                 EtcdTaskScheduler.updateTaskStatus(graphSpace, this.graphName, task, TaskStatus.FAILED);
             } finally {
                 MetaManager.instance().unlockTask(this.graphSpace, this.graphName, task);

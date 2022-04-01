@@ -197,7 +197,6 @@ public class EtcdMetaDriver implements MetaDriver {
         Map<String, String> keyValues = CollectionFactory.newMap(
                                         CollectionType.JCF, size);
         for (KeyValue kv : response.getKvs()) {
-            System.out.println("Scorpiour: ===> Scorpiour: scan kv " + kv.getKey().toString() + " val " + kv.getValue().size());
             String key = kv.getKey().toString(Charset.defaultCharset());
             String value = kv.getValue().size() == 0 ? "" : kv.getValue().toString(Charset.defaultCharset());
             keyValues.put(key, value);
