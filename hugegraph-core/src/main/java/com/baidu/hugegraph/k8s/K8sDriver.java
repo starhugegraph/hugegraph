@@ -767,7 +767,7 @@ public class K8sDriver {
             if (null == status) {
                 return 0;
             }
-            Integer replica = status.getReadyReplicas();
+            Integer replica = status.getAvailableReplicas();
             return Optional.ofNullable(replica).orElse(0);
         } catch (KubernetesClientException exc) {
             LOG.error("Get k8s deployment failed when check podsRunning", exc);
