@@ -67,7 +67,6 @@ public class RestServer {
         URI uri = UriBuilder.fromUri(url).build();
         Boolean k8sApiEnable = this.conf.get(ServerOptions.K8S_API_ENABLE);
         if (k8sApiEnable) {
-            String namespace = this.conf.get(ServerOptions.K8S_NAMESPACE);
             String enableInternalAlgorithm = this.conf.get(
                    ServerOptions.K8S_ENABLE_INTERNAL_ALGORITHM);
             String internalAlgorithmImageUrl = this.conf.get(
@@ -76,8 +75,7 @@ public class RestServer {
                    ServerOptions.K8S_INTERNAL_ALGORITHM);
             Map<String, String> algorithms = this.conf.getMap(
                    ServerOptions.K8S_ALGORITHMS);
-            K8sDriverProxy.setConfig(namespace,
-                                     enableInternalAlgorithm,
+            K8sDriverProxy.setConfig(enableInternalAlgorithm,
                                      internalAlgorithmImageUrl,
                                      internalAlgorithm, algorithms);
         }
