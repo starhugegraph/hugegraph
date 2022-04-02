@@ -153,7 +153,7 @@ public class ComputerDisJob extends UserJob<Object> {
         if (jobId == null) {
             jobId = k8sDriverProxy.getK8sDriver(namespace).submitJob(algorithm,
                                                             k8sParams);
-            LOG.info("New computerDisJob {} submitted, params {}", jobId, k8sParams);
+            LOG.info("New computerDisJob {} is submitted to namespace {} with params {}", jobId, namespace, k8sParams);
             this.innerJobId = jobId;
             map = fromJson(this.task().input(), Map.class);
             map.put(INNER_JOB_ID, jobId);
