@@ -33,7 +33,7 @@ public class K8sDriverProxy {
     private static String INTERNAL_ALGORITHM = "[]";
 
     // protected HugeConfig config;
-    protected HashMap<String, String> options = new HashMap<>();
+    protected final Map<String, String> options = new HashMap<>();
     protected static Map<String, KubernetesDriver> driverMap = new ConcurrentHashMap<>();
 
     static {
@@ -134,10 +134,10 @@ public class K8sDriverProxy {
 
     public KubernetesDriver getK8sDriver(String namespace) {
         KubernetesDriver driver = driverMap.computeIfAbsent(namespace, v -> {
-            options.put("k8s.namespace", namespace);
-            MapConfiguration mapConfig = new MapConfiguration(options);
+            Map<String, String> copyOfOption = new HashMap<>(this.options);
+            copyOfOption.put("k8s.namespace", namespace);
+            MapConfiguration mapConfig = new MapConfiguration(copyOfOption);
             KubernetesDriver d = new KubernetesDriver(new HugeConfig(mapConfig));
-            options.remove("k8s.namespace");
             return d;
         });
         return driver;
