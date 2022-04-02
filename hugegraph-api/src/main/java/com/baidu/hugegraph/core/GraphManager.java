@@ -379,13 +379,11 @@ public final class GraphManager {
                     imageUrl
             );
 
-            String namespace = K8sDriverProxy.getNamespace();
             String enableInternalAlgorithm = K8sDriverProxy.getEnableInternalAlgorithm();
             String internalAlgorithm = K8sDriverProxy.getInternalAlgorithm();
             Map<String, String> algorithms = K8sDriverProxy.getAlgorithms();
             try {
                 K8sDriverProxy.setConfig(
-                    namespace,
                     enableInternalAlgorithm,
                     imageUrl,
                     internalAlgorithm,
@@ -1755,7 +1753,6 @@ public final class GraphManager {
                     HugeConfig conf = new HugeConfig(properties);
                     if (k8sApiEnabled) {
                         GraphSpace gs = this.metaManager.graphSpace(this.serviceGraphSpace);
-                        String namespace = gs.olapNamespace();
                         // conf.get(
                         //ServerOptions.K8S_KUBE_CONFIG);
                         String enableInternalAlgorithm = conf.get(
@@ -1766,8 +1763,7 @@ public final class GraphManager {
                                ServerOptions.K8S_INTERNAL_ALGORITHM);
                         Map<String, String> algorithms = conf.getMap(
                                     ServerOptions.K8S_ALGORITHMS);
-                        K8sDriverProxy.setConfig(namespace,
-                                                 enableInternalAlgorithm,
+                        K8sDriverProxy.setConfig(enableInternalAlgorithm,
                                                  internalAlgorithmImageUrl,
                                                  internalAlgorithm,
                                                  algorithms);
