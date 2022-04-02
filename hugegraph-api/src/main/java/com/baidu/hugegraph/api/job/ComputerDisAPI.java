@@ -42,6 +42,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
 import org.apache.groovy.util.Maps;
+import org.apache.logging.log4j.util.Strings;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
@@ -97,6 +98,19 @@ public class ComputerDisAPI extends API {
         GraphSpace space = space(manager, graphSpace);
         String namespace = space.olapNamespace();
 
+        Integer memoryLimit = space.computeMemoryLimit() > 0 
+                                ? space.computeMemoryLimit()
+                                : space.memoryLimit();
+        Integer cpuLimit = space.computeCpuLimit() > 0
+                                ? space.computeCpuLimit()
+                                : space.cpuLimit();
+
+        // Add default limit for job in order to adapt resource quota limit
+        jsonTask.params.putIfAbsent("k8s.master_memory", memoryLimit.toString() + "Gi");
+        jsonTask.params.putIfAbsent("k8s.worker_memory", memoryLimit.toString() + "Gi");
+        jsonTask.params.putIfAbsent("k8s.master_cpu", cpuLimit.toString());
+        jsonTask.params.putIfAbsent("k8s.worker_cpu", cpuLimit.toString());
+
         Map<String, Object> input = new HashMap<>();
         input.put("graph", graphSpace + "/" + graph);
         input.put("algorithm", jsonTask.algorithm);
@@ -105,6 +119,9 @@ public class ComputerDisAPI extends API {
         input.put("token", token);
         input.put("pd.peers", manager.pdPeers());
         input.put("namespace", namespace);
+        if (Strings.isNotBlank(space.internalAlgorithmImageUrl())) {
+            input.put("k8s.algorithm_image_url", space.internalAlgorithmImageUrl());
+        }
         HugeGraph g = graph(manager, graphSpace, graph);
         JobBuilder<Object> builder = JobBuilder.of(g);
         builder.name("computer-dis:" + jsonTask.algorithm)

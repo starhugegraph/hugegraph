@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.configuration.MapConfiguration;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.computer.k8s.driver.KubernetesDriver;
@@ -116,8 +117,6 @@ public class K8sDriverProxy {
     protected void initConfig(String partitionsCount,
                               String internalAlgorithm,
                               String paramsClass) {
-    
-
         // from configuration
         options.put("k8s.kube_config", K8sDriverProxy.KUBE_CONFIG_PATH);
         options.put("k8s.enable_internal_algorithm",
@@ -133,9 +132,19 @@ public class K8sDriverProxy {
     }
 
     public KubernetesDriver getK8sDriver(String namespace) {
+        return getK8sDriver(namespace, K8sDriverProxy.INTERNAL_ALGORITHM_IMAGE_URL);
+    }
+
+    public KubernetesDriver getK8sDriver(String namespace, String algorithmUrl) {
+
+        String url = StringUtils.isBlank(algorithmUrl)
+                        ? K8sDriverProxy.INTERNAL_ALGORITHM_IMAGE_URL
+                        : algorithmUrl;
+
         KubernetesDriver driver = driverMap.computeIfAbsent(namespace, v -> {
             Map<String, String> copyOfOption = new HashMap<>(this.options);
             copyOfOption.put("k8s.namespace", namespace);
+            copyOfOption.put("k8s.internal_algorithm_image_url", url);
             MapConfiguration mapConfig = new MapConfiguration(copyOfOption);
             KubernetesDriver d = new KubernetesDriver(new HugeConfig(mapConfig));
             return d;
