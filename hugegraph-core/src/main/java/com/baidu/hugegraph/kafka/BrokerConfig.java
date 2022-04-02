@@ -81,20 +81,23 @@ public final class BrokerConfig {
         public final static String brokerPort = ConfigHolder.getKafkaPort();
         public final static int partitionCount = ConfigHolder.getPartitionCount();
 
+        private static DiscoveryClient client = null;
+
         private static Map<String, String> PD_CONFIG_MAP = null;
 
         private synchronized static void  loadPDRegisterInfo() {
             if (null != PD_CONFIG_MAP) {
                 return;
             }
-            DiscoveryClient client = null;
             try {
-                client = DiscoveryClientImpl.newBuilder()
-                    .setAppName(KAFKA_APP_KEY)
-                    .setCenterAddress(BrokerConfig.PD_PEERS)
-                    .setDelay(15 * 1000)
-                    .setLabels(ImmutableMap.of())
-                    .build();
+                if (null == client) {
+                    client = DiscoveryClientImpl.newBuilder()
+                        .setAppName(KAFKA_APP_KEY)
+                        .setCenterAddress(BrokerConfig.PD_PEERS)
+                        .setDelay(15 * 1000)
+                        .setLabels(ImmutableMap.of())
+                        .build();
+                }
                 Query query = Query.newBuilder()
                     .setAppName(KAFKA_APP_KEY)
                     .build();
@@ -109,9 +112,14 @@ public final class BrokerConfig {
                 LOG.error("Meet error when load kafka config from pd {}", e);
                 PD_CONFIG_MAP = null;
             } finally {
-                if (null != client) {
-                    client.close();
-                }
+   
+            }
+        }
+
+        public synchronized static void closeClient() {
+            if (null != client) {
+                client.close();
+                client = null;
             }
         }
 
@@ -367,5 +375,9 @@ public final class BrokerConfig {
 
     public boolean graphFiltered(String graphSpace, String graph) {
         return this.filteredGraph.contains(graph);
+    }
+
+    public synchronized void close() {
+        ConfigHolder.closeClient();
     }
 }
