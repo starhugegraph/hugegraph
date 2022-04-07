@@ -33,7 +33,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.baidu.hugegraph.StandardHugeGraph;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.apache.tinkerpop.gremlin.structure.Edge;
@@ -69,7 +68,6 @@ import com.baidu.hugegraph.backend.store.BackendStore;
 import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.exception.NoIndexException;
-import com.baidu.hugegraph.exception.NotAllowException;
 import com.baidu.hugegraph.exception.NotSupportException;
 import com.baidu.hugegraph.iterator.Metadatable;
 import com.baidu.hugegraph.job.EphemeralJob;
@@ -85,6 +83,7 @@ import com.baidu.hugegraph.structure.HugeIndex;
 import com.baidu.hugegraph.structure.HugeProperty;
 import com.baidu.hugegraph.structure.HugeVertex;
 import com.baidu.hugegraph.task.HugeTask;
+import com.baidu.hugegraph.task.TaskManager;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.define.Action;
 import com.baidu.hugegraph.type.define.HugeKeys;
@@ -126,6 +125,7 @@ public class GraphIndexTransaction extends AbstractTransaction {
         HugeTask<?> task = EphemeralJobBuilder.of(this.graph())
                                               .name(element.id().asString())
                                               .job(job)
+                                              .context(TaskManager.getContext(true))
                                               .schedule();
         return task.id();
     }

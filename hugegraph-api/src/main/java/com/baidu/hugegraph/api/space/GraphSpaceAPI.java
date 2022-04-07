@@ -19,7 +19,7 @@
 
 package com.baidu.hugegraph.api.space;
 
-import static com.baidu.hugegraph.space.GraphSpace.DEFAULT_GRAPH_SPACE_NAME;
+import static com.baidu.hugegraph.space.GraphSpace.DEFAULT_GRAPH_SPACE_SERVICE_NAME;
 
 import java.util.Map;
 import java.util.Set;
@@ -59,8 +59,7 @@ import com.google.common.collect.ImmutableMap;
 public class GraphSpaceAPI extends API {
 
     //private static final Logger LOG = Log.logger(RestServer.class);
-    private static final HugeGraphLogger LOGGER
-        = Log.getLogger(RestServer.class);
+    private static final HugeGraphLogger LOGGER = Log.getLogger(RestServer.class);
 
     private static final String GRAPH_SPACE_ACTION = "action";
     private static final String UPDATE = "update";
@@ -83,7 +82,8 @@ public class GraphSpaceAPI extends API {
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     public Object get(@Context GraphManager manager,
                       @PathParam("name") String name) {
-        LOGGER.logCustomDebug("Get graph space by name '{}'", RestServer.EXECUTOR, name);
+        LOGGER.logCustomDebug("Get graph space by name '{}'",
+                              RestServer.EXECUTOR, name);
 
         return manager.serializer().writeGraphSpace(space(manager, name));
     }
@@ -96,20 +96,24 @@ public class GraphSpaceAPI extends API {
     @RolesAllowed("admin")
     public String create(@Context GraphManager manager,
                          JsonGraphSpace jsonGraphSpace) {
-        LOGGER.logCustomDebug("Create graph space: '{}'", RestServer.EXECUTOR, jsonGraphSpace);
+        LOGGER.logCustomDebug("Create graph space: '{}'",
+                              RestServer.EXECUTOR, jsonGraphSpace);
 
-        E.checkArgument(!DEFAULT_GRAPH_SPACE_NAME.equals(jsonGraphSpace),
+        E.checkArgument(!DEFAULT_GRAPH_SPACE_SERVICE_NAME.equals(jsonGraphSpace),
                         "Can't create namespace with name '%s'",
-                        DEFAULT_GRAPH_SPACE_NAME);
+                        DEFAULT_GRAPH_SPACE_SERVICE_NAME);
 
         jsonGraphSpace.checkCreate(false);
+
+        String creator = manager.authManager().username();
 
         GraphSpace exist = manager.graphSpace(jsonGraphSpace.name);
         E.checkArgument(exist == null, "The graph space '%s' has existed",
                         jsonGraphSpace.name);
         GraphSpace space = manager.createGraphSpace(
-                           jsonGraphSpace.toGraphSpace());
-        LOGGER.getAuditLogger().logCreateTenant(space.name(), RestServer.EXECUTOR);
+                           jsonGraphSpace.toGraphSpace(creator));
+        LOGGER.getAuditLogger().logCreateTenant(space.name(),
+                                                creator);
         return manager.serializer().writeGraphSpace(space);
     }
 
@@ -122,7 +126,8 @@ public class GraphSpaceAPI extends API {
     public Map<String, Object> manage(@Context GraphManager manager,
                                       @PathParam("name") String name,
                                       Map<String, Object> actionMap) {
-        LOGGER.logCustomDebug("Manage graph space with action {}", RestServer.EXECUTOR, actionMap);
+        LOGGER.logCustomDebug("Manage graph space with action {}",
+                              RestServer.EXECUTOR, actionMap);
 
         E.checkArgument(actionMap != null && actionMap.size() == 2 &&
                         actionMap.containsKey(GRAPH_SPACE_ACTION),
@@ -134,7 +139,8 @@ public class GraphSpaceAPI extends API {
         String action = (String) value;
         switch (action) {
             case "update":
-                LOGGER.logCustomDebug("Update graph space: '{}'", RestServer.EXECUTOR, name);
+                LOGGER.logCustomDebug("Update graph space: '{}'",
+                                      RestServer.EXECUTOR, name);
 
                 E.checkArgument(actionMap.containsKey(UPDATE),
                                 "Please pass '%s' for graph space update",
@@ -150,13 +156,12 @@ public class GraphSpaceAPI extends API {
                                 "Different name in update body with in path");
                 GraphSpace exist = manager.graphSpace(name);
                 if (exist == null) {
-                    throw new NotFoundException("Can't find graph space with name '%s'",
-                                                gsName);
+                    throw new NotFoundException(
+                              "Can't find graph space with name '%s'", gsName);
                 }
 
                 String description = (String) graphSpaceMap.get("description");
-                if (description != null &&
-                    Strings.isEmpty(description)) {
+                if (!Strings.isEmpty(description)) {
                     exist.description(description);
                 }
 
@@ -183,6 +188,17 @@ public class GraphSpaceAPI extends API {
                     exist.storageLimit = storageLimit;
                 }
 
+                int computeCpuLimit = (int) graphSpaceMap
+                        .getOrDefault("compute_cpu_limit", 0);
+                if (computeCpuLimit != 0) {
+                    exist.computeCpuLimit(computeCpuLimit);
+                }
+                int computeMemoryLimit = (int) graphSpaceMap
+                        .getOrDefault("compute_memory_limit", 0);
+                if (computeMemoryLimit != 0) {
+                    exist.computeMemoryLimit(computeMemoryLimit);
+                }
+
                 String oltpNamespace =
                         (String) graphSpaceMap.get("oltp_namespace");
                 if (oltpNamespace != null &&
@@ -202,19 +218,36 @@ public class GraphSpaceAPI extends API {
                     exist.storageNamespace(storageNamespace);
                 }
 
+                String operatorImagePath = (String) graphSpaceMap
+                        .getOrDefault("operator_image_path", "");
+                if (!Strings.isEmpty(operatorImagePath)) {
+                    exist.operatorImagePath(operatorImagePath);
+                }
+        
+                String internalAlgorithmImageUrl = (String) graphSpaceMap
+                        .getOrDefault("internal_algorithm_image_url", "");
+                if (!Strings.isEmpty(internalAlgorithmImageUrl)) {
+                    exist.internalAlgorithmImageUrl(internalAlgorithmImageUrl);
+                }
+
                 @SuppressWarnings("unchecked")
-                Map<String, Object> configs = (Map<String, Object>) graphSpaceMap.get("configs");
+                Map<String, Object> configs =
+                        (Map<String, Object>) graphSpaceMap.get("configs");
                 if (configs != null && !configs.isEmpty()) {
                     exist.configs(configs);
                 }
+                exist.refreshUpdate();
                 GraphSpace space = manager.createGraphSpace(exist);
-                LOGGER.getAuditLogger().logUpdateTenant(exist.name(), RestServer.EXECUTOR);
+                LOGGER.getAuditLogger().logUpdateTenant(exist.name(),
+                                                        manager.authManager().username());
                 return space.info();
             case GRAPH_SPACE_ACTION_CLEAR:
-                LOGGER.logCustomDebug("Clear graph space: '{}'", RestServer.EXECUTOR, name);
+                LOGGER.logCustomDebug("Clear graph space: '{}'",
+                                      RestServer.EXECUTOR, name);
 
                 manager.clearGraphSpace(name);
-                LOGGER.getAuditLogger().logUpdateTenant(name, RestServer.EXECUTOR);
+                LOGGER.getAuditLogger().logUpdateTenant(name,
+                                                        manager.authManager().username());
                 return ImmutableMap.of(name, "cleared");
             default:
                 throw new AssertionError(String.format("Invalid action: '%s'",
@@ -229,8 +262,9 @@ public class GraphSpaceAPI extends API {
     @RolesAllowed({"admin"})
     public void delete(@Context GraphManager manager,
                        @PathParam("name") String name) {
-        LOGGER.logCustomDebug("Remove graph space by name '{}'", RestServer.EXECUTOR, name);
-        LOGGER.getAuditLogger().logRemoveTenant(name, RestServer.EXECUTOR);
+        LOGGER.logCustomDebug("Remove graph space by name '{}'",
+                              RestServer.EXECUTOR, name);
+        LOGGER.getAuditLogger().logRemoveTenant(name, manager.authManager().username());
         manager.dropGraphSpace(name);
     }
 
@@ -249,6 +283,11 @@ public class GraphSpaceAPI extends API {
         @JsonProperty("storage_limit")
         public int storageLimit;
 
+        @JsonProperty("compute_cpu_limit")
+        public int computeCpuLimit = 0;
+        @JsonProperty("compute_memory_limit")
+        public int computeMemoryLimit = 0;
+
         @JsonProperty("oltp_namespace")
         public String oltpNamespace;
         @JsonProperty("olap_namespace")
@@ -266,6 +305,12 @@ public class GraphSpaceAPI extends API {
 
         @JsonProperty("configs")
         public Map<String, Object> configs;
+
+        @JsonProperty("operator_image_path")
+        public String operatorImagePath = "";
+
+        @JsonProperty("internal_algorithm_image_url")
+        public String internalAlgorithmImageUrl = "";
 
         @Override
         public void checkCreate(boolean isBatch) {
@@ -294,12 +339,9 @@ public class GraphSpaceAPI extends API {
             E.checkArgument(this.olapNamespace != null &&
                             !StringUtils.isEmpty(this.olapNamespace),
                             "The olap graph space can't be null or empty");
-            E.checkArgument(this.storageNamespace != null &&
-                            !StringUtils.isEmpty(this.storageNamespace),
-                            "The storage graph space can't be null or empty");
         }
 
-        public GraphSpace toGraphSpace() {
+        public GraphSpace toGraphSpace(String creator) {
             GraphSpace graphSpace = new GraphSpace(this.name, this.description,
                                                    this.cpuLimit,
                                                    this.memoryLimit,
@@ -307,10 +349,15 @@ public class GraphSpaceAPI extends API {
                                                    this.maxGraphNumber,
                                                    this.maxRoleNumber,
                                                    this.auth,
+                                                   creator,
                                                    this.configs);
             graphSpace.oltpNamespace(this.oltpNamespace);
             graphSpace.olapNamespace(this.olapNamespace);
             graphSpace.storageNamespace(this.storageNamespace);
+            graphSpace.computeCpuLimit(this.computeCpuLimit);
+            graphSpace.computeMemoryLimit(this.computeMemoryLimit);
+            graphSpace.operatorImagePath(this.operatorImagePath);
+            graphSpace.internalAlgorithmImageUrl(this.internalAlgorithmImageUrl);
 
             graphSpace.configs(this.configs);
 
@@ -323,12 +370,15 @@ public class GraphSpaceAPI extends API {
                                  "storageLimit=%s, oltpNamespace=%s" +
                                  "olapNamespace=%s, storageNamespace=%s" +
                                  "maxGraphNumber=%s, maxRoleNumber=%s, " +
-                                 "configs=%s}", this.name, this.description,
-                                 this.cpuLimit, this.memoryLimit,
-                                 this.storageLimit, this.oltpNamespace,
-                                 this.olapNamespace, this.storageLimit,
-                                 this.maxGraphNumber, this.maxRoleNumber,
-                                 this.configs);
+                                 "configs=%s, operatorImagePath=%s, " +
+                                 "internalAlgorithmImageUrl=%s}", this.name,
+                                 this.description, this.cpuLimit,
+                                 this.memoryLimit, this.storageLimit,
+                                 this.oltpNamespace, this.olapNamespace,
+                                 this.storageLimit, this.maxGraphNumber,
+                                 this.maxRoleNumber, this.configs,
+                                 this.operatorImagePath,
+                                 this.internalAlgorithmImageUrl);
         }
     }
 }

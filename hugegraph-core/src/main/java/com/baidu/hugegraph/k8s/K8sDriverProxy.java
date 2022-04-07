@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.configuration.MapConfiguration;
 import org.slf4j.Logger;
@@ -17,19 +18,23 @@ public class K8sDriverProxy {
 
     private static final Logger LOG = Log.logger(K8sDriverProxy.class);
 
+    private static final String CONFIG_PATH_SUFFIX = "/.kube/config";
+    private static final String USER_HOME = "user.home";
+
     private static final String USER_DIR = System.getProperty("user.dir");
 
     private static boolean K8S_API_ENABLED = false;
 
-    private static String NAMESPACE = "";
+    //private static String NAMESPACE = "";
     private static String KUBE_CONFIG_PATH = "";
     private static String ENABLE_INTERNAL_ALGORITHM = "";
     private static String INTERNAL_ALGORITHM_IMAGE_URL = "";
     private static Map<String, String> ALGORITHM_PARAMS = null;
     private static String INTERNAL_ALGORITHM = "[]";
 
-    protected HugeConfig config;
-    protected static KubernetesDriver driver;
+    // protected HugeConfig config;
+    protected final Map<String, String> options = new HashMap<>();
+    protected static Map<String, KubernetesDriver> driverMap = new ConcurrentHashMap<>();
 
     static {
         OptionSpace.register("computer-driver",
@@ -47,24 +52,35 @@ public class K8sDriverProxy {
         K8S_API_ENABLED = false;
     }
 
-    public static void setConfig(String namespace, String kubeConfigPath,
-                                 String enableInternalAlgorithm,
+    public static String getEnableInternalAlgorithm() {
+        return ENABLE_INTERNAL_ALGORITHM;
+    }
+
+    public static String getInternalAlgorithmImageUrl() {
+        return INTERNAL_ALGORITHM_IMAGE_URL;
+    }
+
+    public static String getInternalAlgorithm() {
+        return INTERNAL_ALGORITHM;
+    }
+
+    public static Map<String, String> getAlgorithms() {
+        return ALGORITHM_PARAMS;
+    }
+
+    public static void setConfig(String enableInternalAlgorithm,
                                  String internalAlgorithmImageUrl,
                                  String internalAlgorithm,
                                  Map<String, String> algorithms)
                                  throws IOException {
         File kubeConfigFile;
-        if (!kubeConfigPath.startsWith("/")) {
-            kubeConfigFile = new File(USER_DIR + "/" + kubeConfigPath);
-        } else {
-            kubeConfigFile = new File(kubeConfigPath);
-        }
+        String path = System.getProperty(USER_HOME) + CONFIG_PATH_SUFFIX;
+        kubeConfigFile = new File(path);
         if (!kubeConfigFile.exists()) {
             throw new IOException("[K8s API] k8s config fail");
         }
 
         K8S_API_ENABLED = true;
-        NAMESPACE = namespace;
         KUBE_CONFIG_PATH = kubeConfigFile.getAbsolutePath();
         ENABLE_INTERNAL_ALGORITHM = enableInternalAlgorithm;
         INTERNAL_ALGORITHM_IMAGE_URL = internalAlgorithmImageUrl;
@@ -92,7 +108,6 @@ public class K8sDriverProxy {
             }
             String paramsClass = ALGORITHM_PARAMS.get(algorithm);
             this.initConfig(partitionsCount, INTERNAL_ALGORITHM, paramsClass);
-            this.initK8sDriver();
         } catch (Throwable throwable) {
             LOG.error("Failed to start K8sDriverProxy ", throwable);
         }
@@ -101,10 +116,9 @@ public class K8sDriverProxy {
     protected void initConfig(String partitionsCount,
                               String internalAlgorithm,
                               String paramsClass) {
-        HashMap<String, String> options = new HashMap<>();
+    
 
         // from configuration
-        options.put("k8s.namespace", K8sDriverProxy.NAMESPACE);
         options.put("k8s.kube_config", K8sDriverProxy.KUBE_CONFIG_PATH);
         options.put("k8s.enable_internal_algorithm",
                     K8sDriverProxy.ENABLE_INTERNAL_ALGORITHM);
@@ -116,26 +130,25 @@ public class K8sDriverProxy {
         options.put("job.partitions_count", partitionsCount);
         options.put("k8s.internal_algorithm", internalAlgorithm);
         options.put("algorithm.params_class", paramsClass);
-        MapConfiguration mapConfig = new MapConfiguration(options);
-        this.config = new HugeConfig(mapConfig);
     }
 
-    /**
-     * Reuse K8s driver for task to operate, init only if it was null
-     * TODO: use singleton for it
-     */
-    private void initK8sDriver() {
-        if (driver == null) {
-            driver = new KubernetesDriver(this.config);
-        }
-    }
-
-    public KubernetesDriver getK8sDriver() {
+    public KubernetesDriver getK8sDriver(String namespace) {
+        KubernetesDriver driver = driverMap.computeIfAbsent(namespace, v -> {
+            Map<String, String> copyOfOption = new HashMap<>(this.options);
+            copyOfOption.put("k8s.namespace", namespace);
+            MapConfiguration mapConfig = new MapConfiguration(copyOfOption);
+            KubernetesDriver d = new KubernetesDriver(new HugeConfig(mapConfig));
+            return d;
+        });
         return driver;
     }
 
-    public void close() {
-        // TODO: Comment now & delete this method after ensuring it
-        //driver.close();
+    public void close(String namespace) {
+        KubernetesDriver driver = driverMap.get(namespace);
+        if (null != driver) {
+            // TODO: Comment now & delete this method after ensuring it
+            //driver.close();
+        }
+
     }
 }

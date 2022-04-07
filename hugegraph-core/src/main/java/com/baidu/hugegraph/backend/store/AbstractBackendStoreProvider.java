@@ -47,7 +47,7 @@ public abstract class AbstractBackendStoreProvider
 
     protected Map<String, BackendStore> stores = null;
 
-    protected final void notifyAndWaitEvent(String event) {
+    public final void notifyAndWaitEvent(String event) {
         Future<?> future = this.storeEventHub.notify(event, this);
         try {
             future.get();
@@ -157,6 +157,7 @@ public abstract class AbstractBackendStoreProvider
     public void createOlapTable(HugeGraph graph, Id pkId) {
         String g = graph.option(CoreOptions.STORE_GRAPH);
         BackendStore store = this.stores.get(g);
+        LOG.debug("Store provider start create olap table {}", pkId);
         store.createOlapTable(pkId);
     }
 

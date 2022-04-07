@@ -19,6 +19,7 @@
 
 package com.baidu.hugegraph.space;
 
+import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -42,6 +43,7 @@ public class Service {
     private ServiceType type;
     private DeploymentType deploymentType;
     private String description;
+    private Status status;
     private int count;
     private int running;
 
@@ -52,11 +54,18 @@ public class Service {
     private String routeType;
     private int port;
 
-    private Set<String> urls;
+    private Set<String> urls = new HashSet<>();
+    private Set<String> serverDdsUrls = new HashSet<>();
+    private Set<String> serverNodePortUrls = new HashSet<>();
 
+    private String serviceId;
     private String pdServiceId;
 
-    public Service(String name, ServiceType type,
+    private final String creator;
+    private Date createTime;
+    private Date updateTime;
+
+    public Service(String name, String creator, ServiceType type,
                    DeploymentType deploymentType) {
         E.checkArgument(name != null && !StringUtils.isEmpty(name),
                         "The name of service can't be null or empty");
@@ -66,6 +75,7 @@ public class Service {
         this.name = name;
         this.type = type;
         this.deploymentType = deploymentType;
+        this.status = Status.UNKNOWN;
         this.count = DEFAULT_COUNT;
         this.running = 0;
         this.routeType = DEFAULT_ROUTE_TYPE;
@@ -73,9 +83,13 @@ public class Service {
         this.cpuLimit = DEFAULT_CPU_LIMIT;
         this.memoryLimit = DEFAULT_MEMORY_LIMIT;
         this.storageLimit = DEFAULT_STORAGE_LIMIT;
+
+        this.creator = creator;
+        this.createTime = new Date();
+        this.updateTime = this.createTime;
     }
 
-    public Service(String name, String description, ServiceType type,
+    public Service(String name, String creator, String description, ServiceType type,
                    DeploymentType deploymentType, int count, int running,
                    int cpuLimit, int memoryLimit, int storageLimit,
                    String routeType, int port, Set<String> urls) {
@@ -85,6 +99,7 @@ public class Service {
         this.name = name;
         this.description = description;
         this.type = type;
+        this.status = Status.UNKNOWN;
         this.deploymentType = deploymentType;
         this.count = count;
         this.running = running;
@@ -94,6 +109,10 @@ public class Service {
         this.routeType = routeType;
         this.port = port;
         this.urls = urls;
+
+        this.creator = creator;
+        this.createTime = new Date();
+        this.updateTime = this.createTime;
     }
 
     public String name() {
@@ -122,6 +141,14 @@ public class Service {
 
     public void deploymentType(DeploymentType deploymentType) {
         this.deploymentType = deploymentType;
+    }
+
+    public Status status() {
+        return this.status;
+    }
+
+    public void status(Status status) {
+        this.status = status;
     }
 
     public int count() {
@@ -194,11 +221,36 @@ public class Service {
     }
 
     public Set<String> urls() {
+        if (this.urls == null) {
+            this.urls = new HashSet<>();
+        }
         return this.urls;
     }
 
     public void urls(Set<String> urls) {
         this.urls = urls;
+    }
+
+    public Set<String> serverDdsUrls() {
+        if (this.serverDdsUrls == null) {
+            this.serverDdsUrls = new HashSet<>();
+        }
+        return this.serverDdsUrls;
+    }
+
+    public void serverDdsUrls(Set<String> urls) {
+        this.serverDdsUrls = urls;
+    }
+
+    public Set<String> serverNodePortUrls() {
+        if (this.serverNodePortUrls == null) {
+            this.serverNodePortUrls = new HashSet<>();
+        }
+        return this.serverNodePortUrls;
+    }
+
+    public void serverNodePortUrls(Set<String> urls) {
+        this.serverNodePortUrls = urls;
     }
 
     public void url(String url) {
@@ -209,11 +261,35 @@ public class Service {
     }
 
     public boolean manual() {
-        return this.deploymentType == DeploymentType.MANUAL;
+        return DeploymentType.MANUAL.equals(this.deploymentType);
     }
 
     public boolean k8s() {
-        return this.deploymentType == DeploymentType.K8S;
+        return DeploymentType.K8S.equals(this.deploymentType);
+    }
+
+    public String creator() {
+        return this.creator;
+    }
+
+    public Date createdTime() {
+        return this.createTime;
+    }
+
+    public Date updateTime() {
+        return this.updateTime;
+    }
+
+    public void createTime(Date create) {
+        this.createTime = create;
+    }
+
+    public void updateTime(Date update) {
+        this.updateTime = update;
+    }
+
+    public void refreshUpdate() {
+        this.updateTime = new Date();
     }
 
     public Map<String, Object> info() {
@@ -222,6 +298,7 @@ public class Service {
         infos.put("type", this.type);
         infos.put("deployment_type", this.deploymentType);
         infos.put("description", this.description);
+        infos.put("status", this.status);
         infos.put("count", this.count);
         infos.put("running", this.running);
 
@@ -232,10 +309,25 @@ public class Service {
         infos.put("route_type", this.routeType);
         infos.put("port", this.port);
         infos.put("urls", this.urls);
+        infos.put("server_dds_urls", this.serverDdsUrls);
+        infos.put("server_node_port_urls", this.serverNodePortUrls);
 
+        infos.put("service_id", this.serviceId);
         infos.put("pd_service_id", this.pdServiceId);
 
+        infos.put("creator", this.creator);
+        infos.put("create_time", this.createTime);
+        infos.put("update_time", this.updateTime);
+
         return infos;
+    }
+
+    public String serviceId() {
+        return this.serviceId;
+    }
+
+    public void serviceId(String serviceId) {
+        this.serviceId = serviceId;
     }
 
     public String pdServiceId() {
@@ -255,5 +347,12 @@ public class Service {
         OLTP,
         OLAP,
         STORAGE
+    }
+
+    public enum Status {
+        UNKNOWN,
+        STARTING,
+        RUNNING,
+        STOPPED
     }
 }

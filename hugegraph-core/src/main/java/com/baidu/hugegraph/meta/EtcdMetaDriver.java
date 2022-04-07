@@ -37,6 +37,7 @@ import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.type.define.CollectionType;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.collection.CollectionFactory;
+import com.carrotsearch.hppc.CharSet;
 import com.google.common.base.Strings;
 
 import io.etcd.jetcd.ByteSequence;
@@ -137,6 +138,8 @@ public class EtcdMetaDriver implements MetaDriver {
         return null;
     }
 
+
+
     @Override
     public void put(String key, String value) {
         KV kvClient = this.client.getKVClient();
@@ -194,8 +197,9 @@ public class EtcdMetaDriver implements MetaDriver {
         Map<String, String> keyValues = CollectionFactory.newMap(
                                         CollectionType.JCF, size);
         for (KeyValue kv : response.getKvs()) {
-            keyValues.put(kv.getKey().toString(Charset.defaultCharset()),
-                          kv.getValue().toString(Charset.defaultCharset()));
+            String key = kv.getKey().toString(Charset.defaultCharset());
+            String value = kv.getValue().size() == 0 ? "" : kv.getValue().toString(Charset.defaultCharset());
+            keyValues.put(key, value);
         }
         return keyValues;
     }

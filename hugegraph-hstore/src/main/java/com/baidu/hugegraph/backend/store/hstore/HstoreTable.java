@@ -34,10 +34,7 @@ import com.baidu.hugegraph.pd.common.PDException;
 import com.baidu.hugegraph.pd.grpc.Metapb;
 import com.baidu.hugegraph.store.HgOwnerKey;
 import com.baidu.hugegraph.store.client.util.HgStoreClientConst;
-import org.apache.commons.collections.ListUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 import org.slf4j.Logger;
 
@@ -224,9 +221,9 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         }
         return newEntryIterator(this.queryBy(session, query), query);
     }
-    public List<Iterator<BackendEntry>> query(Session session, List<IdPrefixQuery> queries) {
+    public List<Iterator<BackendEntry>> query(Session session, List<IdPrefixQuery> queries,String tableName) {
         List<BackendColumnIterator> queryByPrefixList = this.queryByPrefixList(
-                session, queries);
+                session, queries, tableName);
         LinkedList<Iterator<BackendEntry>> iterators = new LinkedList<>();
         for (int i = 0; i < queryByPrefixList.size(); i++) {
             BackendEntryIterator iterator = newEntryIterator(
@@ -269,18 +266,16 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
     }
 
     protected BackendColumnIterator queryAll(Session session, Query query) {
-        byte[] begin;
         if (query.paging()) {
             PageState page = PageState.fromString(query.page());
-            begin= page.position();
             byte[] ownerKey = this.getOwnerScanDelegate().get();
             int scanType = Session.SCAN_ANY |
                     (query.withProperties() ? 0 : Session.SCAN_KEYONLY);
-            if (!ArrayUtils.isEmpty(begin))
-            return session.scan(this.table(), ownerKey, ownerKey, begin,
+            return session.scan(this.table(), ownerKey, ownerKey, null,
                              null, scanType,
                              query instanceof ConditionQuery ?
-                             ((ConditionQuery) query).bytes() : null);
+                             ((ConditionQuery) query).bytes() : null,
+                             page.position());
         }
         return session.scan(this.table(),query instanceof ConditionQuery ?
                                          ((ConditionQuery) query).bytes() : null) ;
@@ -308,32 +303,35 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         int type = query.inclusiveStart() ?
                    Session.SCAN_GTE_BEGIN : Session.SCAN_GT_BEGIN;
         type |= Session.SCAN_PREFIX_END;
+        byte[] position = null;
+        if (query.paging()) {
+            position = PageState.fromString(query.page()).position();
+        }
         return session.scan(this.table(),
                             this.ownerByQueryDelegate.apply(query.resultType(),
                                                             query.start()),
                             this.ownerByQueryDelegate.apply(query.resultType(),
                                                             query.prefix()),
                             query.start().asBytes(),
-                            query.prefix().asBytes(), type);
+                            query.prefix().asBytes(), type, null, position);
     }
 
+
     protected List<BackendColumnIterator> queryByPrefixList(Session session,
-                                                  List<IdPrefixQuery> queries) {
+                                                  List<IdPrefixQuery> queries,String tableName) {
+        E.checkArgument(queries.size() > 0,
+                        "The size of queries must be greater than zero");
         IdPrefixQuery query = queries.get(0);
         int type = query.inclusiveStart() ?
                    Session.SCAN_GTE_BEGIN : Session.SCAN_GT_BEGIN;
         type |= Session.SCAN_PREFIX_END;
-        LinkedList<HgOwnerKey> ownerKeyFrom = new LinkedList<>();
-        LinkedList<HgOwnerKey> ownerKeyTo = new LinkedList<>();
+        LinkedList<HgOwnerKey> ownerKey = new LinkedList<>();
         queries.forEach((item)->{
-            byte[] start = this.ownerByQueryDelegate.apply(item.resultType(),
-                                                           item.start());
-            ownerKeyFrom.add(HgOwnerKey.of(start, item.start().asBytes()));
-            byte[] end = this.ownerByQueryDelegate.apply(item.resultType(),
+            byte[] prefix = this.ownerByQueryDelegate.apply(item.resultType(),
                                                            item.prefix());
-            ownerKeyTo.add(HgOwnerKey.of(end,query.prefix().asBytes()));
+            ownerKey.add(HgOwnerKey.of(prefix,item.prefix().asBytes()));
         });
-        return session.scan(this.table(), ownerKeyFrom, ownerKeyTo, type);
+        return session.scan(tableName, ownerKey, type, query.limit());
     }
 
     protected BackendColumnIterator queryByRange(Session session,

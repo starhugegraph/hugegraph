@@ -140,6 +140,40 @@ public abstract class OltpTraverser extends HugeTraverser
         return total;
     }
 
+    protected <K> long traverseBatch(Iterator<Iterator<K>> iterator, Consumer<Iterator<K>> consumer,
+                                String name, int queueWorkerSize) {
+        if (!iterator.hasNext()) {
+            return 0L;
+        }
+
+        Consumers<Iterator<K>> consumers = new Consumers<>(executors.getExecutor(),
+                consumer, null, queueWorkerSize);
+        consumers.start(name);
+        long total = 0L;
+        try {
+            while (iterator.hasNext()) {
+//                this.edgeIterCounter++;
+                total++;
+                Iterator<K> v = iterator.next();
+                consumers.provide(v);
+            }
+        } catch (Consumers.StopExecution e) {
+            // pass
+        } catch (Throwable e) {
+            throw Consumers.wrapException(e);
+        } finally {
+            try {
+                consumers.await();
+            } catch (Throwable e) {
+                throw Consumers.wrapException(e);
+            } finally {
+                executors.returnExecutor(consumers.executor());
+                CloseableIterator.closeIterator(iterator);
+            }
+        }
+        return total;
+    }
+
     protected Iterator<Vertex> filter(Iterator<Vertex> vertices,
                                       String key, Object value) {
         return new FilterIterator<>(vertices, vertex -> {
@@ -196,9 +230,40 @@ public abstract class OltpTraverser extends HugeTraverser
         }
 
         Set<Id> neighbors = newSet(concurrent);
+
         this.traverseIds(vertices.iterator(), new AdjacentVerticesConsumer(
                 sourceV, dir, label, excluded, degree, limit, neighbors
         ), concurrent);
+
+        if (limit != NO_LIMIT && neighbors.size() > limit) {
+            int redundantNeighborsCount = (int) (neighbors.size() - limit);
+            List<Id> redundantNeighbors = new ArrayList<>(redundantNeighborsCount);
+            for (Id vId: neighbors) {
+                redundantNeighbors.add(vId);
+                if (redundantNeighbors.size() >= redundantNeighborsCount) {
+                    break;
+                }
+            }
+            redundantNeighbors.forEach(neighbors::remove);
+        }
+
+        return neighbors;
+    }
+
+    protected Set<Id> adjacentVerticesBatch(Id sourceV, Set<Id> vertices,
+                                       Directions dir, Id label,
+                                       Set<Id> excluded, long degree,
+                                       long limit) {
+        if (limit == 0) {
+            return ImmutableSet.of();
+        }
+
+        Set<Id> neighbors = newSet(true);
+
+        Iterator<Iterator<Edge>> edgeIts = edgesOfVertices(vertices, dir, label, degree, false);
+        this.traverseBatch(edgeIts, new AdjacentVerticesBatchConsumer(
+                sourceV, excluded, limit, neighbors
+        ), "traverse-ite-edge", 1);
 
         if (limit != NO_LIMIT && neighbors.size() > limit) {
             int redundantNeighborsCount = (int) (neighbors.size() - limit);
@@ -263,6 +328,54 @@ public abstract class OltpTraverser extends HugeTraverser
         public Consumer<Id> andThen(Consumer<? super Id> after) {
             java.util.Objects.requireNonNull(after);
             return (Id t) -> {
+                accept(t);
+                if (limit != NO_LIMIT && neighbors.size() >= limit) {
+                    return;
+                } else {
+                    after.accept(t);
+                }
+            };
+        }
+    }
+
+    class AdjacentVerticesBatchConsumer implements Consumer<Iterator<Edge>> {
+
+        private Id sourceV;
+        private Set<Id> excluded;
+        private long limit;
+        private Set<Id> neighbors;
+
+        public AdjacentVerticesBatchConsumer(Id sourceV, Set<Id> excluded, long limit,
+                                             Set<Id> neighbors) {
+            this.sourceV = sourceV;
+            this.excluded = excluded;
+            this.limit = limit;
+            this.neighbors = neighbors;
+        }
+
+        @Override
+        public void accept(Iterator<Edge> edges) {
+            while (edges.hasNext()) {
+                edgeIterCounter++;
+                HugeEdge e = (HugeEdge) edges.next();
+                Id target = e.id().otherVertexId();
+                boolean matchExcluded = (excluded != null &&
+                        excluded.contains(target));
+                if (matchExcluded || neighbors.contains(target) ||
+                        sourceV.equals(target)) {
+                    continue;
+                }
+                neighbors.add(target);
+                if (limit != NO_LIMIT && neighbors.size() >= limit) {
+                    return;
+                }
+            }
+        }
+
+        @Override
+        public Consumer<Iterator<Edge>> andThen(Consumer<? super Iterator<Edge>> after) {
+            java.util.Objects.requireNonNull(after);
+            return (Iterator<Edge> t) -> {
                 accept(t);
                 if (limit != NO_LIMIT && neighbors.size() >= limit) {
                     return;

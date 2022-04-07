@@ -19,8 +19,6 @@
 
 package com.baidu.hugegraph.api.profile;
 
-import static com.baidu.hugegraph.config.OptionChecker.disallowEmpty;
-
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -42,17 +40,18 @@ import javax.ws.rs.core.SecurityContext;
 
 import org.apache.logging.log4j.util.Strings;
 
-import com.baidu.hugegraph.config.ConfigOption;
-import com.baidu.hugegraph.config.CoreOptions;
-import com.baidu.hugegraph.config.HugeConfig;
+import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
 import com.baidu.hugegraph.auth.HugeAuthenticator.RequiredPerm;
 import com.baidu.hugegraph.auth.HugePermission;
+import com.baidu.hugegraph.config.CoreOptions;
+import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.server.RestServer;
+import com.baidu.hugegraph.task.StandardTaskScheduler;
 import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.type.define.GraphReadMode;
 import com.baidu.hugegraph.util.ConfigUtil;
@@ -82,7 +81,11 @@ public class GraphsAPI extends API {
     public Object list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @Context SecurityContext sc) {
-        LOGGER.logCustomDebug("List graphs in graph space {}", RestServer.EXECUTOR, graphSpace);
+        LOGGER.logCustomDebug("List graphs in graph space {}",
+                              RestServer.EXECUTOR, graphSpace);
+        if (null == manager.graphSpace(graphSpace)) {
+            throw new HugeException("Graphspace not exist!");
+        }
         Set<String> graphs = manager.graphs(graphSpace);
         LOGGER.logCustomDebug("Get graphs list from graph manager with size {}",
                   RestServer.EXECUTOR,
@@ -90,7 +93,8 @@ public class GraphsAPI extends API {
         // Filter by user role
         Set<String> filterGraphs = new HashSet<>();
         for (String graph : graphs) {
-            LOGGER.logCustomDebug("Get graph {} and verify auth", RestServer.EXECUTOR, graph);
+            LOGGER.logCustomDebug("Get graph {} and verify auth",
+                                  RestServer.EXECUTOR, graph);
             String role = RequiredPerm.roleFor(graphSpace, graph,
                                                HugePermission.READ);
             if (sc.isUserInRole(role)) {
@@ -104,7 +108,8 @@ public class GraphsAPI extends API {
                 LOGGER.logCustomDebug("The user not in role for graph {}", graph);
             }
         }
-        LOGGER.logCustomDebug("Finish list graphs with size {}", RestServer.EXECUTOR, filterGraphs.size());
+        LOGGER.logCustomDebug("Finish list graphs with size {}",
+                              RestServer.EXECUTOR, filterGraphs.size());
         return ImmutableMap.of("graphs", filterGraphs);
     }
 
@@ -117,9 +122,10 @@ public class GraphsAPI extends API {
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("graph") String graph) {
         LOGGER.logCustomDebug("Get graph by graph space {} and name '{}' ",
-                        RestServer.EXECUTOR,
-                        graphSpace, graph);
-
+                              RestServer.EXECUTOR, graphSpace, graph);
+        if (null == manager.graphSpace(graphSpace)) {
+            throw new HugeException("Graphspace not exist!");
+        }
         HugeGraph g = graph(manager, graphSpace, graph);
         Map<String, Object> configs = manager.graphConfig(graphSpace, graph);
         String description = (String) configs.get(GRAPH_DESCRIPTION);
@@ -141,19 +147,26 @@ public class GraphsAPI extends API {
                          @PathParam("graphspace") String graphSpace,
                          @PathParam("name") String name,
                          Map<String, Object> configs) {
-        LOGGER.logCustomDebug("Create graph {} with config options '{}' in graph space " +
-                  "'{}'", RestServer.EXECUTOR, name, configs, graphSpace);
-        HugeGraph graph = manager.createGraph(graphSpace, name,
+        LOGGER.logCustomDebug("Create graph {} with config options '{}' in " +
+                              "graph space '{}'", RestServer.EXECUTOR, name,
+                              configs, graphSpace);
+        String creator = manager.authManager().username();
+        HugeGraph graph = manager.createGraph(graphSpace, name, creator,
                                               configs, true);
-        graph.tx().close();
+        if (graph.taskScheduler() instanceof StandardTaskScheduler) {
+            graph.tx().close();
+        }
         String description = (String) configs.get(GRAPH_DESCRIPTION);
         if (description == null) {
             description = Strings.EMPTY;
         }
-        Object result = ImmutableMap.of("name", name, "backend", graph.backend(), "description", description);
-        LOGGER.getServerLogger().logCreateGraph(name, graph.configuration().toString());
+        Object result = ImmutableMap.of("name", name,
+                                        "backend", graph.backend(),
+                                        "description", description);
+        LOGGER.getServerLogger()
+              .logCreateGraph(name, graph.configuration().toString());
         LOGGER.getAuditLogger()
-                    .logCreateGraph(graphSpace, name, RestServer.EXECUTOR);
+              .logCreateGraph(graphSpace, name, creator);
         return result;
     }
 
@@ -166,9 +179,8 @@ public class GraphsAPI extends API {
                           @PathParam("graphspace") String graphSpace,
                           @PathParam("graph") String graph) {
         
-        LOGGER.logCustomDebug(
-            "Get graph configuration by name '{}'",
-            RestServer.EXECUTOR, RestServer.EXECUTOR, graph);
+        LOGGER.logCustomDebug("Get graph configuration by name '{}'",
+                              RestServer.EXECUTOR, RestServer.EXECUTOR, graph);
 
         // HugeGraph g = graph4admin(manager, graphSpace, graph);
         HugeGraph g = graph(manager, graphSpace, graph);
@@ -188,23 +200,26 @@ public class GraphsAPI extends API {
                                @PathParam("graphspace") String graphSpace,
                                @PathParam("name") String name,
                                Map<String, Object> actionMap) {
-        LOGGER.logCustomDebug("Clear graph by name '{}'", RestServer.EXECUTOR, name);
+        LOGGER.logCustomDebug("Clear graph by name '{}'",
+                              RestServer.EXECUTOR, name);
         E.checkArgument(actionMap != null &&
                         actionMap.containsKey(GRAPH_ACTION),
                         "Please pass '%s' for graph manage", GRAPH_ACTION);
         String action = (String) actionMap.get(GRAPH_ACTION);
         switch (action) {
             case GRAPH_ACTION_CLEAR:
+                String username = manager.authManager().username();
                 HugeGraph g = graph(manager, graphSpace, name);
-                if ((Boolean) actionMap.get(CLEAR_SCHEMA)) {
+                if ((Boolean) actionMap.getOrDefault(CLEAR_SCHEMA, false)) {
                     g.truncateBackend();
                 } else {
                     g.truncateGraph();
                 }
                 // truncateBackend() will open tx, so must close here(commit)
                 g.tx().commit();
+                manager.meta().notifyGraphClear(graphSpace, name);
                 LOGGER.getAuditLogger()
-                    .logClearGraph(graphSpace, name, RestServer.EXECUTOR);
+                    .logClearGraph(graphSpace, name, username);
                 return ImmutableMap.of(name, "cleared");
             case GRAPH_ACTION_RELOAD:
                 manager.reload(graphSpace, name);
@@ -213,7 +228,6 @@ public class GraphsAPI extends API {
                 throw new AssertionError(String.format(
                           "Invalid graph action: '%s'", action));
         }
-
     }
 
     @DELETE
@@ -225,9 +239,11 @@ public class GraphsAPI extends API {
     public void delete(@Context GraphManager manager,
                        @PathParam("name") String name,
                        @PathParam("graphspace") String graphSpace) {
+        
         manager.dropGraph(graphSpace, name, true);
         LOGGER.getAuditLogger()
-            .logRemoveGraph(graphSpace, name, RestServer.EXECUTOR);
+                .logRemoveGraph(graphSpace, name, manager.authManager().username());
+
     }
 
     @PUT
@@ -298,9 +314,6 @@ public class GraphsAPI extends API {
         HugeGraph g = graph(manager, graphSpace, graph);
         return JsonUtil.toJson(g.metadata(null, "compact"));
     }
-   private static final ConfigOption<String> PD_PEERS = new ConfigOption<>(
-            "pd.peers", "The addresses of pd nodes",disallowEmpty(),
-            "localhost");
 
     @PUT
     @Timed
@@ -331,8 +344,8 @@ public class GraphsAPI extends API {
                                        @PathParam("graphspace") String graphSpace,
                                        @PathParam("graph") String graph,
                                        GraphMode mode) {
-        LOGGER.logCustomDebug(
-            "Set mode to: '{}' of graph '{}'", RestServer.EXECUTOR, mode, graph);
+        LOGGER.logCustomDebug("Set mode to: '{}' of graph '{}'",
+                              RestServer.EXECUTOR, mode, graph);
 
         E.checkArgument(mode != null, "Graph mode can't be null");
         HugeGraph g = graph(manager, graphSpace, graph);
@@ -355,7 +368,8 @@ public class GraphsAPI extends API {
     public Map<String, GraphMode> mode(@Context GraphManager manager,
                                        @PathParam("graphspace") String graphSpace,
                                        @PathParam("graph") String graph) {
-        LOGGER.logCustomDebug("Get mode of graph '{}'", RestServer.EXECUTOR, graph);
+        LOGGER.logCustomDebug("Get mode of graph '{}'",
+                              RestServer.EXECUTOR, graph);
 
         HugeGraph g = graph(manager, graphSpace, graph);
         return ImmutableMap.of("mode", g.mode());

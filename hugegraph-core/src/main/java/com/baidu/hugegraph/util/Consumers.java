@@ -34,10 +34,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import org.apache.logging.log4j.util.Strings;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.config.CoreOptions;
+import com.baidu.hugegraph.task.TaskManager;
 import com.baidu.hugegraph.task.TaskManager.ContextCallable;
 
 public final class Consumers<V> {
@@ -66,6 +68,10 @@ public final class Consumers<V> {
 
     public Consumers(ExecutorService executor,
                      Consumer<V> consumer, Runnable done) {
+        this(executor, consumer, done, QUEUE_WORKER_SIZE);
+    }
+    public Consumers(ExecutorService executor,
+                     Consumer<V> consumer, Runnable done, int queueWorkerSize) {
         this.executor = executor;
         this.consumer = consumer;
         this.done = done;
@@ -75,7 +81,7 @@ public final class Consumers<V> {
             workers = ((ThreadPoolExecutor) this.executor).getCorePoolSize();
         }
         this.workers = workers;
-        this.queueSize = QUEUE_WORKER_SIZE * workers;
+        this.queueSize =  queueWorkerSize * workers;
         this.latch = new CountDownLatch(workers);
         this.queue = new ArrayBlockingQueue<>(this.queueSize);
     }
@@ -86,8 +92,12 @@ public final class Consumers<V> {
         if (this.executor == null) {
             return;
         }
+        String currentContext = TaskManager.getContext();
+        if (Strings.isBlank(currentContext)) {
+            TaskManager.useFakeContext();
+        }
         LOG.info("Starting {} workers[{}] with queue size {}...",
-                 this.workers, name, this.queueSize);
+                this.workers, name, this.queueSize);
         for (int i = 0; i < this.workers; i++) {
             this.executor.submit(new ContextCallable<>(this::runAndDone));
         }

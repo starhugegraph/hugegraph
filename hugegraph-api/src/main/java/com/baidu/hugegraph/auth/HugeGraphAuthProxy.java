@@ -22,6 +22,7 @@ package com.baidu.hugegraph.auth;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -37,6 +38,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import javax.ws.rs.ForbiddenException;
 
+import com.baidu.hugegraph.backend.store.BackendStoreProvider;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.tinkerpop.gremlin.groovy.jsr223.GroovyTranslator;
 import org.apache.tinkerpop.gremlin.process.computer.GraphComputer;
 import org.apache.tinkerpop.gremlin.process.traversal.Bytecode;
@@ -53,6 +56,7 @@ import org.apache.tinkerpop.gremlin.structure.Transaction;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.VertexProperty;
 import org.apache.tinkerpop.gremlin.structure.io.Io;
+import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.auth.HugeAuthenticator.RolePerm;
@@ -63,6 +67,7 @@ import com.baidu.hugegraph.backend.cache.CacheManager;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.query.Query;
 import com.baidu.hugegraph.backend.store.BackendFeatures;
+import com.baidu.hugegraph.backend.store.BackendMutation;
 import com.baidu.hugegraph.backend.store.BackendStoreSystemInfo;
 import com.baidu.hugegraph.backend.store.raft.RaftGroupManager;
 import com.baidu.hugegraph.config.AuthOptions;
@@ -83,7 +88,6 @@ import com.baidu.hugegraph.structure.HugeElement;
 import com.baidu.hugegraph.structure.HugeFeatures;
 import com.baidu.hugegraph.structure.HugeVertex;
 import com.baidu.hugegraph.task.HugeTask;
-import com.baidu.hugegraph.task.ServerInfoManager;
 import com.baidu.hugegraph.task.TaskManager;
 import com.baidu.hugegraph.task.TaskScheduler;
 import com.baidu.hugegraph.task.TaskStatus;
@@ -92,7 +96,6 @@ import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.Namifiable;
 import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.type.define.GraphReadMode;
-import com.baidu.hugegraph.type.define.NodeRole;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.util.RateLimiter;
@@ -166,6 +169,11 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         SchemaManager schema = this.hugegraph.schema();
         schema.proxy(this);
         return schema;
+    }
+
+    @Override
+    public BackendStoreProvider storeProvider() {
+        return this.hugegraph.storeProvider();
     }
 
     @Override
@@ -502,6 +510,11 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     @Override
+    public List<Iterator<Edge>> edges(List<Query> queryList) {
+        throw new NotImplementedException();
+    }
+
+    @Override
     public Iterator<Edge> edgesWithProp(Object... objects) {
         return verifyElemPermission(HugePermission.READ,
                 this.hugegraph.edgesWithProp(objects));
@@ -546,6 +559,18 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     public void close() throws Exception {
         this.verifyAdminPermission();
         this.hugegraph.close();
+    }
+
+    @Override
+    public void closeTx() {
+        this.hugegraph.closeTx();
+    }
+
+    @Override
+    public Vertex addVertex(Vertex vertex) {
+        return verifyElemPermission(HugePermission.WRITE, () -> {
+            return (HugeVertex)this.hugegraph.addVertex(vertex);
+        });
     }
 
     @Override
@@ -675,15 +700,21 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     @Override
-    public void serverStarted(Id serverId, NodeRole serverRole) {
+    public void serverStarted() {
         this.verifyAdminPermission();
-        this.hugegraph.serverStarted(serverId, serverRole);
+        this.hugegraph.serverStarted();
     }
 
     @Override
     public boolean started() {
         this.verifyAdminPermission();
         return this.hugegraph.started();
+    }
+
+    @Override
+    public void started(boolean started) {
+        this.verifyAdminPermission();
+        this.hugegraph.started(started);
     }
 
     @Override
@@ -757,6 +788,54 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         this.hugegraph.resumeSnapshot();
     }
 
+    @Override
+    public void applyMutation(BackendMutation mutation) {
+        this.hugegraph.applyMutation(mutation);
+    }
+
+    @Override
+    public String creator() {
+        this.verifyAnyPermission();
+        return this.hugegraph.creator();
+    }
+
+    @Override
+    public void creator(String creator) {
+        this.verifyAnyPermission();
+        this.hugegraph.creator(creator);
+    }
+
+    @Override
+    public Date createTime() {
+        this.verifyAnyPermission();
+        return this.hugegraph.createTime();
+    }
+
+    @Override
+    public void createTime(Date createTime) {
+        this.verifyAnyPermission();
+        this.hugegraph.createTime(createTime);
+        
+    }
+
+    @Override
+    public Date updateTime() {
+        this.verifyAnyPermission();
+        return this.hugegraph.updateTime();
+    }
+
+    @Override
+    public void updateTime(Date updateTime) {
+        this.verifyAnyPermission();
+        this.hugegraph.updateTime(updateTime);
+    }
+
+    @Override
+    public void refreshUpdateTime() {
+        this.verifyAnyPermission();
+        this.hugegraph.refreshUpdateTime();
+    }
+
     private <V> Cache<Id, V> cache(String prefix, long capacity,
                                    long expiredTime) {
         String name = prefix + "-" + this.hugegraph.name();
@@ -796,12 +875,14 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         });
     }
 
+    @SuppressWarnings("unused")
     private <V extends AuthElement> V verifyUserPermission(
                                       HugePermission actionPerm,
                                       V elementFetcher) {
         return verifyUserPermission(actionPerm, true, () -> elementFetcher);
     }
 
+    @SuppressWarnings("unused")
     private <V extends AuthElement> List<V> verifyUserPermission(
                                             HugePermission actionPerm,
                                             List<V> elems) {
@@ -936,14 +1017,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         Object role = context.user().role();
         ResourceObject<V> ro = fetcher.get();
         String action = actionPerm.string();
-
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.logCustomDebug(
-                "Verify permission {} {} for user '{}' with role {}",
-                "Jermy Li",
-                action, ro, username, role);
-        }
-
         V result = ro.operated();
         // Verify role permission
         if (!RolePerm.match(role, actionPerm, ro)) {
@@ -957,12 +1030,10 @@ public final class HugeGraphAuthProxy implements HugeGraph {
                 result = null;
             }
         }
-
         // Check resource detail if needed
         if (result != null && checker != null && !checker.get()) {
             result = null;
         }
-
         // Log user action, limit rate for each user
         Id usrId = context.user().userId();
         RateLimiter auditLimiter = this.auditLimiters.getOrFetch(usrId, id -> {
@@ -977,7 +1048,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
             }
 
         }
-
         // result = null means no permission, throw if needed
         if (result == null && throwIfNoPerm) {
             String error = String.format("Permission denied: %s %s",
@@ -1034,8 +1104,11 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
         @Override
         public <V> HugeTask<V> task(Id id) {
-            return verifyTaskPermission(HugePermission.READ,
-                                        this.taskScheduler.task(id));
+            HugeTask<V> task = this.taskScheduler.task(id);
+            if (null != task) {
+                return verifyTaskPermission(HugePermission.READ, task);
+            }
+            return task;
         }
 
         @Override
@@ -1086,12 +1159,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
             this.taskScheduler.waitUntilAllTasksCompleted(seconds);
         }
 
-        @Override
-        public void checkRequirement(String op) {
-            verifyAnyPermission();
-            this.taskScheduler.checkRequirement(op);
-        }
-
         private void verifyTaskPermission(HugePermission actionPerm) {
             verifyPermission(actionPerm, ResourceType.TASK);
         }
@@ -1140,12 +1207,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
             return Objects.equals(currentUser.getName(), taskUser.getName()) ||
                    RolePerm.match(currentUser.role(), taskUser.role(), null);
-        }
-
-        @Override
-        protected ServerInfoManager serverManager() {
-            // TODO Auto-generated method stub
-            return null;
         }
 
         @Override
@@ -1305,13 +1366,17 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     private static final ThreadLocal<Context> contexts =
                                               new InheritableThreadLocal<>();
 
-    protected static final Context setContext(Context context) {
+    public static final Context setContext(Context context) {
         Context old = contexts.get();
         contexts.set(context);
         return old;
     }
 
-    protected static final void resetContext() {
+    public static Context setAdmin() {
+        return setContext(Context.admin());
+    }
+
+    public static final void resetContext() {
         contexts.remove();
     }
 
@@ -1326,7 +1391,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         return contexts.get();
     }
 
-    protected static final String getContextString() {
+    public static final String getContextString() {
         Context context = getContext();
         if (context == null) {
             return null;

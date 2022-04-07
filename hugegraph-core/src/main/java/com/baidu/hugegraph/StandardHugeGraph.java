@@ -20,6 +20,7 @@
 package com.baidu.hugegraph;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -51,7 +52,6 @@ import com.baidu.hugegraph.backend.cache.Cache;
 import com.baidu.hugegraph.backend.cache.CacheNotifier;
 import com.baidu.hugegraph.backend.cache.CacheNotifier.GraphCacheNotifier;
 import com.baidu.hugegraph.backend.cache.CacheNotifier.SchemaCacheNotifier;
-import com.baidu.hugegraph.backend.cache.CachedGraphTransaction;
 import com.baidu.hugegraph.backend.cache.CachedSchemaTransaction;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
@@ -60,6 +60,7 @@ import com.baidu.hugegraph.backend.query.Query;
 import com.baidu.hugegraph.backend.serializer.AbstractSerializer;
 import com.baidu.hugegraph.backend.serializer.SerializerFactory;
 import com.baidu.hugegraph.backend.store.BackendFeatures;
+import com.baidu.hugegraph.backend.store.BackendMutation;
 import com.baidu.hugegraph.backend.store.BackendProviderFactory;
 import com.baidu.hugegraph.backend.store.BackendStore;
 import com.baidu.hugegraph.backend.store.BackendStoreProvider;
@@ -76,6 +77,7 @@ import com.baidu.hugegraph.event.EventHub;
 import com.baidu.hugegraph.event.EventListener;
 import com.baidu.hugegraph.exception.NotAllowException;
 import com.baidu.hugegraph.io.HugeGraphIoRegistry;
+import com.baidu.hugegraph.kafka.BrokerConfig;
 import com.baidu.hugegraph.perf.PerfUtil.Watched;
 import com.baidu.hugegraph.schema.EdgeLabel;
 import com.baidu.hugegraph.schema.IndexLabel;
@@ -89,13 +91,11 @@ import com.baidu.hugegraph.structure.HugeEdgeProperty;
 import com.baidu.hugegraph.structure.HugeFeatures;
 import com.baidu.hugegraph.structure.HugeVertex;
 import com.baidu.hugegraph.structure.HugeVertexProperty;
-import com.baidu.hugegraph.task.ServerInfoManager;
 import com.baidu.hugegraph.task.TaskManager;
 import com.baidu.hugegraph.task.TaskScheduler;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.type.define.GraphReadMode;
-import com.baidu.hugegraph.type.define.NodeRole;
 import com.baidu.hugegraph.util.DateUtil;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Events;
@@ -128,6 +128,7 @@ public class StandardHugeGraph implements HugeGraph {
            CoreOptions.OLTP_CONCURRENT_THREADS,
            CoreOptions.OLTP_CONCURRENT_DEPTH,
            CoreOptions.OLTP_COLLECTION_TYPE,
+           CoreOptions.OLTP_QUERY_BATCH_SIZE,
            CoreOptions.VERTEX_DEFAULT_LABEL,
            CoreOptions.VERTEX_ENCODE_PK_NUMBER,
            CoreOptions.STORE_GRAPH,
@@ -168,7 +169,20 @@ public class StandardHugeGraph implements HugeGraph {
     private final boolean virtualGraphEnable;
     private final VirtualGraph vGraph;
 
+    private String creator;
+    private Date createTime;
+    private Date updateTime;
+
     public StandardHugeGraph(HugeConfig config) {
+
+        /**
+         * pd.peers passed from config is required for the case of isolated instantiate
+         */
+        if (config.containsKey("pd.peers")) {
+            String pdPeers = config.getString("pd.peers");
+            BrokerConfig.setPdPeers(pdPeers);
+        }
+
         this.params = new StandardHugeGraphParams();
         this.configuration = config;
         this.graphSpace = config.get(CoreOptions.GRAPH_SPACE);
@@ -210,7 +224,6 @@ public class StandardHugeGraph implements HugeGraph {
                         config.get(CoreOptions.GRAPH_READ_MODE));
         this.schedulerType = config.get(CoreOptions.SCHEDULER_TYPE);
 
-
         LockUtil.init(this.spaceGraphName());
 
         try {
@@ -241,6 +254,11 @@ public class StandardHugeGraph implements HugeGraph {
         else {
             this.vGraph = null;
         }
+    }
+
+    @Override
+    public BackendStoreProvider storeProvider() {
+        return this.storeProvider;
     }
 
     @Override
@@ -289,11 +307,7 @@ public class StandardHugeGraph implements HugeGraph {
     }
 
     @Override
-    public void serverStarted(Id serverId, NodeRole serverRole) {
-        LOG.info("Init server info [{}-{}] for graph '{}'...",
-                 serverId, serverRole, this.name);
-        this.serverInfoManager().initServerInfo(serverId, serverRole);
-
+    public void serverStarted() {
         LOG.info("Search olap property key for graph '{}'", this.name);
         this.schemaTransaction().initAndRegisterOlapTables();
 
@@ -306,6 +320,11 @@ public class StandardHugeGraph implements HugeGraph {
     @Override
     public boolean started() {
         return this.started;
+    }
+
+    @Override
+    public void started(boolean started) {
+        this.started = started;
     }
 
     @Override
@@ -413,8 +432,7 @@ public class StandardHugeGraph implements HugeGraph {
         try {
             this.storeProvider.truncate();
             this.storeProvider.initSystemInfo(this);
-            this.serverStarted(this.serverInfoManager().selfServerId(),
-                               this.serverInfoManager().selfServerRole());
+            this.serverStarted();
         } finally {
             LockUtil.unlock(this.spaceGraphName(), LockUtil.GRAPH_LOCK);
         }
@@ -600,6 +618,11 @@ public class StandardHugeGraph implements HugeGraph {
     }
 
     @Override
+    public Vertex addVertex(Vertex vertex) {
+        return this.graphTransaction().addVertex((HugeVertex) vertex);
+    }
+
+    @Override
     public void removeVertex(Vertex vertex) {
         this.graphTransaction().removeVertex((HugeVertex) vertex);
     }
@@ -722,6 +745,12 @@ public class StandardHugeGraph implements HugeGraph {
     @Watched
     public Iterator<Edge> edges(Query query) {
         return this.graphTransaction().queryEdges(query);
+    }
+
+    @Override
+    @Watched
+    public List<Iterator<Edge>> edges(List<Query> queryList) {
+        return this.graphTransaction().queryEdges(queryList);
     }
 
     @Override
@@ -951,6 +980,7 @@ public class StandardHugeGraph implements HugeGraph {
 
     @Override
     public synchronized void close() throws Exception {
+        TaskManager.useFakeContext();
         if (this.closed()) {
             return;
         }
@@ -1023,14 +1053,6 @@ public class StandardHugeGraph implements HugeGraph {
         return scheduler;
     }
 
-    private ServerInfoManager serverInfoManager() {
-        ServerInfoManager manager = this.taskManager
-                                        .getServerInfoManager(this.params);
-        E.checkState(manager != null,
-                     "Can't find server info manager for graph '%s'", this);
-        return manager;
-    }
-
     @Override
     public AuthManager authManager() {
         throw new HugeException("Not support authManager");
@@ -1084,7 +1106,8 @@ public class StandardHugeGraph implements HugeGraph {
         return config.get(option);
     }
 
-    private void closeTx() {
+    @Override
+    public void closeTx() {
         try {
             if (this.tx.isOpen()) {
                 this.tx.close();
@@ -1210,12 +1233,6 @@ public class StandardHugeGraph implements HugeGraph {
         @Override
         public HugeConfig configuration() {
             return StandardHugeGraph.this.configuration();
-        }
-
-        @Override
-        public ServerInfoManager serverManager() {
-            // this.serverManager.initSchemaIfNeeded();
-            return StandardHugeGraph.this.serverInfoManager();
         }
 
         @Override
@@ -1571,5 +1588,45 @@ public class StandardHugeGraph implements HugeGraph {
         public HugeGraphCacheNotifier(EventHub hub, CacheNotifier proxy) {
             super(hub, proxy);
         }
+    }
+
+    @Override
+    public void applyMutation(BackendMutation mutation) {
+        this.graphTransaction().applyMutation(mutation);
+    }
+    
+    public String creator() {
+        return this.creator;
+    }
+
+    @Override
+    public void creator(String creator) {
+        this.creator = creator;
+    }
+
+    @Override
+    public Date createTime() {
+        return this.createTime;
+    }
+
+    @Override
+    public void createTime(Date createTime) {
+        this.createTime = createTime;
+    }
+
+    @Override
+    public Date updateTime() {
+        return this.updateTime;
+    }
+
+    @Override
+    public void updateTime(Date updateTime) {
+        this.updateTime = updateTime;
+        
+    }
+
+    @Override
+    public void refreshUpdateTime() {
+        this.updateTime = new Date();
     }
 }

@@ -136,8 +136,7 @@ public class RaftAPI extends API {
                                          String group,
                                          @QueryParam("endpoint")
                                          String endpoint) {
-        LOG.debug("Graph [{}] prepare to set leader to: {}",
-                  graph, endpoint);
+        LOG.debug("Graph [{}] prepare to set leader to: {}", graph, endpoint);
 
         HugeGraph g = graph(manager, graphSpace, graph);
         RaftGroupManager raftManager = raftGroupManager(g, group, "set_leader");

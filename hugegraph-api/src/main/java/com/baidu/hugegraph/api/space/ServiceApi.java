@@ -23,10 +23,12 @@ import java.util.Set;
 
 import javax.annotation.security.RolesAllowed;
 import javax.inject.Singleton;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -35,12 +37,12 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.SecurityContext;
 
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
 
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
 import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.define.Checkable;
+import com.baidu.hugegraph.logger.HugeGraphLogger;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.space.Service;
 import com.baidu.hugegraph.util.E;
@@ -53,12 +55,11 @@ import com.google.common.collect.ImmutableMap;
 @Singleton
 public class ServiceApi extends API {
 
-    private static final Logger LOG = Log.logger(RestServer.class);
+    private static final HugeGraphLogger LOGGER = Log.getLogger(RestServer.class);
 
     private static final String CONFIRM_DROP = "I'm sure to delete the service";
 
     private static final String CLUSTER_IP = "ClusterIP";
-    private static final String LOAD_BALANCER = "LoadBalancer";
     private static final String NODE_PORT = "NodePort";
 
     @GET
@@ -68,7 +69,6 @@ public class ServiceApi extends API {
     public Object list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @Context SecurityContext sc) {
-        LOG.debug("List all services for graph space {}", graphSpace);
         E.checkArgument(space(manager, graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
 
@@ -83,13 +83,14 @@ public class ServiceApi extends API {
     public Object get(@Context GraphManager manager,
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("name") String name) {
-        LOG.debug("Get service by name '{}' for graph space {}",
-                  name, graphSpace);
         E.checkArgument(space(manager, graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
 
-        return manager.serializer().writeService(
-                                    service(manager, graphSpace, name));
+        Service service = service(manager, graphSpace, name);
+        service.serverDdsUrls(manager.getServiceDdsUrls(graphSpace, name));
+        service.serverNodePortUrls(
+                manager.getServiceNodePortUrls(graphSpace, name));
+        return manager.serializer().writeService(service);
     }
 
     @POST
@@ -100,15 +101,18 @@ public class ServiceApi extends API {
     public String create(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          JsonService jsonService) {
-        LOG.debug("Create service {} for graph space: '{}'",
-                  jsonService, graphSpace);
+
         E.checkArgument(space(manager, graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
 
         jsonService.checkCreate(false);
 
-        Service service = manager.createService(graphSpace,
-                                                jsonService.toService());
+        String username = manager.authManager().username();
+        Service temp = jsonService.toService(username);
+
+        
+        Service service = manager.createService(graphSpace, temp);
+        LOGGER.getAuditLogger().logAddService(service.serviceId(), "");
         return manager.serializer().writeService(service);
     }
 
@@ -118,9 +122,51 @@ public class ServiceApi extends API {
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON)
     @Path("k8s-register")
+    @RolesAllowed({"admin", "$dynamic"})
     public void registerK8S(@Context GraphManager manager) throws Exception {
-        LOG.debug("Register external K8S info to pd");
-        manager.registerK8StoPd();
+        // manager.registerK8StoPd();
+    }
+
+    @PUT
+    @Timed
+    @Status(Status.OK)
+    @Consumes(APPLICATION_JSON)
+    @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @Path("stop/{name}")
+    @RolesAllowed({"admin", "$dynamic"})
+    public void stopService(@Context GraphManager manager,
+                            @PathParam("graphspace") String graphSpace,
+                            @PathParam("name") String serviceName) {
+
+        Service service = service(manager, graphSpace, serviceName);
+        if (null == service || 0 == service.running()) {
+            return;
+        }
+        if (!service.k8s()) {
+            throw new BadRequestException("Cannot stop service in Manual mode");
+        }
+        manager.stopService(graphSpace, serviceName);
+        LOGGER.getAuditLogger().logStopService(service.serviceId());
+
+    }
+
+    @PUT
+    @Timed
+    @Status(Status.OK)
+    @Consumes(APPLICATION_JSON)
+    @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @Path("start/{name}")
+    public void startService(@Context GraphManager manager,
+                             @PathParam("graphspace") String graphSpace, 
+                             @PathParam("name") String serviceName) {
+        Service service = service(manager, graphSpace, serviceName);
+        if (!service.k8s()) {
+            throw new BadRequestException("Cannot stop service in Manual mode");
+        }
+        if (0 == service.running()) {
+            manager.startService(graphSpace, service);
+        }
+        LOGGER.getAuditLogger().logStartService(service.serviceId());
     }
 
     @DELETE
@@ -132,14 +178,15 @@ public class ServiceApi extends API {
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("name") String name,
                        @QueryParam("confirm_message") String message) {
-        LOG.debug("Remove service by name '{}' for graph space",
-                  name, graphSpace);
         E.checkArgument(space(manager, graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
 
         E.checkArgument(CONFIRM_DROP.equals(message),
                         "Please take the message: %s", CONFIRM_DROP);
+        Service service = service(manager, graphSpace, name);
         manager.dropService(graphSpace, name);
+
+        LOGGER.getAuditLogger().logRemoveService(service.serviceId(), "");
     }
 
     private static class JsonService implements Checkable {
@@ -211,19 +258,17 @@ public class ServiceApi extends API {
                                 "The urls must be null or empty when " +
                                 "deployment type is %s",
                                 this.deploymentType);
-                E.checkArgument(this.routeType != null &&
-                                !StringUtils.isEmpty(this.routeType),
+                E.checkArgument(!StringUtils.isEmpty(this.routeType),
                                 "The route type of service can't be null or " +
                                 "empty");
                 E.checkArgument(NODE_PORT.equals(this.routeType) ||
-                                CLUSTER_IP.equals(this.routeType) ||
-                                LOAD_BALANCER.equals(this.routeType),
+                                CLUSTER_IP.equals(this.routeType),
                                 "Invalid route type '%s'", this.routeType);
             }
         }
 
-        public Service toService() {
-            Service service = new Service(this.name, this.serviceType,
+        public Service toService(String creator) {
+            Service service = new Service(this.name, creator, this.serviceType,
                                           this.deploymentType);
             service.description(this.description);
             service.count(this.count);

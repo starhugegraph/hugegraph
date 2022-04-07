@@ -23,25 +23,30 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.inject.Singleton;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 
-import com.baidu.hugegraph.util.E;
-import com.google.common.collect.ImmutableMap;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
-import com.codahale.metrics.annotation.Timed;
 
-import com.baidu.hugegraph.pd.client.PDClient;
-import com.baidu.hugegraph.server.RestServer;
-import com.baidu.hugegraph.util.Log;
-import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.HugeException;
+import com.baidu.hugegraph.api.API;
+import com.baidu.hugegraph.backend.store.hstore.HstoreOptions;
+import com.baidu.hugegraph.config.HugeConfig;
+import com.baidu.hugegraph.pd.client.PDClient;
+import com.baidu.hugegraph.pd.client.PDConfig;
 import com.baidu.hugegraph.pd.common.PDException;
 import com.baidu.hugegraph.pd.grpc.Metapb;
 import com.baidu.hugegraph.pd.grpc.Pdpb;
-import com.baidu.hugegraph.backend.store.hstore.HstoreSessionsImpl;
+import com.baidu.hugegraph.server.RestServer;
+import com.baidu.hugegraph.util.E;
+import com.baidu.hugegraph.util.Log;
+import com.codahale.metrics.annotation.Timed;
+import com.google.common.collect.ImmutableMap;
 
 @Path("pd")
 @Singleton
@@ -49,14 +54,21 @@ public class PDAPI extends API {
     private static final Logger LOG = Log.logger(RestServer.class);
     private PDClient client;
 
-    protected synchronized PDClient client() {
+    protected synchronized PDClient client(HugeConfig config) {
         if (this.client != null) {
             return this.client;
         }
-        this.client = HstoreSessionsImpl.getDefaultPdClient();
 
-        E.checkArgument(client != null, "Get pd client error, The PD api " +
-                "is not enable.");
+        String pdPeers = config.get(HstoreOptions.PD_PEERS);
+
+        E.checkArgument(StringUtils.isNotEmpty(pdPeers),
+                        "Please set pd addrs use config: pd.peers");
+
+        this.client = PDClient.create(PDConfig.of(pdPeers)
+                                              .setEnablePDNotify(false));
+
+        E.checkArgument(client != null,
+                        "Get pd client error, The hstore api is not enable.");
 
         return this.client;
     }
@@ -64,10 +76,10 @@ public class PDAPI extends API {
     @GET
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    public Object list() {
+    public Object list(@Context HugeConfig config) {
         Pdpb.GetMembersResponse membersResponse = null;
         try {
-            membersResponse = this.client().getMembers();
+            membersResponse = this.client(config).getMembers();
         } catch (PDException e) {
             throw new HugeException("Get PD members error", e);
         }
@@ -79,9 +91,10 @@ public class PDAPI extends API {
             m.getRaftUrl();
 
             Map<String, Object> memberInfo = new HashMap<>();
-            memberInfo.put("ip", m.getRaftUrl());
+            memberInfo.put("ip", m.getGrpcUrl());
             memberInfo.put("state", m.getState().name());
-            memberInfo.put("is_leader", membersResponse.getLeader().equals(m));
+            memberInfo.put("is_leader", membersResponse.getLeader().getGrpcUrl()
+                                                       .equals(m.getGrpcUrl()));
 
             members.add(memberInfo);
         }

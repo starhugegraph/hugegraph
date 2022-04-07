@@ -50,8 +50,6 @@ public class KneighborTraverser extends OltpTraverser {
         checkDegree(degree);
         checkLimit(limit);
 
-        boolean concurrent = depth >= this.concurrentDepth();
-
         Id labelId = this.getEdgeLabelId(label);
 
         Set<Id> latest = newSet();
@@ -61,8 +59,8 @@ public class KneighborTraverser extends OltpTraverser {
 
         while (depth-- > 0) {
             long remaining = limit == NO_LIMIT ? NO_LIMIT : limit - all.size();
-            latest = this.adjacentVertices(sourceV, latest, dir, labelId,
-                                           all, degree, remaining, concurrent);
+            latest = this.adjacentVerticesBatch(sourceV, latest, dir, labelId,
+                                           all, degree, remaining);
             all.addAll(latest);
             if (reachLimit(limit, all.size())) {
                 break;

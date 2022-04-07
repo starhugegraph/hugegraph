@@ -21,9 +21,11 @@ package com.baidu.hugegraph;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
+import com.baidu.hugegraph.backend.store.BackendStoreProvider;
 import org.apache.tinkerpop.gremlin.process.traversal.TraversalStrategies;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Graph;
@@ -35,6 +37,7 @@ import com.baidu.hugegraph.auth.AuthManager;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.query.Query;
 import com.baidu.hugegraph.backend.store.BackendFeatures;
+import com.baidu.hugegraph.backend.store.BackendMutation;
 import com.baidu.hugegraph.backend.store.BackendStoreSystemInfo;
 import com.baidu.hugegraph.backend.store.raft.RaftGroupManager;
 import com.baidu.hugegraph.config.TypedOption;
@@ -65,6 +68,8 @@ public interface HugeGraph extends Graph {
     public HugeGraph hugegraph();
 
     public SchemaManager schema();
+
+    public BackendStoreProvider storeProvider();
 
     public Id getNextId(HugeType type);
 
@@ -128,6 +133,7 @@ public interface HugeGraph extends Graph {
     @Override
     public Iterator<Edge> edges(Object... objects);
     public Iterator<Edge> edges(Query query);
+    public List<Iterator<Edge>> edges(List<Query> queryList);
     public Iterator<Edge> edgesWithProp(Object... objects);
     public Iterator<Vertex> adjacentVertices(Iterator<Edge> edges) ;
     public Iterator<Edge> adjacentEdges(Id vertexId);
@@ -149,10 +155,25 @@ public interface HugeGraph extends Graph {
     public GraphReadMode readMode();
     public void readMode(GraphReadMode readMode);
 
+    public String creator();
+    public void creator(String creator);
+
+    public Date createTime();
+    public void createTime(Date createTime);
+
+    public Date updateTime();
+    public void updateTime(Date updateTime);
+
+    public void refreshUpdateTime();
+    
+
     public void waitStarted();
-    public void serverStarted(Id serverId, NodeRole serverRole);
+    public void serverStarted();
     public boolean started();
+    public void started(boolean started);
     public boolean closed();
+    public void closeTx();
+    public Vertex addVertex(Vertex vertex);
 
     public <T> T metadata(HugeType type, String meta, Object... args);
 
@@ -253,4 +274,6 @@ public interface HugeGraph extends Graph {
                                  HugeCountStepStrategy.instance());
         TraversalStrategies.GlobalCache.registerStrategies(clazz, strategies);
     }
+
+    public void applyMutation(BackendMutation mutation);
 }

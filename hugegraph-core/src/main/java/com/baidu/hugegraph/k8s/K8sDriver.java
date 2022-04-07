@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
@@ -50,8 +51,6 @@ import io.fabric8.kubernetes.api.model.HTTPGetAction;
 import io.fabric8.kubernetes.api.model.HTTPGetActionBuilder;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.IntOrString;
-import io.fabric8.kubernetes.api.model.LimitRange;
-import io.fabric8.kubernetes.api.model.LimitRangeBuilder;
 import io.fabric8.kubernetes.api.model.ListOptions;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.NamespaceBuilder;
@@ -59,6 +58,7 @@ import io.fabric8.kubernetes.api.model.NamespaceList;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodBuilder;
 import io.fabric8.kubernetes.api.model.Quantity;
+import io.fabric8.kubernetes.api.model.ResourceQuota;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
 import io.fabric8.kubernetes.api.model.ResourceRequirementsBuilder;
 import io.fabric8.kubernetes.api.model.ServiceAccount;
@@ -67,6 +67,7 @@ import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
+import io.fabric8.kubernetes.api.model.apps.DeploymentStatus;
 import io.fabric8.kubernetes.api.model.rbac.ClusterRoleBinding;
 import io.fabric8.kubernetes.api.model.rbac.ClusterRoleBindingBuilder;
 import io.fabric8.kubernetes.api.model.rbac.Subject;
@@ -75,7 +76,9 @@ import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.ParameterNamespaceListVisitFromServerGetDeleteRecreateWaitApplicable;
+import io.fabric8.kubernetes.client.dsl.Resource;
 
 public class K8sDriver {
 
@@ -90,8 +93,6 @@ public class K8sDriver {
     private static final String PORT_SUFFIX = "-port";
     private static final String TCP = "TCP";
 
-    private static final String CLUSTER_IP = "ClusterIP";
-    private static final String LOAD_BALANCER = "LoadBalancer";
     private static final String NODE_PORT = "NodePort";
     private static final int HG_PORT = 8080;
 
@@ -120,10 +121,9 @@ public class K8sDriver {
     private static final String BINDING_API_GROUP = "rbac.authorization.k8s.io";
     private static final String CLUSTER_ROLE = "ClusterRole";
     private static final String CLUSTER_ROLE_NAME = "cluster-admin";
-    private static final String BINDING_API_VERSION =
-            "rbac.authorization.k8s.io/v1";
+    private static final String BINDING_API_VERSION = "rbac.authorization.k8s.io/v1";
 
-    private KubernetesClient client;
+    private final KubernetesClient client;
 
     private String oltpImage;
     private String olapImage;
@@ -131,19 +131,8 @@ public class K8sDriver {
 
     private CA ca;
 
-    public K8sDriver(String url, String caFile, String clientCaFile,
-                     String clientKeyFile) {
-        Config config = new ConfigBuilder().withMasterUrl(url)
-                                           .withTrustCerts(true)
-                                           .withCaCertFile(caFile)
-                                           .withClientCertFile(clientCaFile)
-                                           .withClientKeyFile(clientKeyFile)
-                                           .build();
-        this.client = new DefaultKubernetesClient(config);
-    }
-
-    public K8sDriver(String url) {
-        Config config = new ConfigBuilder().withMasterUrl(url).build();
+    public K8sDriver() {
+        Config config = new ConfigBuilder().build();
         this.client = new DefaultKubernetesClient(config);
     }
 
@@ -203,7 +192,7 @@ public class K8sDriver {
     public Namespace createNamespace(String name, Map<String, String> labels) {
         Namespace namespace = new NamespaceBuilder()
                 .withNewMetadata()
-                .withName(name)
+                .withName(validateNamespaceName(name))
                 .addToLabels(labels)
                 .endMetadata()
                 .build();
@@ -243,21 +232,128 @@ public class K8sDriver {
                           .get();
     }
 
-    public Set<String> startOltpService(GraphSpace graphSpace,
+    public Set<String> createOltpService(GraphSpace graphSpace,
                                         Service service,
                                         List<String> metaServers,
                                         String cluster) {
         this.createConfigMapForCaIfNeeded(graphSpace, service);
-        this.createServcieAccountIfNeeded(graphSpace, service);
+        this.createServiceAccountIfNeeded(graphSpace, service);
         this.createDeployment(graphSpace, service, metaServers, cluster);
         return this.createService(graphSpace, service);
     }
 
+    
+    public Set<String> startOltpService(GraphSpace graphSpace,
+                                        Service service,
+                                        List<String> metaServers,
+                                        String cluster) {
+        // Get & check config map
+        String namespace = namespace(graphSpace, service);
+        ConfigMap configMap = this.client.configMaps()
+                                         .inNamespace(namespace)
+                                         .withName(CA_CONFIG_MAP_NAME)
+                                         .get();
+        if (null == configMap) {
+            throw new HugeException("Cannot start OLTP service since " +
+                                    "configMap does not exist!");
+        }
+
+        // Get & check service account
+        ServiceAccount serviceAccount = this.client.serviceAccounts()
+                                                   .inNamespace(namespace)
+                                                   .withName(serviceAccountName(namespace))
+                                                   .get();
+
+        if (null == serviceAccount) {
+            throw new HugeException("Cannot start OLTP service since service " +
+                                    "account is not created!");
+        }
+        // Get & check deployment
+        String deploymentName = deploymentName(graphSpace, service);
+        Deployment deployment = this.client.apps().deployments()
+                                                  .inNamespace(namespace)
+                                                  .withName(deploymentName)
+                                                  .get();
+        if (null == deployment) {
+            throw new HugeException("Cannot start OLTP service since deployment is not created!");
+        }
+        // start service
+        this.client.apps()
+                    .deployments()
+                    .inNamespace(namespace)
+                    .withName(deploymentName)
+                    .scale(service.count());
+        return this.createService(graphSpace, service);
+
+    }
+
     public void stopOltpService(GraphSpace graphSpace, Service service) {
+        
+        String serviceName = serviceName(graphSpace, service);
+        String namespace = namespace(graphSpace, service);
+        this.client.services().inNamespace(namespace)
+                   .withName(serviceName).delete();
+
+        io.fabric8.kubernetes.api.model.Service svc = this.client.services()
+                .inNamespace(namespace).withName(serviceName).get();
+        int count = 0;
+        while (svc != null && count++ < 10) {
+            svc = this.client.services().inNamespace(namespace)
+                      .withName(serviceName).get();
+            sleepAWhile(1);
+        }
+        if (svc != null) {
+            throw new HugeException("Failed to stop service: %s", svc);
+        }
+        String deploymentName = deploymentName(graphSpace, service);
+        Deployment deployment = this.client.apps().deployments()
+                        .inNamespace(namespace)
+                        .withName(deploymentName)
+                        .get();
+        if (null != deployment) {
+            this.client.apps().deployments()
+                        .inNamespace(namespace)
+                        .withName(deploymentName)
+                        .scale(0);
+        }
+        
+    }
+
+    public void deleteOltpService(GraphSpace graphSpace, Service service) {
         String deploymentName = serviceName(graphSpace, service);
         String namespace = namespace(graphSpace, service);
+        LOG.info("Stop deployment {} in namespace {}",
+                 deploymentName, namespace);
         this.client.apps().deployments().inNamespace(namespace)
-                .withName(deploymentName).delete();
+                   .withName(deploymentName).delete();
+        Deployment deployment = this.client.apps().deployments()
+                .inNamespace(namespace).withName(deploymentName).get();
+        int count = 0;
+        while (deployment != null && count++ < 10) {
+            deployment = this.client.apps().deployments().inNamespace(namespace)
+                             .withName(deploymentName).get();
+            sleepAWhile(1);
+        }
+        if (deployment != null) {
+            throw new HugeException("Failed to stop deployment: %s",
+                                    deployment);
+        }
+
+        LOG.info("Stop service {} in namespace {}", service, namespace);
+        String serviceName = deploymentName;
+        this.client.services().inNamespace(namespace)
+                   .withName(serviceName).delete();
+        io.fabric8.kubernetes.api.model.Service svc = this.client.services()
+                .inNamespace(namespace).withName(serviceName).get();
+        count = 0;
+        while (svc != null && count++ < 10) {
+            svc = this.client.services().inNamespace(namespace)
+                      .withName(serviceName).get();
+            sleepAWhile(1);
+        }
+        if (svc != null) {
+            throw new HugeException("Failed to stop service: %s", svc);
+        }
     }
 
     public void createConfigMapForCaIfNeeded(GraphSpace graphSpace,
@@ -303,13 +399,14 @@ public class K8sDriver {
                    .create(cm);
     }
 
-    private void createServcieAccountIfNeeded(GraphSpace graphSpace,
+    private void createServiceAccountIfNeeded(GraphSpace graphSpace,
                                               Service service) {
         String namespace = namespace(graphSpace, service);
+        String serviceAccountName = serviceAccountName(namespace);
         ServiceAccount serviceAccount = this.client
                 .serviceAccounts()
                 .inNamespace(namespace)
-                .withName(SERVICE_ACCOUNT_NAME)
+                .withName(serviceAccountName)
                 .get();
 
         if (serviceAccount != null) {
@@ -319,7 +416,7 @@ public class K8sDriver {
         // Create service account
         serviceAccount = new ServiceAccountBuilder()
                 .withNewMetadata()
-                .withName(SERVICE_ACCOUNT_NAME)
+                .withName(serviceAccountName)
                 .withNamespace(namespace)
                 .endMetadata().build();
         this.client.serviceAccounts()
@@ -328,14 +425,14 @@ public class K8sDriver {
 
         // Bind service account
         Subject subject = new SubjectBuilder()
-                .withKind("ServiceAccount")
-                .withName(SERVICE_ACCOUNT_NAME)
+                .withKind(SERVICE_ACCOUNT)
+                .withName(serviceAccountName)
                 .withNamespace(namespace)
                 .build();
         ClusterRoleBinding clusterRoleBinding = new ClusterRoleBindingBuilder()
                 .withApiVersion(BINDING_API_VERSION)
                 .withNewMetadata()
-                .withName(SERVICE_ACCOUNT_NAME)
+                .withName(serviceAccountName)
                 .endMetadata()
 
                 .withNewRoleRef()
@@ -408,6 +505,7 @@ public class K8sDriver {
                     .build();
         }
 
+        LOG.info("Start service {} in namespace {}", service, namespace);
         this.client.services().inNamespace(namespace).create(service);
 
         service = this.client.services()
@@ -424,6 +522,7 @@ public class K8sDriver {
         Deployment deployment = this.constructDeployment(graphSpace, service,
                                                          metaServers, cluster);
         String namespace = namespace(graphSpace, service);
+        LOG.info("Start deployment {} in namespace {}", deployment, namespace);
         deployment = this.client.apps().deployments().inNamespace(namespace)
                                 .createOrReplace(deployment);
 
@@ -451,7 +550,7 @@ public class K8sDriver {
         for (ServicePort port : service.getSpec().getPorts()) {
             int actualPort = routeType.equals(NODE_PORT) ?
                              port.getNodePort() : port.getPort();
-            urls.add(clusterIP + COLON + actualPort);
+            urls.add(clusterIP + COLON + HG_PORT + COMMA + actualPort);
         }
         return urls;
     }
@@ -460,6 +559,7 @@ public class K8sDriver {
                                            Service service,
                                            List<String> metaServers,
                                            String cluster) {
+        String namespace = namespace(graphSpace, service);
         String deploymentName = deploymentName(graphSpace, service);
         String containerName = String.join(DELIMITER, deploymentName,
                                            CONTAINER);
@@ -508,7 +608,7 @@ public class K8sDriver {
                 .endMetadata()
 
                 .withNewSpec()
-                .withServiceAccountName(SERVICE_ACCOUNT_NAME)
+                .withServiceAccountName(serviceAccountName(namespace))
                 .withAutomountServiceAccountToken(true)
 
                 .addNewContainer()
@@ -591,7 +691,7 @@ public class K8sDriver {
         String namespace;
         switch (service.type()) {
             case OLTP:
-                namespace = graphSpace.oltpNamespace;
+                namespace = graphSpace.oltpNamespace();
                 break;
             case OLAP:
                 namespace = graphSpace.olapNamespace();
@@ -620,22 +720,27 @@ public class K8sDriver {
         }
     }
 
-    private static String serviceName(String graphSpace,
-                                      Service service) {
-        return String.join(DELIMITER, graphSpace,
-                           service.type().name().toLowerCase(), service.name());
+    private static String validateNamespaceName(String namespace) {
+        return namespace.replace("_", "-").toLowerCase();
     }
 
     private static String deploymentName(GraphSpace graphSpace,
                                          Service service) {
-        return String.join(DELIMITER, graphSpace.name(),
-                           service.type().name().toLowerCase(), service.name());
+        return deploymentServiceName(graphSpace, service);
     }
 
     private static String serviceName(GraphSpace graphSpace,
                                       Service service) {
-        return String.join(DELIMITER, graphSpace.name(),
-                           service.type().name().toLowerCase(), service.name());
+        return deploymentServiceName(graphSpace, service);
+    }
+
+    private static String deploymentServiceName(GraphSpace graphSpace,
+                                                Service service) {
+        String name = String.join(DELIMITER,
+                                  graphSpace.name(),
+                                  service.type().name(),
+                                  service.name());
+        return name.replace("_", "-").toLowerCase();
     }
 
     private static void sleepAWhile(int second) {
@@ -650,17 +755,29 @@ public class K8sDriver {
         String deploymentName = deploymentName(graphSpace, service);
         String namespace = namespace(graphSpace, service);
         Deployment deployment;
-        deployment = this.client.apps().deployments()
-                         .inNamespace(namespace)
-                         .withName(deploymentName)
-                         .get();
-        return deployment.getStatus().getReadyReplicas();
+        try {
+            deployment = this.client.apps().deployments()
+                                    .inNamespace(namespace)
+                                    .withName(deploymentName)
+                                    .get();
+            if (null == deployment) {
+                return 0;
+            }
+            DeploymentStatus status = deployment.getStatus();
+            if (null == status) {
+                return 0;
+            }
+            Integer replica = status.getAvailableReplicas();
+            return Optional.ofNullable(replica).orElse(0);
+        } catch (KubernetesClientException exc) {
+            LOG.error("Get k8s deployment failed when check podsRunning", exc);
+            return 0;
+        }
     }
 
     public void createOrReplaceByYaml(String yaml) throws IOException {
         InputStream is = new ByteArrayInputStream(yaml.getBytes());
         try {
-
             ParameterNamespaceListVisitFromServerGetDeleteRecreateWaitApplicable<HasMetadata> meta
                 = this.client.load(is);
             meta.createOrReplace();
@@ -669,6 +786,16 @@ public class K8sDriver {
         } finally {
             is.close();
         }
+    }
+    
+    public void createResourceQuota(String namespace, String yaml) {
+        InputStream is = new ByteArrayInputStream(yaml.getBytes());
+        Resource<ResourceQuota> quota = this.client.resourceQuotas().inNamespace(namespace).load(is);
+        this.client.resourceQuotas().inNamespace(namespace).create(quota.get());
+    }
+
+    private static String serviceAccountName(String namespace) {
+        return namespace + SERVICE_ACCOUNT_NAME;
     }
 
     public static class CA {

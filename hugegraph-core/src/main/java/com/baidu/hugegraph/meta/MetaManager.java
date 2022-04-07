@@ -21,11 +21,14 @@ package com.baidu.hugegraph.meta;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -64,8 +67,6 @@ import io.fabric8.kubernetes.api.model.Namespace;
 
 public class MetaManager {
 
-    private static final Logger LOG = Log.logger(MetaManager.class);
-
     public static final String META_PATH_DELIMITER = "/";
     public static final String META_PATH_JOIN = "-";
 
@@ -97,6 +98,19 @@ public class MetaManager {
     public static final String META_PATH_ADD = "ADD";
     public static final String META_PATH_REMOVE = "REMOVE";
     public static final String META_PATH_UPDATE = "UPDATE";
+    public static final String META_PATH_CLEAR = "CLEAR";
+
+    public static final String META_PATH_DDS = "DDS_HOST";
+    public static final String META_PATH_KAFKA = "KAFKA";
+    public static final String META_PATH_HOST = "BROKER_HOST";
+    public static final String META_PATH_PORT = "BROKER_PORT";
+    public static final String META_PATH_PARTITION_COUNT = "PARTITION_COUNT";
+    public static final String META_PATH_DATA_SYNC_ROLE = "DATA_SYNC_ROLE";
+    public static final String META_PATH_SLAVE_SERVER_HOST = "SLAVE_SERVER_HOST";
+    public static final String META_PATH_SLAVE_SERVER_PORT = "SLAVE_SERVER_PORT";
+    public static final String META_PATH_SYNC_BROKER = "SYNC_BROKER";
+    public static final String META_PATH_SYNC_STORAGE = "SYNC_STORAGE";
+    public static final String META_PATH_KAFKA_FILTER = "KAFKA-FILTER";
 
     private static final String TASK_STATUS_POSTFIX = "Status";
     private static final String TASK_PROGRESS_POSTFIX = "Progress";
@@ -115,6 +129,10 @@ public class MetaManager {
     }
 
     private MetaManager() {
+    }
+
+    public synchronized boolean isReady() {
+        return null != this.metaDriver;
     }
 
     public synchronized void connect(String cluster, MetaDriverType type,
@@ -157,15 +175,15 @@ public class MetaManager {
     }
 
     public <T> void listenServiceAdd(Consumer<T> consumer) {
-        this.listen(this.graphSpaceAddKey(), consumer);
+        this.listen(this.serviceAddKey(), consumer);
     }
 
     public <T> void listenServiceRemove(Consumer<T> consumer) {
-        this.listen(this.graphSpaceRemoveKey(), consumer);
+        this.listen(this.serviceRemoveKey(), consumer);
     }
 
     public <T> void listenServiceUpdate(Consumer<T> consumer) {
-        this.listen(this.graphSpaceUpdateKey(), consumer);
+        this.listen(this.serviceUpdateKey(), consumer);
     }
 
     public <T> void listenGraphAdd(Consumer<T> consumer) {
@@ -178,6 +196,10 @@ public class MetaManager {
 
     public <T> void listenGraphRemove(Consumer<T> consumer) {
         this.listen(this.graphRemoveKey(), consumer);
+    }
+
+    public <T> void listenGraphClear(Consumer<T> consumer) {
+        this.listen(this.graphClearKey(), consumer);
     }
 
     public <T> void listenRestPropertiesUpdate(String graphSpace,
@@ -201,13 +223,44 @@ public class MetaManager {
         this.listenPrefix(prefix, consumer);
     }
 
+    public <T> void listenKafkaConfig(Consumer<T> consumer) {
+        String prefix = this.kafkaPrefixKey();
+        this.listenPrefix(prefix, consumer);
+    }
+
     private <T> void listen(String key, Consumer<T> consumer) {
         this.metaDriver.listen(key, consumer);
     }
 
-    private <T> void listenPrefix(String prefix, Consumer<T> consumer) {
+    public <T> void listenPrefix(String prefix, Consumer<T> consumer) {
         this.metaDriver.listenPrefix(prefix, consumer);
     }
+
+
+    /**
+     * Get raw config from etcd
+     * @param key
+     * @return
+     */
+    public String getRaw(String key) {
+        String result = this.metaDriver.get(key);
+        return Optional.ofNullable(result).orElse("");
+    }
+
+    /**
+     * Put raw config to etcd. Delete if val is empty!
+     * @param key
+     * @param val
+     * @return
+     */
+    public void putOrDeleteRaw(String key, String val) {
+        if (StringUtils.isEmpty(val)) {
+            this.metaDriver.delete(key);
+        } else {
+            this.metaDriver.put(key, val);
+        }
+    }
+
 
     public void bindOltpNamespace(GraphSpace graphSpace, Namespace namespace) {
         this.bindNamespace(graphSpace, namespace, BindingType.OLTP);
@@ -294,12 +347,49 @@ public class MetaManager {
 
     public void addSchemaTemplate(String graphSpace,
                                   SchemaTemplate template) {
+        String key = this.schemaTemplateKey(graphSpace, template.name());
+
+        String data = this.metaDriver.get(key);
+        if (null != data) {
+            throw new HugeException("Cannot create schema template since it has been created");
+        }
+
+        this.metaDriver.put(this.schemaTemplateKey(graphSpace, template.name()),
+                            JsonUtil.toJson(template.asMap()));
+    }
+
+    public void updateSchemaTemplate(String graphSpace, SchemaTemplate template) {
+        String key = this.schemaTemplateKey(graphSpace, template.name());
         this.metaDriver.put(this.schemaTemplateKey(graphSpace, template.name()),
                             JsonUtil.toJson(template.asMap()));
     }
 
     public void removeSchemaTemplate(String graphSpace, String name) {
         this.metaDriver.delete(this.schemaTemplateKey(graphSpace, name));
+    }
+
+    public void clearSchemaTemplate(String graphSpace) {
+        String prefix = this.schemaTemplatePrefix(graphSpace);
+        this.metaDriver.deleteWithPrefix(prefix);
+    }
+
+    public String extractGraphSpaceFromKey(String key) {
+        String[] parts = key.split(META_PATH_DELIMITER);
+        if (parts.length < 4) {
+            return null;
+        }
+        if (parts[3].equals(META_PATH_CONF)) {
+            return parts.length < 5 ? null : parts[4];
+        }
+        return parts[3];
+    }
+
+    public List<String> extractGraphFromKey(String key) {
+        String[] parts = key.split(META_PATH_DELIMITER);
+        if (parts.length < 6) {
+            return Collections.EMPTY_LIST;
+        }
+        return Arrays.asList(parts[3], parts[5]);
     }
 
     public <T> List<String> extractGraphSpacesFromResponse(T response) {
@@ -326,9 +416,17 @@ public class MetaManager {
         return JsonUtil.fromJson(gs, GraphSpace.class);
     }
 
+    public String getServiceRawConfig(String graphSpace, String service) {
+        return this.metaDriver.get(this.serviceConfKey(graphSpace, service));
+    }
+
+    public Service parseServiceRawConfig(String serviceRawConf) {
+        return JsonUtil.fromJson(serviceRawConf, Service.class);
+    }
+
     public Service getServiceConfig(String graphSpace, String service) {
-        String s = this.metaDriver.get(this.serviceConfKey(graphSpace, service));
-        return JsonUtil.fromJson(s, Service.class);
+        String s = this.getServiceRawConfig(graphSpace, service);
+        return this.parseServiceRawConfig(s);
     }
 
     public Map<String, Object> getGraphConfig(String graphSpace, String graph) {
@@ -372,6 +470,16 @@ public class MetaManager {
 
     public void notifyGraphSpaceAdd(String graphSpace) {
         this.metaDriver.put(this.graphSpaceAddKey(), graphSpace);
+    }
+
+    public void appendGraphSpaceList(String name) {
+        String key = this.graphSpaceListKey(name);
+        this.metaDriver.put(key, name);
+    }
+
+    public void clearGraphSpaceList(String name) {
+        String key = this.graphSpaceListKey(name);
+        this.metaDriver.delete(key);
     }
 
     public void notifyServiceAdd(String graphSpace, String name) {
@@ -435,6 +543,11 @@ public class MetaManager {
 
     public void notifyGraphUpdate(String graphSpace, String graph) {
         this.metaDriver.put(this.graphUpdateKey(),
+                            this.graphName(graphSpace, graph));
+    }
+
+    public void notifyGraphClear(String graphSpace, String graph) {
+        this.metaDriver.put(this.graphClearKey(),
                             this.graphName(graphSpace, graph));
     }
 
@@ -535,6 +648,13 @@ public class MetaManager {
                            META_PATH_GRAPH, META_PATH_UPDATE);
     }
 
+    private String graphClearKey() {
+        // HUGEGRAPH/{cluster}/EVENT/GRAPH/CLEAR
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
+                           this.cluster, META_PATH_EVENT,
+                           META_PATH_GRAPH, META_PATH_CLEAR);
+    }
+
     private String graphSpaceConfKey(String name) {
         // HUGEGRAPH/{cluster}/GRAPHSPACE/CONF/{graphspace}
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
@@ -582,7 +702,7 @@ public class MetaManager {
     }
 
     private String graphConfKey(String graphSpace, String graph) {
-        // HUGEGRAPH/{cluster}/GRAPHSPACE/{graphspace}/GRAPH_CONF
+        // HUGEGRAPH/{cluster}/GRAPHSPACE/{graphspace}/GRAPH_CONF/{graph}
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
                            this.cluster, META_PATH_GRAPHSPACE,
                            graphSpace, META_PATH_GRAPH_CONF, graph);
@@ -624,6 +744,13 @@ public class MetaManager {
         // HUGEGRAPH/{cluster}/AUTH/USER
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
                            this.cluster, META_PATH_AUTH, META_PATH_USER);
+    }
+
+    private String authPrefix(String graphSpace) {
+        // HUGEGRAPH/{cluster}/GRAPHSPACE/{graphSpace}/AUTH
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
+                            this.cluster, META_PATH_GRAPHSPACE, graphSpace,
+                            META_PATH_AUTH);
     }
 
     private String groupKey(String graphSpace, String group) {
@@ -735,7 +862,7 @@ public class MetaManager {
         graphSpace, graphName, META_PATH_TASK, taskPriority);
     }
 
-    private String taskStatusListKey(String graphSpace, String graphName, String taskId, TaskStatus status) {
+    private String taskStatusKey(String graphSpace, String graphName, String taskId, TaskStatus status) {
         // HUGEGRAPH/{cluster}/GRAPHSPACE/{graphSpace}/TASK/{statusType}/{id}
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_GRAPHSPACE,
         graphSpace, graphName, META_PATH_TASK, status.name(), taskId);
@@ -751,6 +878,72 @@ public class MetaManager {
         // HUGEGRAPH/{cluster}/GRAPHSPACE/{graphSpace}/TASK/{priority}
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_GRAPHSPACE,
         graphSpace, graphName, META_PATH_TASK, taskPriority);
+    }
+
+    /**
+     * Get DDS (eureka) host, format should be "ip:port", with no /
+     * @return
+     */
+    private String ddsHostKey() {
+        // HUGEGRAPH/{cluster}/DDS_HOST
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_DDS);
+    }
+
+    private String hugeClusterRoleKey() {
+        // HUGEGRAPH/{clusterRole}/KAFKA/DATA_SYNC_ROLE
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_KAFKA, META_PATH_DATA_SYNC_ROLE);
+    }
+
+    private String kafkaPrefixKey() {
+        // HUGEGRAPH/{cluster}/KAFKA
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_KAFKA);
+    }
+
+    private String kafkaHostKey() {
+        // HUGEGRAPH/{cluster}/KAFKA/BROKER_HOST
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_KAFKA, META_PATH_HOST);
+    }
+
+    private String kafkaPortKey() {
+        // HUGEGRAPH/{cluster}/KAFKA/BROKER_PORT
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_KAFKA, META_PATH_PORT);
+    }
+
+    private String kafkaPartitionCountKey() {
+        // HUGEGRAPH/{cluster}/KAFKA/PARTITION_COUNT
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_KAFKA, META_PATH_PARTITION_COUNT);
+    }
+
+    private String kafkaSlaveHostKey() {
+        // HUGEGRAPH/{cluster}/KAFKA/SLAVE_SERVER_HOST
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_KAFKA, META_PATH_SLAVE_SERVER_HOST);
+    }
+
+    private String kafkaSlavePortKey() {
+        // HUGEGRAPH/{cluster}/KAFKA/SLAVE_SERVER_PORT
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_KAFKA, META_PATH_SLAVE_SERVER_PORT);
+    }
+
+    public String kafkaSyncBrokerKey() {
+        // HUGEGRAPH/{cluster}/KAFKA/SYNC_BROKER
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_KAFKA, META_PATH_SYNC_BROKER);
+    }
+
+    public String kafkaSyncStorageKey() {
+        // HUGEGRAPH/{cluster}/KAFKA/SYNC_STORAGE
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH, this.cluster, META_PATH_KAFKA, META_PATH_SYNC_STORAGE);
+    }
+
+    public String kafkaFilterGraphspaceKey() {
+        // HUGEGRAPH/{cluster}/KAFKA-FILTER/GRAPHSPACE
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
+                this.cluster, META_PATH_KAFKA_FILTER, META_PATH_GRAPHSPACE);
+    }
+
+    public String kafkaFilterGraphKey() {
+        // HUGEGRAPH/{cluster}/KAFKA-FILTER/FILTER/GRAPH
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
+                this.cluster, META_PATH_KAFKA_FILTER, META_PATH_GRAPH);
     }
 
     /**
@@ -812,6 +1005,12 @@ public class MetaManager {
         // HUGEGRAPH/{cluster}/GRAPHSPACE_LIST
         return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
                            this.cluster, META_PATH_GRAPHSPACE_LIST);
+    }
+
+    private String graphSpaceListKey(String name) {
+        // HUGEGRAPH/{cluster}/GRAPHSPACE_LIST/{graphspace}
+        return String.join(META_PATH_DELIMITER, META_PATH_HUGEGRAPH,
+                            this.cluster, META_PATH_GRAPHSPACE_LIST, name);
     }
 
     private String hstorePDPeersKey() {
@@ -953,6 +1152,7 @@ public class MetaManager {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     public List<HugeUser> listAllUsers(long limit)
                                        throws IOException,
                                        ClassNotFoundException {
@@ -972,6 +1172,7 @@ public class MetaManager {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     public Id createGroup(String graphSpace, HugeGroup group)
                           throws IOException {
         String result = this.metaDriver.get(groupKey(graphSpace, group.name()));
@@ -982,6 +1183,7 @@ public class MetaManager {
         return IdGenerator.of(group.name());
     }
 
+    @SuppressWarnings("unchecked")
     public HugeGroup updateGroup(String graphSpace, HugeGroup group)
                           throws IOException {
         String result = this.metaDriver.get(groupKey(graphSpace, group.name()));
@@ -998,6 +1200,7 @@ public class MetaManager {
         return ori;
     }
 
+    @SuppressWarnings("unchecked")
     public HugeGroup deleteGroup(String graphSpace, Id id)
                                  throws IOException,
                                  ClassNotFoundException {
@@ -1011,6 +1214,7 @@ public class MetaManager {
         return HugeGroup.fromMap(map);
     }
 
+    @SuppressWarnings("unchecked")
     public HugeGroup findGroup(String graphSpace, Id id) {
         String result = this.metaDriver.get(groupKey(graphSpace,
                                                      id.asString()));
@@ -1021,6 +1225,7 @@ public class MetaManager {
         return HugeGroup.fromMap(map);
     }
 
+    @SuppressWarnings("unchecked")
     public HugeGroup getGroup(String graphSpace, Id id)
                               throws IOException,
                               ClassNotFoundException {
@@ -1032,6 +1237,7 @@ public class MetaManager {
         return HugeGroup.fromMap(map);
     }
 
+    @SuppressWarnings("unchecked")
     public List<HugeGroup> listGroups(String graphSpace, List<Id> ids)
                                       throws IOException,
                                       ClassNotFoundException {
@@ -1052,6 +1258,7 @@ public class MetaManager {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     public List<HugeGroup> listAllGroups(String graphSpace, long limit)
                                          throws IOException,
                                          ClassNotFoundException {
@@ -1082,6 +1289,7 @@ public class MetaManager {
         return target.id();
     }
 
+    @SuppressWarnings("unchecked")
     public HugeTarget updateTarget(String graphSpace, HugeTarget target)
                            throws IOException {
         String result = this.metaDriver.get(targetKey(graphSpace,
@@ -1101,6 +1309,7 @@ public class MetaManager {
         return ori;
     }
 
+    @SuppressWarnings("unchecked")
     public HugeTarget deleteTarget(String graphSpace, Id id)
                                    throws IOException,
                                    ClassNotFoundException {
@@ -1114,6 +1323,7 @@ public class MetaManager {
         return HugeTarget.fromMap(map);
     }
 
+    @SuppressWarnings("unchecked")
     public HugeTarget findTarget(String graphSpace, Id id) {
         String result = this.metaDriver.get(targetKey(graphSpace,
                                                       id.asString()));
@@ -1124,6 +1334,7 @@ public class MetaManager {
         return HugeTarget.fromMap(map);
     }
 
+    @SuppressWarnings("unchecked")
     public HugeTarget getTarget(String graphSpace, Id id)
                                 throws IOException,
                                 ClassNotFoundException {
@@ -1135,6 +1346,7 @@ public class MetaManager {
         return HugeTarget.fromMap(map);
     }
 
+    @SuppressWarnings("unchecked")
     public List<HugeTarget> listTargets(String graphSpace, List<Id> ids)
                                         throws IOException,
                                         ClassNotFoundException {
@@ -1155,6 +1367,7 @@ public class MetaManager {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     public List<HugeTarget> listAllTargets(String graphSpace, long limit)
                                            throws IOException,
                                            ClassNotFoundException {
@@ -1194,6 +1407,7 @@ public class MetaManager {
         return IdGenerator.of(belongId);
     }
 
+    @SuppressWarnings("unchecked")
     public HugeBelong updateBelong(String graphSpace, HugeBelong belong)
                            throws IOException, ClassNotFoundException {
         HugeUser user = this.findUser(belong.source().asString());
@@ -1219,6 +1433,7 @@ public class MetaManager {
         return ori;
     }
 
+    @SuppressWarnings("unchecked")
     public HugeBelong deleteBelong(String graphSpace, Id id)
                                    throws IOException,
                                    ClassNotFoundException {
@@ -1232,6 +1447,7 @@ public class MetaManager {
         return HugeBelong.fromMap(map);
     }
 
+    @SuppressWarnings("unchecked")
     public HugeBelong getBelong(String graphSpace, Id id)
                                 throws IOException,
                                 ClassNotFoundException {
@@ -1244,6 +1460,18 @@ public class MetaManager {
         return HugeBelong.fromMap(map);
     }
 
+    public boolean existBelong(String graphSpace, Id id) {
+        String result = this.metaDriver.get(belongKey(graphSpace,
+                                                      id.asString()));
+
+        if (result == null) {
+            return false;
+        }
+
+        return true;
+    }
+
+    @SuppressWarnings("unchecked")
     public List<HugeBelong> listBelong(String graphSpace, List<Id> ids)
                                        throws IOException,
                                        ClassNotFoundException {
@@ -1264,6 +1492,7 @@ public class MetaManager {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     public List<HugeBelong> listAllBelong(String graphSpace, long limit)
                                           throws IOException,
                                           ClassNotFoundException {
@@ -1283,13 +1512,16 @@ public class MetaManager {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     public List<HugeBelong> listBelongByUser(String graphSpace,
                                              Id user, long limit)
                                              throws IOException,
                                              ClassNotFoundException {
         List<HugeBelong> result = new ArrayList<>();
-        Map<String, String> belongMap = this.metaDriver.scanWithPrefix(
-                            belongListKeyByUser(graphSpace, user.asString()));
+
+        String key = belongListKeyByUser(graphSpace, user.asString());
+
+        Map<String, String> belongMap = this.metaDriver.scanWithPrefix(key);
         for (Map.Entry<String, String> item : belongMap.entrySet()) {
             if (limit >=0 && result.size() >= limit) {
                 break;
@@ -1314,6 +1546,7 @@ public class MetaManager {
         return items[1];
     }
 
+    @SuppressWarnings("unchecked")
     public List<HugeBelong> listBelongByGroup(String graphSpace,
                                               Id group, long limit)
                                               throws IOException,
@@ -1359,6 +1592,7 @@ public class MetaManager {
         return IdGenerator.of(accessId);
     }
 
+    @SuppressWarnings("unchecked")
     public HugeAccess updateAccess(String graphSpace, HugeAccess access)
                                    throws IOException, ClassNotFoundException {
         HugeGroup group = this.getGroup(graphSpace, access.source());
@@ -1391,6 +1625,7 @@ public class MetaManager {
         return ori;
     }
 
+    @SuppressWarnings("unchecked")
     public HugeAccess deleteAccess(String graphSpace, Id id)
                                    throws IOException, ClassNotFoundException {
         String result = this.metaDriver.get(accessKey(graphSpace,
@@ -1403,6 +1638,7 @@ public class MetaManager {
         return HugeAccess.fromMap(map);
     }
 
+    @SuppressWarnings("unchecked")
     public HugeAccess findAccess(String graphSpace, Id id) {
         String result = this.metaDriver.get(accessKey(graphSpace,
                                                       id.asString()));
@@ -1413,6 +1649,7 @@ public class MetaManager {
         return HugeAccess.fromMap(map);
     }
 
+    @SuppressWarnings("unchecked")
     public HugeAccess getAccess(String graphSpace, Id id)
                                 throws IOException, ClassNotFoundException {
         String result = this.metaDriver.get(accessKey(graphSpace,
@@ -1423,6 +1660,7 @@ public class MetaManager {
         return HugeAccess.fromMap(map);
     }
 
+    @SuppressWarnings("unchecked")
     public List<HugeAccess> listAccess(String graphSpace, List<Id> ids)
                                        throws IOException,
                                        ClassNotFoundException {
@@ -1443,6 +1681,7 @@ public class MetaManager {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     public List<HugeAccess> listAllAccess(String graphSpace, long limit)
                                           throws IOException,
                                           ClassNotFoundException {
@@ -1462,6 +1701,7 @@ public class MetaManager {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     public List<HugeAccess> listAccessByGroup(String graphSpace,
                                               Id group, long limit)
                                               throws IOException,
@@ -1493,6 +1733,14 @@ public class MetaManager {
         return items[2];
     }
 
+    public void clearGraphAuth(String graphSpace) {
+        E.checkArgument(StringUtils.isNotEmpty(graphSpace),
+                        "The graphSpace is empty");
+        String prefix = this.authPrefix(graphSpace);
+        this.metaDriver.deleteWithPrefix(prefix);
+    }
+
+    @SuppressWarnings("unchecked")
     public List<HugeAccess> listAccessByTarget(String graphSpace,
                                                Id target, long limit)
                                                throws IOException,
@@ -1528,12 +1776,8 @@ public class MetaManager {
     }
 
     public void initDefaultGraphSpace() {
-        String defaultGS = String.join(META_PATH_DELIMITER,
-                                       META_PATH_HUGEGRAPH,
-                                       this.cluster,
-                                       META_PATH_GRAPHSPACE_LIST,
-                                       "DEFAULT");
-        this.metaDriver.put(defaultGS, "DEFAULT");
+        String defaultGraphSpace = "DEFAULT";
+        this.appendGraphSpaceList(defaultGraphSpace);
     }
 
     @SuppressWarnings("unchecked")
@@ -1566,6 +1810,7 @@ public class MetaManager {
         this.metaDriver.put(key, JsonUtil.toJson(serverUrls));
     }
 
+    @SuppressWarnings("unchecked")
     public Map<String, Object> restProperties(String graphSpace,
                                               String serviceId) {
         Map<String, Object> map = null;
@@ -1577,6 +1822,7 @@ public class MetaManager {
         return map;
     }
 
+    @SuppressWarnings("unchecked")
     public Map<String, Object> restProperties(String graphSpace,
                                               String serviceId,
                                               Map<String, Object> properties) {
@@ -1596,6 +1842,7 @@ public class MetaManager {
         return map;
     }
 
+    @SuppressWarnings("unchecked")
     public Map<String, Object> deleteRestProperties(String graphSpace,
                                                     String serviceId,
                                                     String key) {
@@ -1612,6 +1859,21 @@ public class MetaManager {
         }
         return map;
     }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> clearRestProperties(String graphSpace,
+                                                    String serviceId) {
+        Map<String, Object> map = null;
+        String key = restPropertiesKey(graphSpace, serviceId);
+        String result = this.metaDriver.get(key);
+        if (StringUtils.isNotEmpty(result)) {
+            map = JsonUtil.fromJson(result, Map.class);
+            this.metaDriver.delete(key);
+        }
+        return map;
+    }
+
+    
 
     private <V> HugeTask<V> parseTask(String jsonStr, String graphSpace, String graphName) {
         if (Strings.isBlank(jsonStr)) {
@@ -1672,9 +1934,14 @@ public class MetaManager {
         if (status == TaskStatus.UNKNOWN) {
             return null;
         }
-        String statusListKey = this.taskStatusListKey(graphSpace, graphName, id.asString(), status);
+        String statusListKey = this.taskStatusKey(graphSpace, graphName, id.asString(), status);
         String jsonStr = this.metaDriver.get(statusListKey);
-        return parseTask(jsonStr, graphSpace, graphName);
+        HugeTask<V> task = parseTask(jsonStr, graphSpace, graphName);
+        if (null == task) {
+            return null;
+        }
+        task.overwriteStatus(status);
+        return task;
     }
     
     /**
@@ -1731,12 +1998,17 @@ public class MetaManager {
         if (task.lockResult() != null) {
             return task.lockResult();
         }
-        String key = taskLockKey(graphSpace, graphName, task.id().asString());
-        String lease = this.metaDriver.get(key);
-        if (Strings.isBlank(lease)) {
-            return this.lock(key);
+        String lockKey = taskLockKey(graphSpace, graphName, task.id().asString());
+
+        Map<String, String> map = this.metaDriver.scanWithPrefix(lockKey);
+        if (map.size() == 0) {
+            return this.lock(lockKey);
         }
-        return new LockResult();
+
+        LockResult lockResult = new LockResult();
+        lockResult.lockSuccess(false);
+
+        return lockResult;
     }
 
     public <V> void unlockTask(String graphSpace, String graphName, HugeTask<V> task) {
@@ -1904,12 +2176,12 @@ public class MetaManager {
     }
 
     private <V> void removeTaskFromStatusList(String graphSpace, String graphName, String taskId, TaskStatus status) {
-        String key = taskStatusListKey(graphSpace, graphName, taskId, status);
+        String key = taskStatusKey(graphSpace, graphName, taskId, status);
         this.metaDriver.delete(key);
     }
 
     private <V> void addTaskToStatusList(String graphSpace, String graphName, String taskId, String jsonTask, TaskStatus status) {
-        String key = taskStatusListKey(graphSpace, graphName, taskId, status);
+        String key = taskStatusKey(graphSpace, graphName, taskId, status);
         this.metaDriver.put(key, jsonTask);
     }
 
@@ -1944,9 +2216,7 @@ public class MetaManager {
      * Used for task collection examine, when task status changed 
      * @param <V>
      * @param graphSpace
-     * @param taskId
      * @param prevStatus
-     * @param currentStatus
      */
     public <V> void migrateTaskStatus(String graphSpace, String graphName, HugeTask<V> task, TaskStatus prevStatus) {
         synchronized(task) {
@@ -1971,12 +2241,12 @@ public class MetaManager {
         String taskId = task.id().asString();
 
         String taskPriorityKey = taskPriorityKey(graphSpace, graphName, task.priority().toString(), taskId);
-        String statusListKey = taskStatusListKey(graphSpace, graphName, taskId, task.status());
+        String statusListKey = taskStatusKey(graphSpace, graphName, taskId, task.status());
         String taskKey = taskKey(graphSpace, graphName, taskId);
 
         this.metaDriver.delete(taskPriorityKey);
         this.metaDriver.delete(statusListKey);
-        this.metaDriver.delete(taskKey);
+        this.metaDriver.deleteWithPrefix(taskKey);
 
         return null;
     }
@@ -1998,6 +2268,87 @@ public class MetaManager {
 
     public String hstorePDPeers() {
         return this.metaDriver.get(hstorePDPeersKey());
+    }
+
+    public String getDDSHost() {
+        String key = this.ddsHostKey();
+        String host = this.metaDriver.get(key);
+        return host;
+    }
+
+    public String getHugeGraphClusterRole() {
+        String key = this.hugeClusterRoleKey();
+        String role = this.metaDriver.get(key);
+        return role;
+    }
+
+    public String getKafkaBrokerHost() {
+        String key = this.kafkaHostKey();
+        return this.metaDriver.get(key);
+    }
+
+    public String getKafkaBrokerPort() {
+        String key = this.kafkaPortKey();
+        return this.metaDriver.get(key);
+    }
+
+    public Integer getPartitionCount() {
+        String key = this.kafkaPartitionCountKey();
+        String result = this.metaDriver.get(key);
+        try {
+            Integer count = Integer.parseInt(Optional.ofNullable(result).orElse("0"));
+            return count < 1 ? 1 : count;
+        } catch (Exception e) {
+            return 1;
+        }
+    }
+
+    public String getKafkaSlaveServerHost() {
+        String key = this.kafkaSlaveHostKey();
+        return this.metaDriver.get(key);
+    }
+
+    public Integer getKafkaSlaveServerPort() {
+        String key = this.kafkaSlavePortKey();
+        String portStr = this.metaDriver.get(key);
+        int port = Integer.parseInt(portStr);
+        return port;
+    }
+
+
+    public List<String> getKafkaFilteredGraphspace() {
+        String key = this.kafkaFilterGraphspaceKey();
+
+        String raw = this.metaDriver.get(key);
+        if (raw == null) {
+            return Collections.EMPTY_LIST;
+        }
+        String[] parts = raw.split(",");
+        return Arrays.asList(parts);
+    }
+
+    public List<String> getKafkaFilteredGraph() {
+        String key = this.kafkaFilterGraphKey();
+
+        String raw = this.metaDriver.get(key);
+        if (raw == null) {
+            return Collections.EMPTY_LIST;
+        }
+        String[] parts = raw.split(",");
+        return Arrays.asList(parts);
+    }
+
+    public void updateKafkaFilteredGraphspace(List<String> graphSpaces) {
+        String key = this.kafkaFilterGraphspaceKey();
+        String val = String.join(",", graphSpaces);
+        this.metaDriver.put(key, val);
+
+    }
+
+    public void updateKafkaFilteredGraph(List<String> graphs) {
+        String key = this.kafkaFilterGraphKey();
+        String val = String.join(",", graphs);
+        this.metaDriver.put(key, val);
     }
 
     public enum MetaDriverType {

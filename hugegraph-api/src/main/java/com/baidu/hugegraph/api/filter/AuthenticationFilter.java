@@ -42,6 +42,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.tinkerpop.gremlin.server.auth.AuthenticationException;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.utils.Charsets;
+import org.slf4j.Logger;
 
 import com.baidu.hugegraph.auth.HugeAuthenticator;
 import com.baidu.hugegraph.auth.HugeAuthenticator.RequiredPerm;
@@ -60,6 +61,8 @@ public class AuthenticationFilter implements ContainerRequestFilter {
 
     public static final String BASIC_AUTH_PREFIX = "Basic ";
     public static final String BEARER_TOKEN_PREFIX = "Bearer ";
+
+    private static final Logger LOG = Log.logger(AuthenticationFilter.class);
 
     private static final HugeGraphLogger LOGGER
             = Log.getLogger(AuthenticationFilter.class);
@@ -265,15 +268,6 @@ public class AuthenticationFilter implements ContainerRequestFilter {
                 } else {
                     valid = true;
                 }
-            }
-
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.logCustomDebug(
-                    "Verify permission {} {} for user '{}' with role {}",
-                    "Jermy Li",
-                    requiredPerm.action().string(),
-                    requiredPerm.resourceObject(),
-                    this.user.username(), this.user.role());
             }
 
             if (!valid &&

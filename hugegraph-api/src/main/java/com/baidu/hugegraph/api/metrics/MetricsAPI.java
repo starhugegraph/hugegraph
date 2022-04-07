@@ -63,7 +63,8 @@ public class MetricsAPI extends API {
     private SystemMetrics systemMetrics;
 
     static {
-        JsonUtil.registerModule(new MetricsModule(SECONDS, MILLISECONDS, false));
+        JsonUtil.registerModule(new MetricsModule(SECONDS, MILLISECONDS,
+                                                  false));
     }
 
     private static final String strHelp = "# HELP ";
@@ -128,7 +129,8 @@ public class MetricsAPI extends API {
 
     private String all() {
         ServerReporter reporter = ServerReporter.instance();
-        Map<String, Map<String, ? extends Metric>> result = new LinkedHashMap<>();
+        Map<String, Map<String, ? extends Metric>> result =
+                                                   new LinkedHashMap<>();
         result.put("gauges", reporter.gauges());
         result.put("counters", reporter.counters());
         result.put("histograms", reporter.histograms());
@@ -141,7 +143,8 @@ public class MetricsAPI extends API {
        return orgKey.replace(".", "_").replace("-", "_");
     }
 
-    private String exportSnapshort(final String helpName, final Snapshot snapshot){
+    private String exportSnapshort(final String helpName,
+                                   final Snapshot snapshot){
         if ( snapshot != null ) {
             StringBuilder snapMetrics = new StringBuilder();
             snapMetrics.append(helpName)
@@ -259,7 +262,8 @@ public class MetricsAPI extends API {
 
         //timer
         for (String tkey : reporter.timers().keySet()) {
-            final com.codahale.metrics.Timer timer = reporter.timers().get(tkey);
+            final com.codahale.metrics.Timer timer = reporter.timers()
+                                                             .get(tkey);
             if (timer != null) {
                 helpName = replaceDotDashInKey(tkey);
                 promeMetrics.append(strHelp)
@@ -285,7 +289,8 @@ public class MetricsAPI extends API {
             }
         }
 
-        MetricsUtil.writePrometheus(promeMetrics, MetricManager.INSTANCE.getRegistry());
+        MetricsUtil.writePrometheus(promeMetrics,
+                                    MetricManager.INSTANCE.getRegistry());
 
         return promeMetrics.toString();
     }

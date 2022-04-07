@@ -29,9 +29,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import com.baidu.hugegraph.StandardHugeGraph;
 import com.baidu.hugegraph.config.CoreOptions;
-import com.baidu.hugegraph.util.DateUtil;
 
 import org.apache.logging.log4j.util.Strings;
 import org.slf4j.Logger;
@@ -40,10 +38,13 @@ import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.HugeGraphParams;
 import com.baidu.hugegraph.concurrent.PausableScheduledThreadPool;
 import com.baidu.hugegraph.util.Consumers;
+import com.baidu.hugegraph.util.DateUtil;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.ExecutorUtil;
 import com.baidu.hugegraph.util.LockUtil;
 import com.baidu.hugegraph.util.Log;
+
+import static com.baidu.hugegraph.task.StandardTaskScheduler.OWN;
 
 public final class TaskManager {
 
@@ -63,6 +64,7 @@ public final class TaskManager {
     protected static final int SCHEDULE_PERIOD = 3; // Unit second
     private static int THREADS;
     private static TaskManager MANAGER;
+    private static String fakeContext;
 
     private final Map<HugeGraphParams, TaskScheduler> schedulers;
 
@@ -71,6 +73,8 @@ public final class TaskManager {
     private final ExecutorService taskDbExecutor;
     private final ExecutorService serverInfoDbExecutor;
     private final PausableScheduledThreadPool schedulerExecutor;
+
+
 
     public static TaskManager instance(int threads) {
         THREADS = threads;
@@ -112,6 +116,10 @@ public final class TaskManager {
                                                       TimeUnit.SECONDS);
     }
 
+    public static void setFakeContext(String fakeContext) {
+        TaskManager.fakeContext = fakeContext;
+    }
+
     public void addScheduler(HugeGraphParams graph) {
         E.checkArgumentNotNull(graph, "The graph can't be null");
         switch (graph.schedulerType()) {
@@ -128,14 +136,14 @@ public final class TaskManager {
                 break;
             case "local":
             default:
-                {
-                    TaskScheduler scheduler = new StandardTaskScheduler(graph,
-                    this.taskExecutor,
-                    this.backupForLoadTaskExecutor,
-                    this.taskDbExecutor,
-                    this.serverInfoDbExecutor);
-                    this.schedulers.put(graph, scheduler);
-                }
+            {
+                TaskScheduler scheduler = new StandardTaskScheduler(graph,
+                                              this.taskExecutor,
+                                              this.backupForLoadTaskExecutor,
+                                              this.taskDbExecutor,
+                                              this.serverInfoDbExecutor);
+                this.schedulers.put(graph, scheduler);
+            }
         }
     }
 
@@ -245,14 +253,6 @@ public final class TaskManager {
 
     public TaskScheduler getScheduler(HugeGraphParams graph) {
         return this.schedulers.get(graph);
-    }
-
-    public ServerInfoManager getServerInfoManager(HugeGraphParams graph) {
-        TaskScheduler scheduler = this.getScheduler(graph);
-        if (scheduler == null) {
-            return null;
-        }
-        return scheduler.serverManager();
     }
 
     public void shutdown(long timeout) {
@@ -385,9 +385,9 @@ public final class TaskManager {
     private void scheduleOrExecuteJobForGraph(TaskScheduler scheduler, boolean skipAuth) {
         E.checkNotNull(scheduler, "scheduler");
         if (scheduler instanceof StandardTaskScheduler) {
-            
+
             StandardTaskScheduler standardTaskScheduler = (StandardTaskScheduler)(scheduler);
-            
+
             if (!skipAuth) {
                 if (!scheduler.graph().started()) {
                     return;
@@ -395,46 +395,18 @@ public final class TaskManager {
             }
 
             // Ensuring the lock contains both graphSpace & graphName
-            ServerInfoManager serverManager = scheduler.serverManager();
             String graph = scheduler.graph().spaceGraphName();
             LockUtil.lock(graph, LockUtil.GRAPH_LOCK);
             try {
                 /*
-                * Skip if:
-                * graph is closed (iterate schedulers before graph is closing)
-                *  or
-                * graph is not initialized(maybe truncated or cleared).
-                *
-                * If graph is closing by other thread, current thread get
-                * serverManager and try lock graph, at the same time other
-                * thread deleted the lock-group, current thread would get
-                * exception 'LockGroup xx does not exists'.
-                * If graph is closed, don't call serverManager.initialized()
-                * due to it will reopen graph tx.
-                */
-                if (!serverManager.graphReady()) {
-                    return;
-                }
-
-                // Update server heartbeat
-                serverManager.heartbeat();
-
-                /*
-                * Master schedule tasks to suitable servers.
-                * There is no suitable server when these tasks are created
-                */ 
-                if (serverManager.master()) {
-                    standardTaskScheduler.scheduleTasks();
-                    if (!serverManager.onlySingleNode()) {
-                        return;
-                    }
-                }
+                 * Master schedule tasks to suitable servers.
+                 * There is no suitable server when these tasks are created
+                 */
+                standardTaskScheduler.scheduleTasks();
                 // Schedule queued tasks scheduled to current server
-                standardTaskScheduler.executeTasksOnWorker(serverManager.selfServerId());
-
+                standardTaskScheduler.executeTasksOnWorker(OWN);
                 // Cancel tasks scheduled to current server
-                standardTaskScheduler.cancelTasksOnWorker(serverManager.selfServerId());
-            
+                standardTaskScheduler.cancelTasksOnWorker(OWN);
             } catch(Throwable e) {
                 LOG.error("Raise throwable when scheduleOrExecuteJob", e);
                 throw e;
@@ -455,7 +427,19 @@ public final class TaskManager {
     }
 
     public static final String getContext() {
-        return contexts.get();
+        return TaskManager.getContext(false);
+    }
+
+    public static final String getContext(boolean useFake) {
+        String context = contexts.get();
+        if (Strings.isEmpty(context) && useFake) {
+            context = TaskManager.fakeContext;
+        }
+        return context;
+    }
+
+    public static final void useFakeContext() {
+        setContext(fakeContext);
     }
 
     public static class ContextCallable<V> implements Callable<V> {

@@ -147,8 +147,8 @@ public class PropertyKeyAPI extends API {
                        @QueryParam("names") List<String> names) {
         boolean listAll = CollectionUtils.isEmpty(names);
         if (listAll) {
-            LOGGER.logCustomDebug(
-                "Graph [{}] list property keys", RestServer.EXECUTOR, graph);
+            LOGGER.logCustomDebug("Graph [{}] list property keys",
+                                  RestServer.EXECUTOR, graph);
         } else {
             LOGGER.logCustomDebug(
                 "Graph [{}] get property keys by names {}",
@@ -178,9 +178,8 @@ public class PropertyKeyAPI extends API {
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("graph") String graph,
                       @PathParam("name") String name) {
-        LOGGER.logCustomDebug(
-            "Graph [{}] get property key by name '{}'",
-            RestServer.EXECUTOR, graph, name);
+        LOGGER.logCustomDebug("Graph [{}] get property key by name '{}'",
+                              RestServer.EXECUTOR, graph, name);
 
         HugeGraph g = graph(manager, graphSpace, graph);
         PropertyKey propertyKey = g.schema().getPropertyKey(name);

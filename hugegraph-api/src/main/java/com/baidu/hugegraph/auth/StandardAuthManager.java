@@ -31,6 +31,7 @@ import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.util.StringEncoding;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.jsonwebtoken.Claims;
 import org.slf4j.Logger;
@@ -143,15 +144,10 @@ public class StandardAuthManager implements AuthManager {
         E.checkState(context != null,
                      "Missing authentication context " +
                      "when verifying resource permission");
-        String username = context.user().username();
+        // String username = context.user().username();
         Object role = context.user().role();
         ResourceObject<V> ro = fetcher.get();
         String action = actionPerm.string();
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Verify permission {} {} for user '{}' with role {}",
-                      action, ro, username, role);
-        }
 
         V result = ro.operated();
         // Verify role permission
@@ -374,8 +370,12 @@ public class StandardAuthManager implements AuthManager {
             HugeTarget target = this.metaManager.findTarget(graphSpace,
                                 IdGenerator.of(DEFAULT_SPACE_TARGET_KEY));
             if (target == null) {
+                ImmutableList<HugeResource> spaceReseources =
+                        ImmutableList.of(new HugeResource(ResourceType.ALL, null,
+                                                          null));
                 target = new HugeTarget(DEFAULT_SPACE_TARGET_KEY,
-                                        graphSpace, ALL_GRAPHS);
+                                        graphSpace, ALL_GRAPHS,
+                                        spaceReseources);
                 this.updateCreator(target);
                 target.create(target.update());
                 this.metaManager.createTarget(graphSpace, target);
@@ -494,6 +494,20 @@ public class StandardAuthManager implements AuthManager {
     }
 
     @Override
+    public boolean isSpaceManager(String graphSpace, String user) {
+        try {
+            String belongId =
+                    this.metaManager.belongId(user, DEFAULT_SPACE_GROUP_KEY);
+
+            return this.metaManager.existBelong(graphSpace,
+                                                IdGenerator.of(belongId));
+        } catch (Exception e) {
+            throw new HugeException("Exception occurs when check if is space " +
+                                    "manager.", e);
+        }
+    }
+
+    @Override
     public Id createAdminManager(String user) {
         try {
             HugeBelong belong = new HugeBelong(ALL_GRAPH_SPACES,
@@ -529,7 +543,7 @@ public class StandardAuthManager implements AuthManager {
         try {
             List<HugeBelong> belongs =
                     this.metaManager.listBelongByGroup(ALL_GRAPH_SPACES,
-                                                       IdGenerator.of(DEFAULT_SPACE_GROUP_KEY),
+                                                       IdGenerator.of(DEFAULT_ADMIN_GROUP_KEY),
                                                        -1);
             for (HugeBelong belong : belongs) {
                 adminManagers.add(belong.source().asString());
@@ -543,6 +557,23 @@ public class StandardAuthManager implements AuthManager {
         adminManagers.add("admin");
 
         return new ArrayList<>(adminManagers);
+    }
+
+    public boolean isAdminManager(String user) {
+
+        if ("admin".equals(user)) {
+            return true;
+        }
+
+        try {
+            String belongId =
+                    this.metaManager.belongId(user, DEFAULT_ADMIN_GROUP_KEY);
+            return this.metaManager.existBelong(ALL_GRAPH_SPACES,
+                                                IdGenerator.of(belongId));
+        } catch (Exception e) {
+            throw new HugeException("Exception occurs when " +
+                                            "check whether is manager", e);
+        }
     }
 
     @Override

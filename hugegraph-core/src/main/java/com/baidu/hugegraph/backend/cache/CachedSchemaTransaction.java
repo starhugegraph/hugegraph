@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.baidu.hugegraph.HugeGraphParams;
-import com.baidu.hugegraph.StandardHugeGraph;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.backend.store.BackendStore;
@@ -146,7 +145,7 @@ public final class CachedSchemaTransaction extends SchemaTransaction {
         this.cachedTypes().put(type, false);
     }
 
-    private void clearCache(boolean notify) {
+    public void clearCache(boolean notify) {
         this.idCache.clear();
         this.nameCache.clear();
         this.arrayCaches.clear();

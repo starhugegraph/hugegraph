@@ -663,6 +663,13 @@ public class CoreOptions extends OptionHolder {
                     disallowEmpty(),
                     "./conf/operator-template.yaml"
             );
+    public static final ConfigOption<String> K8S_QUOTA_TEMPLATE =
+            new ConfigOption<>(
+                    "k8s.quota_template",
+                    "the path of resource quota template.",
+                    disallowEmpty(),
+                    "./conf/resource-quota-template.yaml"
+            );
 
     public static final ConfigOption<Integer> OLTP_CONCURRENT_THREADS =
             new ConfigOption<>(
@@ -688,6 +695,14 @@ public class CoreOptions extends OptionHolder {
                     allowValues("JCF", "EC", "FU"),
                     CollectionType::valueOf,
                     "EC"
+            );
+
+    public static final ConfigOption<Integer> OLTP_QUERY_BATCH_SIZE =
+            new ConfigOption<>(
+                    "oltp.query_batch_size",
+                    "The size of each batch when executing oltp algorithm.",
+                    rangeInt(0, 65535),
+                    1000
             );
 
     public static final ConfigOption<Boolean> VIRTUAL_GRAPH_ENABLE =
