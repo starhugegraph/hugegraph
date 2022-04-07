@@ -349,7 +349,8 @@ public final class GraphManager {
         if (oltpNamespace == null) {
             throw new HugeException(
                       "The config option: %s, value: %s does not exist",
-                      ServerOptions.SERVER_DEFAULT_OLTP_K8S_NAMESPACE.name(), oltp);
+                      ServerOptions.SERVER_DEFAULT_OLTP_K8S_NAMESPACE.name(),
+                      oltp);
         }
         graphSpace.oltpNamespace(oltp);
         // olap namespace
@@ -357,8 +358,9 @@ public final class GraphManager {
         Namespace olapNamespace = this.k8sManager.namespace(olap);
         if (olapNamespace == null) {
             throw new HugeException(
-                "The config option: %s, value: %s does not exist",
-                ServerOptions.SERVER_DEFAULT_OLAP_K8S_NAMESPACE.name(), olap);
+                      "The config option: %s, value: %s does not exist",
+                      ServerOptions.SERVER_DEFAULT_OLAP_K8S_NAMESPACE.name(),
+                      olap);
         }
         graphSpace.olapNamespace(olap);
         // storage is same as oltp
@@ -690,6 +692,7 @@ public final class GraphManager {
         boolean useK8s = config.get(ServerOptions.SERVER_USE_K8S);
 
         if (useK8s) {
+            boolean notDefault = !DEFAULT_GRAPH_SPACE_SERVICE_NAME.equals(name);
             int cpuLimit = space.cpuLimit();
             int memoryLimit = space.memoryLimit();
 
@@ -700,7 +703,7 @@ public final class GraphManager {
             boolean sameNamespace = space.oltpNamespace().equals(space.olapNamespace());
             boolean isNewCreated = attachK8sNamespace(space.oltpNamespace(),
                                                       space.operatorImagePath(), sameNamespace);
-            if (isNewCreated) {
+            if (isNewCreated && notDefault) {
                 if (sameNamespace) {
                     this.makeResourceQuota(space.oltpNamespace(),
                                            cpuLimit + computeCpuLimit,
@@ -713,7 +716,7 @@ public final class GraphManager {
             if (!sameNamespace) {
                 isNewCreated = attachK8sNamespace(space.olapNamespace(),
                                                   space.operatorImagePath(), true);
-                if (isNewCreated) {
+                if (isNewCreated && notDefault) {
                     this.makeResourceQuota(space.olapNamespace(),
                                            computeCpuLimit, computeMemoryLimit);
                 }
