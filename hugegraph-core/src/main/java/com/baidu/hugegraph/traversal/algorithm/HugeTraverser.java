@@ -216,6 +216,9 @@ public class HugeTraverser {
                     Query query = GraphTransaction.constructEdgesQuery(sourceId, this.dir, this.labels);
                     if (this.limit != NO_LIMIT) {
                         query.limit(this.limit);
+                        query.capacity(this.limit);
+                    } else {
+                        query.capacity(Query.NO_CAPACITY);
                     }
                     query.withProperties(this.withEdgeProperties);
                     queryList.add(query);
