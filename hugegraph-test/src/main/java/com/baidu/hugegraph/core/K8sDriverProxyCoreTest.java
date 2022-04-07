@@ -111,8 +111,7 @@ public class K8sDriverProxyCoreTest extends BaseCoreTest {
         }
 
         try {
-            K8sDriverProxy.setConfig(NAMESPACE,
-                                     ENABLE_INTERNAL_ALGORITHM,
+            K8sDriverProxy.setConfig(ENABLE_INTERNAL_ALGORITHM,
                                      INTERNAL_ALGORITHM_IMAGE_URL,
                                      INTERNAL_ALGORITHM,
                                      ALGORITHM_PARAMS);
@@ -125,13 +124,14 @@ public class K8sDriverProxyCoreTest extends BaseCoreTest {
     public void testK8sTask() throws TimeoutException {
         Map<String, String> params = new HashMap<>();
         params.put("k8s.worker_instances", "2");
+        String namespace = NAMESPACE;
         K8sDriverProxy k8sDriverProxy = new K8sDriverProxy("2", COMPUTER);
-        String jobId = k8sDriverProxy.getK8sDriver()
+        String jobId = k8sDriverProxy.getK8sDriver(namespace)
                                      .submitJob(COMPUTER, params);
 
         JobObserver jobObserver = Mockito.mock(JobObserver.class);
         CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-            k8sDriverProxy.getK8sDriver()
+            k8sDriverProxy.getK8sDriver(namespace)
                           .waitJobAsync(jobId, params, jobObserver);
         }, POOL);
 
@@ -146,6 +146,6 @@ public class K8sDriverProxyCoreTest extends BaseCoreTest {
                .onJobStateChanged(Mockito.eq(jobState2));
 
         future.getNow(null);
-        k8sDriverProxy.close();
+        k8sDriverProxy.close(namespace);
     }
 }

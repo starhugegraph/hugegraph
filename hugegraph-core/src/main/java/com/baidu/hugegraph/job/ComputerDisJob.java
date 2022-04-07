@@ -82,6 +82,7 @@ public class ComputerDisJob extends UserJob<Object> {
         String pdPeers = map.get("pd.peers").toString();
         String token = map.get("token").toString();
         int worker = Integer.parseInt(map.get("worker").toString());
+        String namespace = map.get("namespace").toString();
         Object value = map.get("params");
         E.checkArgument(value instanceof Map,
                         "Invalid computer parameters '%s'", value);
@@ -100,21 +101,21 @@ public class ComputerDisJob extends UserJob<Object> {
             String jobId = (String) map.get(INNER_JOB_ID);
             K8sDriverProxy k8sDriverProxy =
             new K8sDriverProxy(String.valueOf(worker * 2), algorithm);
-            boolean flag = k8sDriverProxy.getK8sDriver().cancelJob(jobId,
+            boolean flag = k8sDriverProxy.getK8sDriver(namespace).cancelJob(jobId,
                                                                    k8sParams);
             // TODO: cancel api is not work now, need fix it later
             if (!flag) {
                 LOG.warn("Cancel computer task failed, please check manually");
             }
-            k8sDriverProxy.close();
+            k8sDriverProxy.close(namespace);
         }
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Object execute() throws Exception {
         String input = this.task().input();
         E.checkArgumentNotNull(input, "The input can't be null");
-        @SuppressWarnings("unchecked")
         Map<String, Object> map = fromJson(input, Map.class);
         String status = map.containsKey(INNER_STATUS) ?
                map.get(INNER_STATUS).toString() : null;
@@ -123,12 +124,12 @@ public class ComputerDisJob extends UserJob<Object> {
         Object value = map.get("params");
         E.checkArgument(value instanceof Map,
                         "Invalid computer parameters '%s'", value);
-        @SuppressWarnings("unchecked")
         Map<String, Object> params = (Map<String, Object>) value;
         String algorithm = map.get("algorithm").toString();
         String graph = map.get("graph").toString();
         String pdPeers = map.get("pd.peers").toString();
         String token = map.get("token").toString();
+        String namespace = map.get("namespace").toString();
         int worker = Integer.parseInt(String.valueOf(map.get("worker")));
 
         Map<String, String> k8sParams = new HashMap<>();
@@ -150,8 +151,9 @@ public class ComputerDisJob extends UserJob<Object> {
                       K8sDriverProxy.getAlgorithmClass(algorithm));
 
         if (jobId == null) {
-            jobId = k8sDriverProxy.getK8sDriver().submitJob(algorithm,
+            jobId = k8sDriverProxy.getK8sDriver(namespace).submitJob(algorithm,
                                                             k8sParams);
+            LOG.info("New computerDisJob {} is submitted to namespace {} with params {}", jobId, namespace, k8sParams);
             this.innerJobId = jobId;
             map = fromJson(this.task().input(), Map.class);
             map.put(INNER_JOB_ID, jobId);
@@ -160,7 +162,7 @@ public class ComputerDisJob extends UserJob<Object> {
         }
 
         // Watch job status here, return a future
-        k8sDriverProxy.getK8sDriver().waitJobAsync(jobId, k8sParams,
+        k8sDriverProxy.getK8sDriver(namespace).waitJobAsync(jobId, k8sParams,
                                                    this::onJobStateChanged);
 
         map = fromJson(this.task().input(), Map.class);

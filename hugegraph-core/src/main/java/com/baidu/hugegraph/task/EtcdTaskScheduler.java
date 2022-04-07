@@ -112,7 +112,7 @@ public class EtcdTaskScheduler extends TaskScheduler {
                     TaskStatus.QUEUED, TaskStatus.RUNNING, TaskStatus.HANGING, TaskStatus.CANCELLING, TaskStatus.RESTORING))
             .put(TaskStatus.RUNNING,
                 ImmutableSet.of(
-                    TaskStatus.RUNNING, TaskStatus.SUCCESS, TaskStatus.FAILED, TaskStatus.RESTORING))
+                    TaskStatus.RUNNING, TaskStatus.SUCCESS, TaskStatus.FAILED, TaskStatus.RESTORING, TaskStatus.CANCELLING))
             .put(TaskStatus.CANCELLING,
                 ImmutableSet.of(
                     TaskStatus.CANCELLING, TaskStatus.CANCELLED))
@@ -300,9 +300,12 @@ public class EtcdTaskScheduler extends TaskScheduler {
         E.checkArgumentNotNull(task, "Task can't be null");
         try {
             EtcdTaskScheduler.updateTaskStatus(this.graphSpace(), this.graphName, task, TaskStatus.CANCELLING);
-            task.cancel(true);
+            if (this.processedTasks.contains(task.id())) {
+                task.cancel(true);
+            }
+            EtcdTaskScheduler.updateTaskStatus(this.graphSpace(), this.graphName, task, task.status());
         } catch (Throwable e) {
-
+            LOGGER.logCriticalError(new Exception(e), "cancel task failed!");
         }
     }
 
@@ -404,6 +407,11 @@ public class EtcdTaskScheduler extends TaskScheduler {
 
         if (null != persisted) {
             this.taskMap.put(id, persisted);
+            persisted.callable().task(persisted);
+            persisted.callable().graph(this.graph());
+            if (TaskStatus.COMPLETED_STATUSES.contains(persisted.status())) {
+                EtcdTaskScheduler.updateTaskStatus(graphSpace, graphName, persisted, persisted.status());
+            }
         }
 
         return persisted;
@@ -432,9 +440,12 @@ public class EtcdTaskScheduler extends TaskScheduler {
             if (callable instanceof SysTaskCallable) {
                 ((SysTaskCallable<?>)callable).params(this.graph);
             }
-            task.status(manager.getTaskStatus(this.graphSpace(), this.graphName, task));
+
             HugeTask<V> persisted = persistedMap.get(task.id());
             if (null != persisted) {
+                if (TaskStatus.COMPLETED_STATUSES.contains(persisted.status())) {
+                    task.overwriteStatus(persisted.status());
+                }
                 task.overwriteResult(persisted.result());
             }
         });
@@ -720,24 +731,14 @@ public class EtcdTaskScheduler extends TaskScheduler {
         @Override
         public void run() {
             MetaManager manager = MetaManager.instance();
-            try {
-                LockResult result = EtcdTaskScheduler.lockTask(graphSpace, this.graphName, task);
-                if (result.lockSuccess()) {
-                    task.lockResult(result);
-                    TaskStatus status = manager.getTaskStatus(this.graphSpace, this.graphName, task);
-                    // Only unknown status indicates that the task has not been located
-                    if (status != TaskStatus.UNKNOWN) {
-                        return;
-                    }
-                    manager.createTask(graphSpace, this.graphName, task);
-                    EtcdTaskScheduler.updateTaskStatus(graphSpace, this.graphName, task, TaskStatus.SCHEDULED);
-                    EtcdTaskScheduler.updateTaskContext(graphSpace, this.graphName, task);
-                }
-            } catch (Throwable e) {
-
-            } finally {
-                EtcdTaskScheduler.unlockTask(graphSpace, this.graphName, task);
+            TaskStatus status = manager.getTaskStatus(this.graphSpace, this.graphName, task);
+            // Only unknown status indicates that the task has not been located
+            if (status != TaskStatus.UNKNOWN) {
+                return;
             }
+            EtcdTaskScheduler.updateTaskStatus(graphSpace, this.graphName, task, TaskStatus.SCHEDULED);
+            EtcdTaskScheduler.updateTaskContext(graphSpace, this.graphName, task);
+            manager.createTask(graphSpace, this.graphName, task);
         }
     }
 
@@ -753,6 +754,7 @@ public class EtcdTaskScheduler extends TaskScheduler {
 
         public TaskRunner(HugeTask<V> task, HugeGraphParams graph, Set<Id> processedTasks) {
             this.task = task;
+            task.callable().graph(graph.graph());
             this.graph = graph;
             this.graphSpace = this.graph.graph().graphSpace();
             this.graphName = this.graph.graph().name();
@@ -777,12 +779,11 @@ public class EtcdTaskScheduler extends TaskScheduler {
                 }
 
                 EtcdTaskScheduler.updateTaskStatus(graphSpace, this.graphName, task, TaskStatus.RUNNING);
-
-                this.task.run();
+                Thread t = new Thread(this.task);
+                t.start();
                 // block until task is finished
                 task.get();
                 String result = task.result(); 
-                
                 if (!Strings.isNullOrEmpty(result) ) {
                     task.scheduler().save(task);
                 }
@@ -792,6 +793,8 @@ public class EtcdTaskScheduler extends TaskScheduler {
                 
             } catch (Exception e) {
                 LOGGER.logCriticalError(e, String.format("task %d %s failed due to fatal error", task.id().asString(), task.name()));
+                EtcdTaskScheduler.updateTaskStatus(graphSpace, this.graphName, task, TaskStatus.FAILED);
+            } catch (Throwable t) {
                 EtcdTaskScheduler.updateTaskStatus(graphSpace, this.graphName, task, TaskStatus.FAILED);
             } finally {
                 MetaManager.instance().unlockTask(this.graphSpace, this.graphName, task);

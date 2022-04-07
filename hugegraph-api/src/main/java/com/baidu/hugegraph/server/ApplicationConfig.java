@@ -148,6 +148,7 @@ public class ApplicationConfig extends ResourceConfig {
                             }
 
                             SlaveServerWrapper.getInstance().close();
+                            BrokerConfig.getInstance().close();
                         }
                         if (manager != null) {
                             manager.close();

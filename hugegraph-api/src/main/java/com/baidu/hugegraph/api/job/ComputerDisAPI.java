@@ -56,6 +56,7 @@ import com.baidu.hugegraph.job.ComputerDisJob;
 import com.baidu.hugegraph.job.JobBuilder;
 import com.baidu.hugegraph.k8s.K8sDriverProxy;
 import com.baidu.hugegraph.server.RestServer;
+import com.baidu.hugegraph.space.GraphSpace;
 import com.baidu.hugegraph.task.HugeTask;
 import com.baidu.hugegraph.task.TaskScheduler;
 import com.baidu.hugegraph.task.TaskStatus;
@@ -93,6 +94,9 @@ public class ComputerDisAPI extends API {
             token = manager.authManager().createToken(username);
         }
 
+        GraphSpace space = space(manager, graphSpace);
+        String namespace = space.olapNamespace();
+
         Map<String, Object> input = new HashMap<>();
         input.put("graph", graphSpace + "/" + graph);
         input.put("algorithm", jsonTask.algorithm);
@@ -100,6 +104,7 @@ public class ComputerDisAPI extends API {
         input.put("worker", jsonTask.worker);
         input.put("token", token);
         input.put("pd.peers", manager.pdPeers());
+        input.put("namespace", namespace);
         HugeGraph g = graph(manager, graphSpace, graph);
         JobBuilder<Object> builder = JobBuilder.of(g);
         builder.name("computer-dis:" + jsonTask.algorithm)

@@ -1998,12 +1998,17 @@ public class MetaManager {
         if (task.lockResult() != null) {
             return task.lockResult();
         }
-        String key = taskLockKey(graphSpace, graphName, task.id().asString());
-        String lease = this.metaDriver.get(key);
-        if (Strings.isBlank(lease)) {
-            return this.lock(key);
+        String lockKey = taskLockKey(graphSpace, graphName, task.id().asString());
+
+        Map<String, String> map = this.metaDriver.scanWithPrefix(lockKey);
+        if (map.size() == 0) {
+            return this.lock(lockKey);
         }
-        return new LockResult();
+
+        LockResult lockResult = new LockResult();
+        lockResult.lockSuccess(false);
+
+        return lockResult;
     }
 
     public <V> void unlockTask(String graphSpace, String graphName, HugeTask<V> task) {
