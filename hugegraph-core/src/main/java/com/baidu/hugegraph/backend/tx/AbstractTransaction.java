@@ -29,6 +29,7 @@ import com.baidu.hugegraph.backend.cache.CachedSchemaTransaction;
 import com.baidu.hugegraph.backend.query.ConditionQuery;
 import com.baidu.hugegraph.backend.query.IdPrefixQuery;
 import com.baidu.hugegraph.exception.NotAllowException;
+import com.baidu.hugegraph.iterator.CIter;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
@@ -179,7 +180,7 @@ public abstract class AbstractTransaction implements Transaction {
     }
 
     @Watched(prefix = "tx")
-    public List<Iterator<BackendEntry>> query(List<Query> queries) {
+    public List<CIter<BackendEntry>> query(List<Query> queries) {
         E.checkArgument(queries != null && !queries.isEmpty(), "queries is empty or null");
 
         this.beforeRead();

@@ -26,6 +26,7 @@ import java.util.function.Function;
 
 import com.baidu.hugegraph.backend.query.ConditionQuery;
 import com.baidu.hugegraph.backend.query.ConditionQueryFlatten;
+import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.iterator.ExtendableIterator;
 import com.baidu.hugegraph.iterator.FlatMapperIterator;
 import org.slf4j.Logger;
@@ -146,9 +147,9 @@ public class RaftBackendStore implements BackendStore {
     }
 
     @Override
-    public List<Iterator<BackendEntry>> query(List<Query> queries,
-                                              Function<Query, Query> queryWriter) {
-        List<Iterator<BackendEntry>> result = new ArrayList<>();
+    public List<CIter<BackendEntry>> query(List<Query> queries,
+                                           Function<Query, Query> queryWriter) {
+        List<CIter<BackendEntry>> result = new ArrayList<>();
 
         FlatMapperIterator<Query, BackendEntry> it =
                 new FlatMapperIterator<>(queries.listIterator(), query -> {

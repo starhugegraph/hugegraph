@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 
 import javax.ws.rs.ForbiddenException;
 
+import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.type.define.GraphReadMode;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.tinkerpop.gremlin.structure.Edge;
@@ -1013,7 +1014,7 @@ public class GraphTransaction extends IndexableTransaction implements AutoClosea
     }
 
     @Watched
-    public List<Iterator<Edge>> queryEdges(List<Query> queryList) {
+    public List<CIter<Edge>> queryEdges(List<Query> queryList) {
         if (queryList == null || queryList.size() <= 0) {
             return Collections.emptyList();
         }
@@ -1053,7 +1054,7 @@ public class GraphTransaction extends IndexableTransaction implements AutoClosea
         return edges;
     }
 
-    protected List<Iterator<Edge>> queryEdgesFromBackend(List<Query> queryList) {
+    protected List<CIter<Edge>> queryEdgesFromBackend(List<Query> queryList) {
         if (queryList.size() <= 0) {
             return Collections.emptyList();
         }
@@ -1067,7 +1068,7 @@ public class GraphTransaction extends IndexableTransaction implements AutoClosea
             assert query.withProperties() == withProperties;
         }
 
-        List<Iterator<BackendEntry>> queryResults = this.query(queryList);
+        List<CIter<BackendEntry>> queryResults = this.query(queryList);
 
         return queryResults.stream().map(it -> new FlatMapperIterator<>(it, entry -> {
             // Edges are in a vertex

@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 
+import com.baidu.hugegraph.iterator.CIter;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.slf4j.Logger;
@@ -163,14 +164,14 @@ public class HugeTraverser {
     }
 
     @Watched
-    protected Iterator<Iterator<Edge>> edgesOfVertices(Set<Id> sources, Directions dir,
+    protected Iterator<CIter<Edge>> edgesOfVertices(Set<Id> sources, Directions dir,
                                            Id label, long limit,
                                            boolean withEdgeProperties) {
 
         return new EdgesOfVerticesIterator(sources, dir, label, limit, withEdgeProperties);
     }
 
-    class EdgesOfVerticesIterator implements Iterator<Iterator<Edge>> {
+    class EdgesOfVerticesIterator implements Iterator<CIter<Edge>> {
 
         private final int batchSize;
         private Id[] labels = {};
@@ -178,7 +179,7 @@ public class HugeTraverser {
         private long limit;
         private boolean withEdgeProperties;
         private Iterator<Id> sources;
-        private Iterator<Iterator<Edge>> currentIt;
+        private Iterator<CIter<Edge>> currentIt;
 
         public EdgesOfVerticesIterator(Set<Id> sources, Directions dir,
                                        Id label, long limit,
@@ -205,7 +206,7 @@ public class HugeTraverser {
         }
 
         @Override
-        public Iterator<Edge> next() {
+        public CIter<Edge> next() {
             if (this.currentIt != null && this.currentIt.hasNext()) {
                 return this.currentIt.next();
             }
@@ -221,8 +222,8 @@ public class HugeTraverser {
                     queryList.add(query);
                 } while (queryList.size() < batchSize && this.sources.hasNext());
 
-                List<Iterator<Edge>> its = graph().edges(queryList);
-                Iterator<Iterator<Edge>> cit = its.listIterator();
+                List<CIter<Edge>> its = graph().edges(queryList);
+                Iterator<CIter<Edge>> cit = its.listIterator();
                 if (cit.hasNext()) {
                     this.currentIt = cit;
                     return this.currentIt.next();

@@ -24,6 +24,7 @@ import com.baidu.hugegraph.backend.query.ConditionQuery;
 import com.baidu.hugegraph.backend.query.ConditionQueryFlatten;
 import com.baidu.hugegraph.backend.query.Query;
 import com.baidu.hugegraph.exception.ConnectionException;
+import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.iterator.ExtendableIterator;
 import com.baidu.hugegraph.iterator.FlatMapperIterator;
 import com.baidu.hugegraph.type.HugeType;
@@ -87,9 +88,9 @@ public abstract class AbstractBackendStore<Session extends BackendSession>
 
 
     @Override
-    public List<Iterator<BackendEntry>> query(List<Query> queries,
-                                              Function<Query, Query> queryWriter) {
-        List<Iterator<BackendEntry>> result = new ArrayList<>();
+    public List<CIter<BackendEntry>> query(List<Query> queries,
+                                           Function<Query, Query> queryWriter) {
+        List<CIter<BackendEntry>> result = new ArrayList<>();
 
         FlatMapperIterator<Query, BackendEntry> it =
                 new FlatMapperIterator<>(queries.listIterator(), query -> {
