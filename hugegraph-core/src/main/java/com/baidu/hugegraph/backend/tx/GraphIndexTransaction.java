@@ -714,7 +714,12 @@ public class GraphIndexTransaction extends AbstractTransaction {
                 ids.addAll(index.elementIds());
                 if (query.reachLimit(ids.size())) {
                     try {
-                        ((CIter<?>) entries).close();
+                        if (entries instanceof CIter) {
+                            ((CIter<?>) entries).close();
+                        } else {
+                            LOG.warn("Failed to close iterator {}({})",
+                                     entries, entries.getClass());
+                        }
                     } catch (Exception e) {
                         throw new HugeException("Failed to close iterator", e);
                     }
