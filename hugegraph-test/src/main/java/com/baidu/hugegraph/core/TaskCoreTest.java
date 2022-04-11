@@ -557,8 +557,8 @@ public class TaskCoreTest extends BaseCoreTest {
         scheduler.cancel(task3);
         task3 = scheduler.task(task3.id());
         Assert.assertEquals(TaskStatus.FAILED, task3.status());
-        Assert.assertContains("LimitExceedException: Job results size 800001 " +
-                              "has exceeded the max limit 800000",
+        Assert.assertContains("LimitExceedException: Job results size " +
+                              "20000001 has exceeded the max limit 20000000",
                               task3.result());
 
         // Cancel failure task with big results (task exceeded limit 16M)
