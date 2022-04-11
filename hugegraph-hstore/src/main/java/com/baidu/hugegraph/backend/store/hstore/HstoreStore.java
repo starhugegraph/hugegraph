@@ -38,6 +38,7 @@ import com.baidu.hugegraph.backend.store.BackendTable;
 import com.baidu.hugegraph.backend.store.hstore.HstoreSessions.Session;
 import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.config.HugeConfig;
+import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.define.GraphMode;
 import com.baidu.hugegraph.type.define.HugeKeys;
@@ -292,8 +293,8 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
     }
 
     @Override
-    public List<Iterator<BackendEntry>> query(List<Query> queries,
-                                              Function<Query, Query> queryWriter) {
+    public List<CIter<BackendEntry>> query(List<Query> queries,
+                                           Function<Query, Query> queryWriter) {
         if (queries == null && queries.size() <= 0) {
             return new LinkedList<>();
         }
@@ -310,11 +311,11 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         return query(typeList, idPrefixQueries);
     }
 
-    public List<Iterator<BackendEntry>> query(List<HugeType> typeList,
+    public List<CIter<BackendEntry>> query(List<HugeType> typeList,
                                               List<IdPrefixQuery> queries) {
         Lock readLock = this.storeLock.readLock();
         readLock.lock();
-        LinkedList<Iterator<BackendEntry>> results = new LinkedList<>();
+        LinkedList<CIter<BackendEntry>> results = new LinkedList<>();
         try {
             this.checkOpened();
             Session session = this.sessions.session();
@@ -334,7 +335,9 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
                 // Merge olap results as needed
                 Query query = queries.get(i);
                 entries = getBackendEntryIterator(entries, query);
-                results.add(entries);
+                if (entries instanceof  CIter){
+                    results.add((CIter)entries);
+                }
             }
             return results;
         } finally {

@@ -34,6 +34,7 @@ import com.baidu.hugegraph.backend.store.BackendMutation;
 import com.baidu.hugegraph.backend.store.BackendStore;
 import com.baidu.hugegraph.backend.store.BackendStoreProvider;
 import com.baidu.hugegraph.config.HugeConfig;
+import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.iterator.ExtendableIterator;
 import com.baidu.hugegraph.iterator.FlatMapperIterator;
 import com.baidu.hugegraph.type.HugeType;
@@ -181,9 +182,9 @@ public class CachedBackendStore implements BackendStore {
 
     @SuppressWarnings("unchecked")
     @Override
-    public List<Iterator<BackendEntry>> query(List<Query> queries,
-                                              Function<Query, Query> queryWriter) {
-        List<Iterator<BackendEntry>> result = new ArrayList<>();
+    public List<CIter<BackendEntry>> query(List<Query> queries,
+                                           Function<Query, Query> queryWriter) {
+        List<CIter<BackendEntry>> result = new ArrayList<>();
 
         FlatMapperIterator<Query, BackendEntry> it =
                 new FlatMapperIterator<>(queries.listIterator(), query -> {

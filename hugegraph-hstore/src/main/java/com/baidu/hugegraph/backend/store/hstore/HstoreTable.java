@@ -226,8 +226,11 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
                 session, queries, tableName);
         LinkedList<Iterator<BackendEntry>> iterators = new LinkedList<>();
         for (int i = 0; i < queryByPrefixList.size(); i++) {
+            IdPrefixQuery q = queries.get(i).copy();
+            q.capacity(Query.NO_CAPACITY);
+            q.limit(Query.NO_LIMIT);
             BackendEntryIterator iterator = newEntryIterator(
-                    queryByPrefixList.get(i), queries.get(i));
+                    queryByPrefixList.get(i), q);
             iterators.add(iterator);
         }
         return iterators;

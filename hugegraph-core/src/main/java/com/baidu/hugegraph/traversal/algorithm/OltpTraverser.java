@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
+import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.structure.HugeEdge;
 import com.baidu.hugegraph.type.define.Directions;
 import com.google.common.collect.ImmutableSet;
@@ -140,13 +141,13 @@ public abstract class OltpTraverser extends HugeTraverser
         return total;
     }
 
-    protected <K> long traverseBatch(Iterator<Iterator<K>> iterator, Consumer<Iterator<K>> consumer,
+    protected <K> long traverseBatch(Iterator<CIter<K>> iterator, Consumer<CIter<K>> consumer,
                                 String name, int queueWorkerSize) {
         if (!iterator.hasNext()) {
             return 0L;
         }
 
-        Consumers<Iterator<K>> consumers = new Consumers<>(executors.getExecutor(),
+        Consumers<CIter<K>> consumers = new Consumers<>(executors.getExecutor(),
                 consumer, null, queueWorkerSize);
         consumers.start(name);
         long total = 0L;
@@ -154,7 +155,7 @@ public abstract class OltpTraverser extends HugeTraverser
             while (iterator.hasNext()) {
 //                this.edgeIterCounter++;
                 total++;
-                Iterator<K> v = iterator.next();
+                CIter<K> v = iterator.next();
                 consumers.provide(v);
             }
         } catch (Consumers.StopExecution e) {
@@ -168,6 +169,13 @@ public abstract class OltpTraverser extends HugeTraverser
                 throw Consumers.wrapException(e);
             } finally {
                 executors.returnExecutor(consumers.executor());
+                iterator.forEachRemaining(it -> {
+                    try {
+                        it.close();
+                    } catch (Exception ex) {
+                        LOG.warn("Exception when closing CIter", ex);
+                    }
+                });
                 CloseableIterator.closeIterator(iterator);
             }
         }
@@ -260,7 +268,7 @@ public abstract class OltpTraverser extends HugeTraverser
 
         Set<Id> neighbors = newSet(true);
 
-        Iterator<Iterator<Edge>> edgeIts = edgesOfVertices(vertices, dir, label, degree, false);
+        Iterator<CIter<Edge>> edgeIts = edgesOfVertices(vertices, dir, label, degree, false);
         this.traverseBatch(edgeIts, new AdjacentVerticesBatchConsumer(
                 sourceV, excluded, limit, neighbors
         ), "traverse-ite-edge", 1);
@@ -338,7 +346,7 @@ public abstract class OltpTraverser extends HugeTraverser
         }
     }
 
-    class AdjacentVerticesBatchConsumer implements Consumer<Iterator<Edge>> {
+    class AdjacentVerticesBatchConsumer implements Consumer<CIter<Edge>> {
 
         private Id sourceV;
         private Set<Id> excluded;
@@ -354,7 +362,7 @@ public abstract class OltpTraverser extends HugeTraverser
         }
 
         @Override
-        public void accept(Iterator<Edge> edges) {
+        public void accept(CIter<Edge> edges) {
             while (edges.hasNext()) {
                 edgeIterCounter++;
                 HugeEdge e = (HugeEdge) edges.next();
@@ -367,17 +375,29 @@ public abstract class OltpTraverser extends HugeTraverser
                 }
                 neighbors.add(target);
                 if (limit != NO_LIMIT && neighbors.size() >= limit) {
+                    if (edges.hasNext()) {
+                        try {
+                            edges.close();
+                        } catch (Exception ex) {
+                            LOG.warn("Exception when closing CIter", ex);
+                        }
+                    }
                     return;
                 }
             }
         }
 
         @Override
-        public Consumer<Iterator<Edge>> andThen(Consumer<? super Iterator<Edge>> after) {
+        public Consumer<CIter<Edge>> andThen(Consumer<? super CIter<Edge>> after) {
             java.util.Objects.requireNonNull(after);
-            return (Iterator<Edge> t) -> {
+            return (CIter<Edge> t) -> {
                 accept(t);
                 if (limit != NO_LIMIT && neighbors.size() >= limit) {
+                    try {
+                        t.close();
+                    } catch (Exception ex) {
+                        LOG.warn("Exception when closing CIter", ex);
+                    }
                     return;
                 } else {
                     after.accept(t);

@@ -395,6 +395,14 @@ public class HstoreSessionsImpl extends HstoreSessions {
         }
 
         @Override
+        public BackendColumnIterator getWithBatch(String table,
+                                                        List<HgOwnerKey> keys) {
+            assert !this.hasChanges();
+            HgKvIterator<HgKvEntry> kvIterator = this.graph.batchGet(table, keys);
+            return new ColumnIterator<HgKvIterator>(table, kvIterator);
+        }
+
+        @Override
         public List<BackendColumnIterator> scan(String table, List<HgOwnerKey> keys,
                                                 int scanType, long limit) {
             HgScanQuery scanQuery = HgScanQuery.prefixOf(table, keys)

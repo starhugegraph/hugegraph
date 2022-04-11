@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.baidu.hugegraph.backend.cache.CachedGraphTransaction;
 import com.baidu.hugegraph.backend.cache.VirtualGraphTransaction;
+import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.vgraph.VirtualGraph;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tinkerpop.gremlin.process.computer.GraphComputer;
@@ -749,7 +750,7 @@ public class StandardHugeGraph implements HugeGraph {
 
     @Override
     @Watched
-    public List<Iterator<Edge>> edges(List<Query> queryList) {
+    public List<CIter<Edge>> edges(List<Query> queryList) {
         return this.graphTransaction().queryEdges(queryList);
     }
 

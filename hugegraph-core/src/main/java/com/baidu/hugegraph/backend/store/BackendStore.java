@@ -28,6 +28,7 @@ import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.backend.query.Query;
 import com.baidu.hugegraph.config.HugeConfig;
+import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.util.E;
 
@@ -67,8 +68,8 @@ public interface BackendStore {
 
     // Query data
     public Iterator<BackendEntry> query(Query query);
-    public List<Iterator<BackendEntry>> query(List<Query> queries,
-                                              Function<Query, Query> queryWriter);
+    public List<CIter<BackendEntry>> query(List<Query> queries,
+                                           Function<Query, Query> queryWriter);
 
     public Number queryNumber(Query query);
 

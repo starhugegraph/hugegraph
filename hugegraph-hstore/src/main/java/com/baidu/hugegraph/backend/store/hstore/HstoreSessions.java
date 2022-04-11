@@ -105,6 +105,9 @@ public abstract class HstoreSessions extends BackendSessionPool {
                              SCAN_LT_END);
         }
 
+        public abstract BackendColumnIterator getWithBatch(String table,
+                                                         List<HgOwnerKey> keys);
+
         public abstract List<BackendColumnIterator> scan(String table,
                                                    List<HgOwnerKey> keys,
                                                    int scanType,long limit);
