@@ -258,9 +258,13 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         if (query.conditions().isEmpty()) {
             assert !query.ids().isEmpty();
             // NOTE: this will lead to lazy create rocksdb iterator
-            return new BackendColumnIteratorWrapper(new FlatMapperIterator<>(
-                   query.ids().iterator(), id -> this.queryById(session, id)
-            ));
+            LinkedList<HgOwnerKey> hgOwnerKeys = new LinkedList<>();
+            for (Id id: query.ids()) {
+                hgOwnerKeys.add(HgOwnerKey.of(this.ownerByIdDelegate.apply(id),
+                                              id.asBytes()));
+            }
+            BackendColumnIterator withBatch = session.getWithBatch(this.table(), hgOwnerKeys);
+            return new BackendColumnIteratorWrapper(withBatch);
         }
 
         // Query by condition (or condition + id)

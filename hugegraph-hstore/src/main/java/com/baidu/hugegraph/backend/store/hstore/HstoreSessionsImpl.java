@@ -396,9 +396,9 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public BackendColumnIterator getWithBatch(String table,
-                                                        List<HgOwnerKey> keys) {
+                                                  List<HgOwnerKey> keys) {
             assert !this.hasChanges();
-            HgKvIterator<HgKvEntry> kvIterator = this.graph.batchGet(table, keys);
+            HgKvIterator<HgKvEntry> kvIterator = this.graph.batchPrefix(table, keys);
             return new ColumnIterator<HgKvIterator>(table, kvIterator);
         }
 
