@@ -45,7 +45,7 @@ public class Query implements Cloneable {
     public static final long COMMIT_BATCH = 500;
 
     public static final long NO_CAPACITY = -1L;
-    public static final long DEFAULT_CAPACITY = 800000L; // HugeGraph-777
+    public static final long DEFAULT_CAPACITY = 20_000_000L; // HugeGraph-777
 
     private static final ThreadLocal<Long> capacityContext = new ThreadLocal<>();
 
