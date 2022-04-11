@@ -550,7 +550,7 @@ public class TaskCoreTest extends BaseCoreTest {
         Assert.assertEquals("3", task2.result());
 
         // Cancel failure task with big results (job size exceeded limit)
-        String bigList = "def l=[]; for (i in 1..800001) l.add(i); l;";
+        String bigList = "def l=[]; for (i in 1..20000001) l.add(i); l;";
         HugeTask<Object> task3 = runGremlinJob(bigList);
         task3 = scheduler.waitUntilTaskCompleted(task3.id(), 12);
         Assert.assertEquals(TaskStatus.FAILED, task3.status());
@@ -612,7 +612,7 @@ public class TaskCoreTest extends BaseCoreTest {
                 scheduler.task(finalTask1.id()));
 
         // Cancel failure task with big results (job size exceeded limit)
-        String bigList = "def l=[]; for (i in 1..800001) l.add(i); l;";
+        String bigList = "def l=[]; for (i in 1..20000001) l.add(i); l;";
         HugeTask<Object> task3 = runGremlinJob(bigList);
         task3 = scheduler.waitUntilTaskCompleted(task3.id(), 12);
         Assert.assertEquals(TaskStatus.FAILED, task3.status());
