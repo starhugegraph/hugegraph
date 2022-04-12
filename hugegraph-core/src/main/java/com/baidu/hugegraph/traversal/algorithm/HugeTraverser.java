@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
@@ -164,22 +165,26 @@ public class HugeTraverser {
     }
 
     @Watched
-    protected Iterator<CIter<Edge>> edgesOfVertices(Set<Id> sources, Directions dir,
+    protected EdgesOfVerticesIterator edgesOfVertices(Set<Id> sources, Directions dir,
                                            Id label, long limit,
                                            boolean withEdgeProperties) {
 
         return new EdgesOfVerticesIterator(sources, dir, label, limit, withEdgeProperties);
     }
 
-    class EdgesOfVerticesIterator implements Iterator<CIter<Edge>> {
+    public class EdgesOfVerticesIterator implements Iterator<CIter<Edge>> {
 
-        private final int batchSize;
+        private int defaultBatchSize;
+        private final long expectDegreePerBatch;
+        private final double batchSizeRatio;
         private Id[] labels = {};
         private Directions dir;
         private long limit;
         private boolean withEdgeProperties;
         private Iterator<Id> sources;
         private Iterator<CIter<Edge>> currentIt;
+        private Supplier<Double> avgDegreeSupplier;
+
 
         public EdgesOfVerticesIterator(Set<Id> sources, Directions dir,
                                        Id label, long limit,
@@ -191,7 +196,13 @@ public class HugeTraverser {
             this.dir = dir;
             this.limit = limit;
             this.withEdgeProperties = withEdgeProperties;
-            this.batchSize = graph().option(CoreOptions.OLTP_QUERY_BATCH_SIZE);
+            this.defaultBatchSize = graph().option(CoreOptions.OLTP_QUERY_BATCH_SIZE);
+            this.expectDegreePerBatch = graph().option(CoreOptions.OLTP_QUERY_BATCH_EXPECT_DEGREE);
+            this.batchSizeRatio = graph().option(CoreOptions.OLTP_QUERY_BATCH_AVG_DEGREE_RATIO);
+        }
+
+        public void setAvgDegreeSupplier(Supplier<Double> supplier) {
+            this.avgDegreeSupplier = supplier;
         }
 
         @Override
@@ -210,6 +221,9 @@ public class HugeTraverser {
             if (this.currentIt != null && this.currentIt.hasNext()) {
                 return this.currentIt.next();
             }
+
+            int batchSize = this.getBatchSize();
+
             while (this.sources.hasNext()) {
                 List<Query> queryList = new ArrayList<>(batchSize);
                 do {
@@ -233,6 +247,18 @@ public class HugeTraverser {
                 }
             }
             return null;
+        }
+
+        private int getBatchSize() {
+            int batchSize = this.defaultBatchSize;
+            if (this.avgDegreeSupplier != null) {
+                double avgDegree = this.avgDegreeSupplier.get();
+                if (avgDegree >= 1) {
+                    batchSize = (int) (this.batchSizeRatio * this.defaultBatchSize +
+                            (1.0D - this.batchSizeRatio) * (expectDegreePerBatch * 1.0D / avgDegree));
+                }
+            }
+            return batchSize;
         }
     }
 

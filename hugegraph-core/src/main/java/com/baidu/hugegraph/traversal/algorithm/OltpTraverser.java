@@ -268,10 +268,11 @@ public abstract class OltpTraverser extends HugeTraverser
 
         Set<Id> neighbors = newSet(true);
 
-        Iterator<CIter<Edge>> edgeIts = edgesOfVertices(vertices, dir, label, degree, false);
-        this.traverseBatch(edgeIts, new AdjacentVerticesBatchConsumer(
-                sourceV, excluded, limit, neighbors
-        ), "traverse-ite-edge", 1);
+        EdgesOfVerticesIterator edgeIts = edgesOfVertices(vertices, dir, label, degree, false);
+        AdjacentVerticesBatchConsumer consumer = new AdjacentVerticesBatchConsumer(
+                sourceV, excluded, limit, neighbors);
+        edgeIts.setAvgDegreeSupplier(consumer::getAvgDegree);
+        this.traverseBatch(edgeIts, consumer, "traverse-ite-edge", 1);
 
         if (limit != NO_LIMIT && neighbors.size() > limit) {
             int redundantNeighborsCount = (int) (neighbors.size() - limit);
@@ -352,6 +353,8 @@ public abstract class OltpTraverser extends HugeTraverser
         private Set<Id> excluded;
         private long limit;
         private Set<Id> neighbors;
+        private double avgDegreeRatio;
+        private double avgDegree;
 
         public AdjacentVerticesBatchConsumer(Id sourceV, Set<Id> excluded, long limit,
                                              Set<Id> neighbors) {
@@ -359,13 +362,31 @@ public abstract class OltpTraverser extends HugeTraverser
             this.excluded = excluded;
             this.limit = limit;
             this.neighbors = neighbors;
+            this.avgDegreeRatio = graph().option(CoreOptions.OLTP_QUERY_BATCH_AVG_DEGREE_RATIO);
+            this.avgDegree = 0;
+        }
+
+        public double getAvgDegree() {
+            return this.avgDegree;
         }
 
         @Override
         public void accept(CIter<Edge> edges) {
+            long degree = 0;
+            Id ownerId = null;
             while (edges.hasNext()) {
                 edgeIterCounter++;
+                degree++;
                 HugeEdge e = (HugeEdge) edges.next();
+
+                Id owner = e.id().ownerVertexId();
+                if (ownerId == null || ownerId.compareTo(owner) != 0) {
+                    vertexIterCounter++;
+                    this.avgDegree = this.avgDegreeRatio * this.avgDegree + (1 - this.avgDegreeRatio) * degree;
+                    degree = 0;
+                    ownerId = owner;
+                }
+
                 Id target = e.id().otherVertexId();
                 boolean matchExcluded = (excluded != null &&
                         excluded.contains(target));

@@ -23,6 +23,7 @@ import static com.baidu.hugegraph.backend.tx.GraphTransaction.COMMIT_BATCH;
 import static com.baidu.hugegraph.config.OptionChecker.allowValues;
 import static com.baidu.hugegraph.config.OptionChecker.disallowEmpty;
 import static com.baidu.hugegraph.config.OptionChecker.positiveInt;
+import static com.baidu.hugegraph.config.OptionChecker.rangeDouble;
 import static com.baidu.hugegraph.config.OptionChecker.rangeInt;
 
 import com.baidu.hugegraph.backend.query.Query;
@@ -702,7 +703,24 @@ public class CoreOptions extends OptionHolder {
                     "oltp.query_batch_size",
                     "The size of each batch when executing oltp algorithm.",
                     rangeInt(0, 65535),
-                    1000
+                    10000
+            );
+
+    public static final ConfigOption<Double> OLTP_QUERY_BATCH_AVG_DEGREE_RATIO =
+            new ConfigOption<>(
+                    "oltp.query_batch_avg_degree_ratio",
+                    "The ratio of exponential approximation for " +
+                            "average degree of iterator when executing oltp algorithm.",
+                    rangeDouble(0D, 1D),
+                    0.95D
+            );
+
+    public static final ConfigOption<Long> OLTP_QUERY_BATCH_EXPECT_DEGREE =
+            new ConfigOption<>(
+                    "oltp.query_batch_expect_degree",
+                    "The expect sum of degree in each batch when executing oltp algorithm.",
+                    rangeInt(10 * 1000L, 1000 * 1000 * 1000L),
+                    100 * 1000 * 1000L
             );
 
     public static final ConfigOption<Boolean> VIRTUAL_GRAPH_ENABLE =
