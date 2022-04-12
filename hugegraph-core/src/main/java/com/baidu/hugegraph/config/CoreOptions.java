@@ -676,8 +676,8 @@ public class CoreOptions extends OptionHolder {
             new ConfigOption<>(
                     "oltp.concurrent_threads",
                     "Thread number to concurrently execute oltp algorithm.",
-                    rangeInt(0, 65535),
-                    10
+                    rangeInt(1, Math.max(10, CoreOptions.CPUS * 2)),
+                    Math.max(10, CoreOptions.CPUS / 2)
             );
 
     public static final ConfigOption<Integer> OLTP_CONCURRENT_DEPTH =
