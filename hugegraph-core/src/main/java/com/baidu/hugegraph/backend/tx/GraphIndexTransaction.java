@@ -69,6 +69,7 @@ import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.exception.NoIndexException;
 import com.baidu.hugegraph.exception.NotSupportException;
+import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.iterator.Metadatable;
 import com.baidu.hugegraph.job.EphemeralJob;
 import com.baidu.hugegraph.job.EphemeralJobBuilder;
@@ -712,6 +713,16 @@ public class GraphIndexTransaction extends AbstractTransaction {
                 this.removeExpiredIndexIfNeeded(index, query.showExpired());
                 ids.addAll(index.elementIds());
                 if (query.reachLimit(ids.size())) {
+                    try {
+                        if (entries instanceof CIter) {
+                            ((CIter<?>) entries).close();
+                        } else {
+                            LOG.warn("Failed to close iterator {}({})",
+                                     entries, entries.getClass());
+                        }
+                    } catch (Exception e) {
+                        throw new HugeException("Failed to close iterator", e);
+                    }
                     break;
                 }
                 Query.checkForceCapacity(ids.size());

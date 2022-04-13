@@ -130,6 +130,8 @@ public class StandardHugeGraph implements HugeGraph {
            CoreOptions.OLTP_CONCURRENT_DEPTH,
            CoreOptions.OLTP_COLLECTION_TYPE,
            CoreOptions.OLTP_QUERY_BATCH_SIZE,
+           CoreOptions.OLTP_QUERY_BATCH_AVG_DEGREE_RATIO,
+           CoreOptions.OLTP_QUERY_BATCH_EXPECT_DEGREE,
            CoreOptions.VERTEX_DEFAULT_LABEL,
            CoreOptions.VERTEX_ENCODE_PK_NUMBER,
            CoreOptions.STORE_GRAPH,

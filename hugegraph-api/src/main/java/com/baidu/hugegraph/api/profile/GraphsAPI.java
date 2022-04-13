@@ -19,6 +19,7 @@
 
 package com.baidu.hugegraph.api.profile;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -151,8 +152,9 @@ public class GraphsAPI extends API {
                               "graph space '{}'", RestServer.EXECUTOR, name,
                               configs, graphSpace);
         String creator = manager.authManager().username();
+
         HugeGraph graph = manager.createGraph(graphSpace, name, creator,
-                                              configs, true);
+                                              convConfig(configs), true);
         if (graph.taskScheduler() instanceof StandardTaskScheduler) {
             graph.tx().close();
         }
@@ -415,5 +417,13 @@ public class GraphsAPI extends API {
 
         HugeGraph g = graph(manager, graphSpace, graph);
         return ImmutableMap.of("graph_read_mode", g.readMode());
+    }
+
+    private static Map<String, Object> convConfig(Map<String, Object> config) {
+        Map<String, Object> result = new HashMap<>(config.size());
+        for (Map.Entry<String, Object> entry : config.entrySet()) {
+            result.put(entry.getKey(), entry.getValue().toString());
+        }
+        return result;
     }
 }
