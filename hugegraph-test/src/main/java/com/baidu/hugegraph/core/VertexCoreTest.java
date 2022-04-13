@@ -1032,9 +1032,15 @@ public class VertexCoreTest extends BaseCoreTest {
         });
 
         // Expect id length <= 128
+        String id = new String(new byte[32767]) + ".";
+        assert id.length() == 32768;
+        graph.addVertex(T.label, "programmer", T.id, id,
+                        "name", "marko", "age", 18, "city", "Beijing");
+
+        // Expect id length <= 32768
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            String largeId = new String(new byte[128]) + ".";
-            assert largeId.length() == 129;
+            String largeId = new String(new byte[32768]) + ".";
+            assert largeId.length() == 32769;
             graph.addVertex(T.label, "programmer", T.id, largeId,
                             "name", "marko", "age", 18, "city", "Beijing");
         });
