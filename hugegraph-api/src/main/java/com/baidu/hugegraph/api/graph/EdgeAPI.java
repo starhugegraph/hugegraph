@@ -139,23 +139,25 @@ public class EdgeAPI extends BatchAPI {
 
         HugeGraph g = graph(manager, graphSpace, graph);
 
-        TriFunction<HugeGraph, Object, String, Vertex> getVertex =
-                    checkVertex ? EdgeAPI::getVertex : EdgeAPI::newVertex;
-
         return this.commit(config, g, jsonEdges.size(), () -> {
             List<Id> ids = new ArrayList<>(jsonEdges.size());
-            for (JsonEdge jsonEdge : jsonEdges) {
+            List<Vertex> sourceVertices = checkVertex ?
+                                          getSourceVertices(g, jsonEdges) :
+                                          newSourceVertices(g, jsonEdges);
+            List<Vertex> targetVertices = checkVertex ?
+                                          getTargetVertices(g, jsonEdges) :
+                                          newTargetVertices(g, jsonEdges);
+
+            for (int i = 0; i < sourceVertices.size(); i++) {
                 /*
                  * NOTE: If the query param 'checkVertex' is false,
                  * then the label is correct and not matched id,
                  * it will be allowed currently
                  */
-                Vertex srcVertex = getVertex.apply(g, jsonEdge.source,
-                                                   jsonEdge.sourceLabel);
-                Vertex tgtVertex = getVertex.apply(g, jsonEdge.target,
-                                                   jsonEdge.targetLabel);
-                Edge edge = srcVertex.addEdge(jsonEdge.label, tgtVertex,
-                                              jsonEdge.properties());
+                Vertex srcVertex = sourceVertices.get(i);
+                Vertex tgtVertex = targetVertices.get(i);
+                Edge edge = srcVertex.addEdge(jsonEdges.get(i).label, tgtVertex,
+                                              jsonEdges.get(i).properties());
                 ids.add((Id) edge.id());
             }
             return manager.serializer().writeIds(ids);
@@ -409,6 +411,53 @@ public class EdgeAPI extends BatchAPI {
         }
     }
 
+    private static List<Vertex> getSourceVertices(HugeGraph graph,
+                                                  List<JsonEdge> jsonEdges) {
+        return getVertices(graph, jsonEdges, true);
+    }
+
+    private static List<Vertex> getTargetVertices(HugeGraph graph,
+                                                  List<JsonEdge> jsonEdges) {
+        return getVertices(graph, jsonEdges, false);
+    }
+
+    private static List<Vertex> getVertices(HugeGraph graph,
+                                            List<JsonEdge> jsonEdges,
+                                            boolean source) {
+        int size = jsonEdges.size();
+        List<Vertex> vertices = new ArrayList<>(size);
+        Object[] ids = new Object[size];
+        String[] labels = new String[size];
+        int index = 0;
+        for (JsonEdge jsonEdge : jsonEdges) {
+            Object id = source ? jsonEdge.source : jsonEdge.target;
+            ids[index] = id;
+            String label = source ? jsonEdge.sourceLabel : jsonEdge.targetLabel;
+            labels[index++] = label;
+        }
+        Iterator<Vertex> vertexIterator;
+        try {
+            vertexIterator = graph.vertices(ids);
+        } catch (NoSuchElementException e) {
+            throw new IllegalArgumentException("Invalid vertex id", e);
+        }
+        index = 0;
+        while (vertexIterator.hasNext()) {
+            HugeVertex vertex = (HugeVertex) vertexIterator.next();
+            Object id = ids[index];
+            String label = labels[index++];
+            if (label != null && !vertex.label().equals(label)) {
+                throw new IllegalArgumentException(String.format(
+                          "The label of vertex '%s' is unmatched, users " +
+                          "expect label '%s', actual label stored is '%s'",
+                          id, label, vertex.label()));
+            }
+            // Clone a new vertex to support multi-thread access
+            vertices.add(vertex.copy());
+        }
+        return vertices;
+    }
+
     private static Vertex getVertex(HugeGraph graph,
                                     Object id, String label) {
         HugeVertex vertex;
@@ -426,6 +475,28 @@ public class EdgeAPI extends BatchAPI {
         }
         // Clone a new vertex to support multi-thread access
         return vertex.copy();
+    }
+
+    private static List<Vertex> newSourceVertices(HugeGraph graph,
+                                                  List<JsonEdge> jsonEdges) {
+        return newVertices(graph, jsonEdges, true);
+    }
+
+    private static List<Vertex> newTargetVertices(HugeGraph graph,
+                                                  List<JsonEdge> jsonEdges) {
+        return newVertices(graph, jsonEdges, false);
+    }
+
+    private static List<Vertex> newVertices(HugeGraph graph,
+                                            List<JsonEdge> jsonEdges,
+                                            boolean source) {
+        List<Vertex> vertices = new ArrayList<>(jsonEdges.size());
+        for (JsonEdge jsonEdge : jsonEdges) {
+            Object id = source ? jsonEdge.source : jsonEdge.target;
+            String label = source ? jsonEdge.sourceLabel : jsonEdge.targetLabel;
+            vertices.add(newVertex(graph, id, label));
+        }
+        return vertices;
     }
 
     private static Vertex newVertex(HugeGraph g, Object id, String label) {

@@ -59,7 +59,6 @@ import com.baidu.hugegraph.backend.store.Shard;
 import com.baidu.hugegraph.backend.store.hstore.HstoreSessions.Countable;
 import com.baidu.hugegraph.backend.store.hstore.HstoreSessions.Session;
 import com.baidu.hugegraph.exception.NotSupportException;
-import com.baidu.hugegraph.iterator.FlatMapperIterator;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
@@ -110,13 +109,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         if (entry == null) {
             return HgStoreClientConst.ALL_PARTITION_OWNER;
         }
-        Id id = null;
-        HugeType type = entry.type();
-        if (type.isIndex()) {
-            id = entry.id();
-        } else {
-            id = entry.originId();
-        }
+        Id id = entry.type().isIndex() ? entry.id() : entry.originId();
         return getOwnerId(id);
     };
 
@@ -221,16 +214,19 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         }
         return newEntryIterator(this.queryBy(session, query), query);
     }
-    public List<Iterator<BackendEntry>> query(Session session, List<IdPrefixQuery> queries,String tableName) {
-        List<BackendColumnIterator> queryByPrefixList = this.queryByPrefixList(
-                session, queries, tableName);
+
+    public List<Iterator<BackendEntry>> query(Session session,
+                                              List<IdPrefixQuery> queries,
+                                              String tableName) {
+        List<BackendColumnIterator> queryByPrefixList =
+                this.queryByPrefixList(session, queries, tableName);
         LinkedList<Iterator<BackendEntry>> iterators = new LinkedList<>();
         for (int i = 0; i < queryByPrefixList.size(); i++) {
             IdPrefixQuery q = queries.get(i).copy();
             q.capacity(Query.NO_CAPACITY);
             q.limit(Query.NO_LIMIT);
-            BackendEntryIterator iterator = newEntryIterator(
-                    queryByPrefixList.get(i), q);
+            BackendEntryIterator iterator =
+                    newEntryIterator(queryByPrefixList.get(i), q);
             iterators.add(iterator);
         }
         return iterators;
@@ -263,7 +259,8 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
                 hgOwnerKeys.add(HgOwnerKey.of(this.ownerByIdDelegate.apply(id),
                                               id.asBytes()));
             }
-            BackendColumnIterator withBatch = session.getWithBatch(this.table(), hgOwnerKeys);
+            BackendColumnIterator withBatch = session.getWithBatch(this.table(),
+                                                                   hgOwnerKeys);
             return new BackendColumnIteratorWrapper(withBatch);
         }
 
@@ -279,13 +276,14 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
             int scanType = Session.SCAN_ANY |
                     (query.withProperties() ? 0 : Session.SCAN_KEYONLY);
             return session.scan(this.table(), ownerKey, ownerKey, null,
-                             null, scanType,
-                             query instanceof ConditionQuery ?
-                             ((ConditionQuery) query).bytes() : null,
-                             page.position());
+                                null, scanType,
+                                query instanceof ConditionQuery ?
+                                ((ConditionQuery) query).bytes() : null,
+                                page.position());
         }
-        return session.scan(this.table(),query instanceof ConditionQuery ?
-                                         ((ConditionQuery) query).bytes() : null) ;
+        return session.scan(this.table(),
+                            query instanceof ConditionQuery ?
+                            ((ConditionQuery) query).bytes() : null) ;
     }
 
     protected BackendColumnIterator queryById(Session session, Id id) {
@@ -324,8 +322,10 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
     }
 
 
-    protected List<BackendColumnIterator> queryByPrefixList(Session session,
-                                                  List<IdPrefixQuery> queries,String tableName) {
+    protected List<BackendColumnIterator> queryByPrefixList(
+                                          Session session,
+                                          List<IdPrefixQuery> queries,
+                                          String tableName) {
         E.checkArgument(queries.size() > 0,
                         "The size of queries must be greater than zero");
         IdPrefixQuery query = queries.get(0);
@@ -379,7 +379,6 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         // throw new NotSupportException("query: %s", query);
         return this.queryAll(session, query);
     }
-
 
     protected BackendColumnIterator queryByRange(Session session, Shard shard,
                                                  ConditionQuery query) {
