@@ -39,23 +39,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.baidu.hugegraph.k8s.K8sDriver;
-import com.baidu.hugegraph.k8s.K8sDriverProxy;
-import com.baidu.hugegraph.meta.lock.LockResult;
-import com.baidu.hugegraph.pd.client.DiscoveryClientImpl;
-import com.baidu.hugegraph.pd.client.PDClient;
-import com.baidu.hugegraph.pd.client.PDConfig;
-import com.baidu.hugegraph.pd.grpc.discovery.NodeInfo;
-import com.baidu.hugegraph.pd.grpc.discovery.NodeInfos;
-import com.baidu.hugegraph.pd.grpc.discovery.Query;
-import com.baidu.hugegraph.pd.grpc.discovery.RegisterType;
-import com.baidu.hugegraph.registerimpl.PdRegister;
-import com.baidu.hugegraph.space.SchemaTemplate;
-import com.baidu.hugegraph.traversal.optimize.HugeScriptTraversal;
-import com.baidu.hugegraph.type.define.GraphReadMode;
-import com.baidu.hugegraph.util.JsonUtil;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.MapConfiguration;
 import org.apache.commons.configuration.PropertiesConfiguration;
@@ -92,25 +78,40 @@ import com.baidu.hugegraph.dto.ServiceDTO;
 import com.baidu.hugegraph.event.EventHub;
 import com.baidu.hugegraph.exception.NotSupportException;
 import com.baidu.hugegraph.io.HugeGraphSONModule;
+import com.baidu.hugegraph.k8s.K8sDriver;
+import com.baidu.hugegraph.k8s.K8sDriverProxy;
 import com.baidu.hugegraph.k8s.K8sManager;
 import com.baidu.hugegraph.k8s.K8sRegister;
 import com.baidu.hugegraph.kafka.BrokerConfig;
 import com.baidu.hugegraph.license.LicenseVerifier;
 import com.baidu.hugegraph.meta.MetaManager;
+import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.metrics.MetricsUtil;
 import com.baidu.hugegraph.metrics.ServerReporter;
+import com.baidu.hugegraph.pd.client.DiscoveryClientImpl;
+import com.baidu.hugegraph.pd.client.PDClient;
+import com.baidu.hugegraph.pd.client.PDConfig;
+import com.baidu.hugegraph.pd.grpc.discovery.NodeInfo;
+import com.baidu.hugegraph.pd.grpc.discovery.NodeInfos;
+import com.baidu.hugegraph.pd.grpc.discovery.Query;
+import com.baidu.hugegraph.registerimpl.PdRegister;
 import com.baidu.hugegraph.serializer.JsonSerializer;
 import com.baidu.hugegraph.serializer.Serializer;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.space.GraphSpace;
+import com.baidu.hugegraph.space.SchemaTemplate;
 import com.baidu.hugegraph.space.Service;
 import com.baidu.hugegraph.space.Service.Status;
 import com.baidu.hugegraph.task.TaskManager;
+import com.baidu.hugegraph.traversal.optimize.HugeScriptTraversal;
 import com.baidu.hugegraph.type.define.CollectionType;
 import com.baidu.hugegraph.type.define.GraphMode;
+import com.baidu.hugegraph.type.define.GraphReadMode;
 import com.baidu.hugegraph.util.ConfigUtil;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Events;
+import com.baidu.hugegraph.util.JsonUtil;
+import com.baidu.hugegraph.util.LockUtil;
 import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.util.collection.CollectionFactory;
 import com.google.common.base.Strings;
@@ -627,20 +628,24 @@ public final class GraphManager {
                                         int maxRoleNumber,
                                         boolean auth, String creator,
                                         Map<String, Object> configs) {
-        checkGraphSpaceName(name);
-        GraphSpace space = new GraphSpace(name, description, cpuLimit,
-                                          memoryLimit, storageLimit,
-                                          maxGraphNumber, maxRoleNumber,
-                                          auth, creator, configs);
-        return this.createGraphSpace(space);
+        return this.lockGraphSpace(name, gs -> {
+            checkGraphSpaceName(gs);
+            GraphSpace space = new GraphSpace(gs, description, cpuLimit,
+                                              memoryLimit, storageLimit,
+                                              maxGraphNumber, maxRoleNumber,
+                                              auth, creator, configs);
+            return this.createGraphSpace(space);
+        });
     }
 
     private GraphSpace updateGraphSpace(GraphSpace space) {
         String name = space.name();
-        this.metaManager.addGraphSpaceConfig(name, space);
-        this.metaManager.notifyGraphSpaceUpdate(name);
-        this.graphSpaces.put(name, space);
-        return space;
+        return this.lockGraphSpace(name, gs -> {
+            this.metaManager.addGraphSpaceConfig(name, space);
+            this.metaManager.notifyGraphSpaceUpdate(name);
+            this.graphSpaces.put(name, space);
+            return space;
+        });
     }
 
     private void makeResourceQuota(String namespace, int cpuLimit,
@@ -683,9 +688,9 @@ public final class GraphManager {
     }
 
     public GraphSpace createGraphSpace(GraphSpace space) {
-        String name = space.name();
-        checkGraphSpaceName(name);
+        checkGraphSpaceName(space.name());
         this.limitStorage(space, space.storageLimit);
+        this.lockGraphSpace(space.name(), name -> {
         this.metaManager.addGraphSpaceConfig(name, space);
         this.metaManager.appendGraphSpaceList(name);
 
@@ -725,6 +730,8 @@ public final class GraphManager {
 
         this.metaManager.notifyGraphSpaceAdd(name);
         this.graphSpaces.put(name, space);
+        return null;
+        });
         return space;
     }
 
@@ -738,36 +745,42 @@ public final class GraphManager {
         }
     }
 
-    public void clearGraphSpace(String name) {
-        // Clear all roles
-        this.metaManager.clearGraphAuth(name);
+    public void clearGraphSpace(String graphspace) {
+        this.lockGraphSpace(graphspace, name -> {
+            // Clear all roles
+            this.metaManager.clearGraphAuth(name);
 
-        // Clear all schemaTemplate
-        this.metaManager.clearSchemaTemplate(name);
+            // Clear all schemaTemplate
+            this.metaManager.clearSchemaTemplate(name);
 
-        // Clear all graphs
-        for (String key : this.graphs.keySet()) {
-            if (key.startsWith(name)) {
-                String[] parts = key.split(DELIMITER);
-                this.dropGraph(parts[0], parts[1], true);
+            // Clear all graphs
+            for (String key : this.graphs.keySet()) {
+                if (key.startsWith(name)) {
+                    String[] parts = key.split(DELIMITER);
+                    this.dropGraph(parts[0], parts[1], true);
+                }
             }
-        }
 
-        // Clear all services
-        for (String key : this.services.keySet()) {
-            if (key.startsWith(name)) {
-                String[] parts = key.split(DELIMITER);
-                this.dropService(parts[0], parts[1]);
+            // Clear all services
+            for (String key : this.services.keySet()) {
+                if (key.startsWith(name)) {
+                    String[] parts = key.split(DELIMITER);
+                    this.dropService(parts[0], parts[1]);
+                }
             }
-        }
+            return null;
+        });
     }
 
-    public void dropGraphSpace(String name) {
-        this.clearGraphSpace(name);
-        this.metaManager.removeGraphSpaceConfig(name);
-        this.metaManager.clearGraphSpaceList(name);
-        this.metaManager.notifyGraphSpaceRemove(name);
-        this.graphSpaces.remove(name);
+    public void dropGraphSpace(String graphspace) {
+        this.lockGraphSpace(graphspace, name -> {
+            this.clearGraphSpace(name);
+            this.metaManager.removeGraphSpaceConfig(name);
+            this.metaManager.clearGraphSpaceList(name);
+            this.metaManager.notifyGraphSpaceRemove(name);
+            this.graphSpaces.remove(name);
+            return null;
+        });
     }
 
     private void registerFakeNodeport(Service service) {
@@ -883,19 +896,13 @@ public final class GraphManager {
     }
 
     public Service createService(String graphSpace, Service service) {
-        String name = service.name();
-        checkServiceName(name);
+        checkServiceName(service.name());
 
-        if (null != service.urls() && service.urls().contains(this.url)) {
-            throw new HugeException("url cannot be same as current url %s",
-                                    this.url);
-        }
-
-
-        GraphSpace gs = this.metaManager.graphSpace(graphSpace);
-
-        LockResult lock = this.metaManager.lock(this.cluster, graphSpace);
-        try {
+        return this.lockGraphSpaceAndService(graphSpace, service.name(), name -> {
+            if (null != service.urls() && service.urls().contains(this.url)) {
+                throw new HugeException("url cannot be same as current url %s", this.url);
+            }
+            GraphSpace gs = this.metaManager.graphSpace(graphSpace);
             if (gs.tryOfferResourceFor(service)) {
                 this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
                 this.metaManager.notifyGraphSpaceUpdate(graphSpace);
@@ -903,12 +910,7 @@ public final class GraphManager {
                 throw new HugeException("Not enough resources for service '%s'",
                                         service);
             }
-        } finally {
-            this.metaManager.unlock(lock, this.cluster, graphSpace);
-        }
 
-        lock = this.metaManager.lock(this.cluster, graphSpace, name);
-        try {
             if (service.k8s()) {
                 List<String> endpoints = this.config.get(
                                          ServerOptions.META_ENDPOINTS);
@@ -931,14 +933,9 @@ public final class GraphManager {
             this.metaManager.addServiceConfig(graphSpace, service);
             this.metaManager.notifyServiceAdd(graphSpace, name);
             this.services.put(serviceName(graphSpace, name), service);
-        } catch (Exception e) {
-            LOG.error("Create service failed {}", e);
-            throw e;
-        } finally {
-            this.metaManager.unlock(lock, this.cluster, graphSpace, name);
-        }
 
-        return service;
+            return service;
+        });
     }
 
     public void startService(String graphSpace, Service service) {
@@ -960,122 +957,128 @@ public final class GraphManager {
         this.metaManager.notifyServiceUpdate(graphSpace, service.name());
     }
 
-    public void stopService(String graphSpace, String name) {
-        Service service = this.service(graphSpace, name);
-        if (null != service && service.k8s()) {
-            GraphSpace gs = this.graphSpace(graphSpace);
-            k8sManager.stopService(gs, service);
-            service.running(0);
-            service.status(Service.Status.STOPPED);
-            this.metaManager.updateServiceConfig(graphSpace, service);
-            this.metaManager.notifyServiceUpdate(graphSpace, service.name());
-            if (!Strings.isNullOrEmpty(service.pdServiceId())) {
-                PdRegister.getInstance().unregister(service.pdServiceId());
+    public void stopService(String graphSpace, String serviceName) {
+        this.lockService(graphSpace, serviceName, name -> {
+            Service service = this.service(graphSpace, name);
+            if (null != service && service.k8s()) {
+                GraphSpace gs = this.graphSpace(graphSpace);
+                k8sManager.stopService(gs, service);
+                service.running(0);
+                service.status(Service.Status.STOPPED);
+                this.metaManager.updateServiceConfig(graphSpace, service);
+                this.metaManager.notifyServiceUpdate(graphSpace, service.name());
+                if (!Strings.isNullOrEmpty(service.pdServiceId())) {
+                    PdRegister.getInstance().unregister(service.pdServiceId());
+                }
             }
-        }
+            return null;
+        });
     }
 
-    public void dropService(String graphSpace, String name) {
-        GraphSpace gs = this.graphSpace(graphSpace);
-        Service service = this.metaManager.service(graphSpace, name);
-        if (null == service) {
-            return;
-        }
-        if (service.k8s()) {
-            this.k8sManager.deleteService(gs, service);
-        }
-        LockResult lock = this.metaManager.lock(this.cluster, graphSpace, name);
-        this.metaManager.removeServiceConfig(graphSpace, name);
-        this.metaManager.notifyServiceRemove(graphSpace, name);
-        this.services.remove(serviceName(graphSpace, name));
-        this.metaManager.unlock(lock, this.cluster, graphSpace, name);
+    public void dropService(String graphSpace, String serviceName) {
+        this.lockGraphSpaceAndService(graphSpace, serviceName, name -> {
+            GraphSpace gs = this.graphSpace(graphSpace);
+            Service service = this.metaManager.service(graphSpace, name);
+            if (null == service) {
+                return null;
+            }
+            if (service.k8s()) {
+                this.k8sManager.deleteService(gs, service);
+            }
+            this.metaManager.removeServiceConfig(graphSpace, name);
+            this.metaManager.notifyServiceRemove(graphSpace, name);
+            this.services.remove(serviceName(graphSpace, name));
 
-        lock = this.metaManager.lock(this.cluster, graphSpace);
-        gs.recycleResourceFor(service);
-        this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
-        this.metaManager.notifyGraphSpaceUpdate(graphSpace);
-        this.metaManager.unlock(lock, this.cluster, graphSpace);
+            gs.recycleResourceFor(service);
+            this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
+            this.metaManager.notifyGraphSpaceUpdate(graphSpace);
 
-        String pdServiceId = service.pdServiceId();
-        LOG.debug("Going to unregister service {} from Pd", pdServiceId);
-        if (StringUtils.isNotEmpty(pdServiceId)) {
-            PdRegister register = PdRegister.getInstance();
-            register.unregister(service.pdServiceId());
-            LOG.debug("Service {} has been withdrew from Pd", pdServiceId);
-        }
+            String pdServiceId = service.pdServiceId();
+            LOG.debug("Going to unregister service {} from Pd", pdServiceId);
+            if (StringUtils.isNotEmpty(pdServiceId)) {
+                PdRegister register = PdRegister.getInstance();
+                register.unregister(service.pdServiceId());
+                LOG.debug("Service {} has been withdrew from Pd", pdServiceId);
+            }
+            return null;
+        });
     }
 
-    public HugeGraph createGraph(String graphSpace, String name, String creator,
+    public HugeGraph createGraph(String graphSpace, String gName, String creator,
                                  Map<String, Object> configs, boolean init) {
-        boolean grpcThread = Thread.currentThread().getName().contains("grpc");
-        if (grpcThread) {
-            HugeGraphAuthProxy.setAdmin();
-        }
-        checkGraphName(name);
-        GraphSpace gs = this.graphSpace(graphSpace);
-        if (!gs.tryOfferGraph()) {
-            throw new HugeException("Failed create graph due to Reach graph " +
-                                    "limit for graph space '%s'", graphSpace);
-        }
-        E.checkArgumentNotNull(name, "The graph name can't be null");
-        E.checkArgument(!this.graphs(graphSpace).contains(name),
-                        "The graph name '%s' has existed", name);
+        return this.lockGraph(graphSpace, gName, name -> {
+            boolean grpcThread = Thread.currentThread().getName()
+                                       .contains("grpc");
+            if (grpcThread) {
+                HugeGraphAuthProxy.setAdmin();
+            }
+            checkGraphName(name);
+            GraphSpace gs = this.graphSpace(graphSpace);
+            if (!gs.tryOfferGraph()) {
+                throw new HugeException("Failed create graph due to Reach graph " +
+                                        "limit for graph space '%s'", graphSpace);
+            }
+            E.checkArgumentNotNull(name, "The graph name can't be null");
+            E.checkArgument(!this.graphs(graphSpace).contains(name),
+                            "The graph name '%s' has existed", name);
 
-        configs.put(ServerOptions.PD_PEERS.name(), this.pdPeers);
-        configs.put(CoreOptions.GRAPH_SPACE.name(), graphSpace);
-        boolean auth = this.metaManager.graphSpace(graphSpace).auth();
-        if (DEFAULT_GRAPH_SPACE_SERVICE_NAME.equals(graphSpace) || !auth) {
-            configs.put("gremlin.graph", "com.baidu.hugegraph.HugeFactory");
-        } else {
-            configs.put("gremlin.graph", "com.baidu.hugegraph.auth.HugeFactoryAuthProxy");
-        }
+            configs.put(ServerOptions.PD_PEERS.name(), this.pdPeers);
+            configs.put(CoreOptions.GRAPH_SPACE.name(), graphSpace);
+            boolean auth = this.metaManager.graphSpace(graphSpace).auth();
+            if (DEFAULT_GRAPH_SPACE_SERVICE_NAME.equals(graphSpace) || !auth) {
+                configs.put("gremlin.graph", "com.baidu.hugegraph.HugeFactory");
+            } else {
+                configs.put("gremlin.graph", "com.baidu.hugegraph.auth.HugeFactoryAuthProxy");
+            }
+            configs.put("graphSpace", graphSpace);
 
-        configs.put("graphSpace", graphSpace);
+            Date timeStamp = new Date();
 
-        Date timeStamp = new Date();
+            configs.putIfAbsent("creator", creator);
+            configs.putIfAbsent("create_time", timeStamp);
+            configs.putIfAbsent("update_time", timeStamp);
 
-        configs.putIfAbsent("creator", creator);
-        configs.putIfAbsent("create_time", timeStamp);
-        configs.putIfAbsent("update_time", timeStamp);
+            Configuration propConfig = this.buildConfig(configs);
+            String storeName = propConfig.getString(CoreOptions.STORE.name());
+            E.checkArgument(name.equals(storeName),
+                            "The store name '%s' not match url name '%s'",
+                            storeName, name);
 
-        Configuration propConfig = this.buildConfig(configs);
-        String storeName = propConfig.getString(CoreOptions.STORE.name());
-        E.checkArgument(name.equals(storeName),
-                        "The store name '%s' not match url name '%s'",
-                        storeName, name);
+            HugeConfig config = new HugeConfig(propConfig);
+            this.checkOptions(graphSpace, config);
+            HugeGraph graph = this.createGraph(graphSpace, config, this.authManager, init);
+            graph.graphSpace(graphSpace);
 
-        HugeConfig config = new HugeConfig(propConfig);
-        this.checkOptions(graphSpace, config);
-        HugeGraph graph = this.createGraph(graphSpace, config,
-                                           this.authManager, init);
-        graph.graphSpace(graphSpace);
+            graph.creator(creator);
+            graph.createTime(new Date());
+            graph.refreshUpdateTime();
 
-        graph.creator(creator);
-        graph.createTime(timeStamp);
-        graph.updateTime(timeStamp);
+            String graphName = graphName(graphSpace, name);
+            if (init) {
+                this.creatingGraphs.add(graphName);
+                configs.put("creator", graph.creator());
+                configs.put("create_time", graph.createTime());
+                configs.put("update_time", graph.updateTime());
+                this.metaManager.addGraphConfig(graphSpace, name, configs);
+                this.metaManager.notifyGraphAdd(graphSpace, name);
+            }
+            this.graphs.put(graphName, graph);
+            this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
+            // Let gremlin server and rest server context add graph
+            this.eventHub.notify(Events.GRAPH_CREATE, graphName, graph);
 
-        String graphName = graphName(graphSpace, name);
-        if (init) {
-            this.creatingGraphs.add(graphName);
-            this.metaManager.addGraphConfig(graphSpace, name, configs);
-            this.metaManager.notifyGraphAdd(graphSpace, name);
-        }
-        this.graphs.put(graphName, graph);
-        this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
-        // Let gremlin server and rest server context add graph
-        this.eventHub.notify(Events.GRAPH_CREATE, graphName, graph);
-
-        String schema = propConfig.getString(
-                        CoreOptions.SCHEMA_INIT_TEMPLATE.name());
-        if (schema == null || schema.isEmpty()) {
+            String schema = propConfig.getString(
+                            CoreOptions.SCHEMA_INIT_TEMPLATE.name());
+            if (schema == null || schema.isEmpty()) {
+                return graph;
+            }
+            String schemas = this.schemaTemplate(graphSpace, schema).schema();
+            prepareSchema(graph, schemas);
+            if (grpcThread) {
+                HugeGraphAuthProxy.resetContext();
+            }
             return graph;
-        }
-        String schemas = this.schemaTemplate(graphSpace, schema).schema();
-        prepareSchema(graph, schemas);
-        if (grpcThread) {
-            HugeGraphAuthProxy.resetContext();
-        }
-        return graph;
+        });
     }
 
     public static void prepareSchema(HugeGraph graph, String gremlin) {
@@ -1163,39 +1166,42 @@ public final class GraphManager {
         }
     }
 
-    public void dropGraph(String graphSpace, String name, boolean clear) {
-        HugeGraph g = this.graph(graphSpace, name);
-        E.checkArgumentNotNull(g, "The graph '%s' doesn't exist", name);
-        if (this.localGraphs.contains(name)) {
-            throw new HugeException("Can't delete graph '%s' loaded from " +
-                                    "local config. Please delete config file " +
-                                    "and restart HugeGraphServer if really " +
-                                    "want to delete it.", name);
-        }
+    public void dropGraph(String graphSpace, String gName, boolean clear) {
+        this.lockGraph(graphSpace, gName, name -> {
+            HugeGraph g = this.graph(graphSpace, name);
+            E.checkArgumentNotNull(g, "The graph '%s' doesn't exist", name);
+            if (this.localGraphs.contains(name)) {
+                throw new HugeException("Can't delete graph '%s' loaded from " +
+                                        "local config. Please delete config file " +
+                                        "and restart HugeGraphServer if really " +
+                                        "want to delete it.", name);
+            }
 
-        String graphName = graphName(graphSpace, name);
-        if (clear) {
-            this.removingGraphs.add(graphName);
-            try {
-                this.metaManager.removeGraphConfig(graphSpace, name);
-                this.metaManager.notifyGraphRemove(graphSpace, name);
-            } catch (Exception e) {
-                throw new HugeException(
-                          "Failed to remove graph config of '%s'", name, e);
+            String graphName = graphName(graphSpace, name);
+            if (clear) {
+                this.removingGraphs.add(graphName);
+                try {
+                    this.metaManager.removeGraphConfig(graphSpace, name);
+                    this.metaManager.notifyGraphRemove(graphSpace, name);
+                } catch (Exception e) {
+                    throw new HugeException(
+                              "Failed to remove graph config of '%s'", name, e);
+                }
+                g.clearBackend();
+                try {
+                    g.close();
+                } catch (Exception e) {
+                    LOG.warn("Failed to close graph", e);
+                }
             }
-            g.clearBackend();
-            try {
-                g.close();
-            } catch (Exception e) {
-                LOG.warn("Failed to close graph", e);
-            }
-        }
-        GraphSpace gs = this.graphSpace(graphSpace);
-        gs.recycleGraph();
-        this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
-        // Let gremlin server and rest server context remove graph
-        LOG.info("Notify remove graph {} by GRAPH_DROP event", name);
-        this.eventHub.notify(Events.GRAPH_DROP, graphName);
+            GraphSpace gs = this.graphSpace(graphSpace);
+            gs.recycleGraph();
+            this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
+            // Let gremlin server and rest server context remove graph
+            LOG.info("Notify remove graph {} by GRAPH_DROP event", name);
+            this.eventHub.notify(Events.GRAPH_DROP, graphName);
+            return null;
+        });
     }
 
     public Set<String> graphSpaces() {
@@ -1910,6 +1916,66 @@ public final class GraphManager {
         return this.pdPeers;
     }
 
+    protected <V> V lockGraphSpace(String name,
+                                   Function<String, V> callback) {
+        String lockName = String.join(LockUtil.LOCK_DELIMITER,
+                                      MetaManager.META_PATH_GRAPHSPACE, name);
+        return this.lock(lockName, name, callback);
+    }
+
+    protected <V> V lockGraphSpaceAndService(String graphspace, String name,
+                                Function<String, V> callback) {
+        String gsLockName = String.join(LockUtil.LOCK_DELIMITER,
+                MetaManager.META_PATH_GRAPHSPACE, name);
+        String srvLockName = String.join(LockUtil.LOCK_DELIMITER,
+                MetaManager.META_PATH_GRAPHSPACE, graphspace,
+                MetaManager.META_PATH_SERVICE, name);
+        MetaManager manager = MetaManager.instance();
+        LockResult gsResult = null;
+        LockResult srvResult = null;
+        try {
+            gsResult = manager.lock(gsLockName);
+            srvResult = manager.lock(srvLockName);
+            if (gsResult.lockSuccess() && srvResult.lockSuccess()) {
+                return callback.apply(name);
+            }
+            return null;
+        } finally {
+            manager.unlock(srvLockName, srvResult);
+            manager.unlock(gsLockName, gsResult);
+        }
+    }
+
+    protected <V> V lockService(String graphspace, String name,
+                                Function<String, V> callback) {
+        String lockName = String.join(LockUtil.LOCK_DELIMITER,
+                MetaManager.META_PATH_GRAPHSPACE, graphspace,
+                MetaManager.META_PATH_SERVICE, name);
+        return this.lock(lockName, name, callback);
+    }
+
+    private <V> V lockGraph(String graphspace, String name,
+                            Function<String, V> callback) {
+        String lockName = String.join(LockUtil.LOCK_DELIMITER,
+                MetaManager.META_PATH_GRAPHSPACE, graphspace,
+                MetaManager.META_PATH_GRAPH, name);
+        return this.lock(lockName, name, callback);
+    }
+
+    private <V> V lock(String lockName, String name,
+                       Function<String, V> callback) {
+        MetaManager manager = MetaManager.instance();
+        LockResult result = null;
+        try {
+            result = manager.lock(lockName);
+            if (result.lockSuccess()) {
+                return callback.apply(name);
+            }
+            return null;
+        } finally {
+            manager.unlock(lockName, result);
+        }
+    }
 
     private static enum PdRegisterType {
 

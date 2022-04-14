@@ -46,8 +46,12 @@ public final class LockUtil {
 
     private static final Logger LOG = Log.logger(LockUtil.class);
 
+    public static final String LOCK_DELIMITER = ".";
+
     public static final String WRITE = "write";
     public static final String READ = "read";
+
+    public static final String SCHEMA = "schema";
 
     public static final String INDEX_LABEL_DELETE = "il_delete";
     public static final String INDEX_LABEL_CLEAR = "il_clear";
