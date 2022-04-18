@@ -70,7 +70,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
 
     private final RocksDBShardSpliter shardSpliter;
 
-    private String database;
+    private final String database;
     public HstoreTable(String database, String table) {
         super(String.format("%s+%s", database, table));
         this.database = database;
@@ -90,7 +90,6 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
     public String getDatabase() {
         return database;
     }
-
 
     @Override
     public void init(Session session) {
@@ -123,8 +122,6 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         return ownerScanDelegate;
     }
 
-
-
     /**
      * 返回Id所属的点ID
      * @param id
@@ -140,6 +137,7 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
         return id != null ? id.asBytes() :
                HgStoreClientConst.ALL_PARTITION_OWNER;
     }
+
     /**
      * 返回Id所属的点ID
      * @param id
@@ -320,7 +318,6 @@ public class HstoreTable extends BackendTable<Session, BackendEntry> {
                             query.start().asBytes(),
                             query.prefix().asBytes(), type, null, position);
     }
-
 
     protected List<BackendColumnIterator> queryByPrefixList(
                                           Session session,

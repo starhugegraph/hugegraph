@@ -1597,7 +1597,12 @@ public class StandardHugeGraph implements HugeGraph {
     public void applyMutation(BackendMutation mutation) {
         this.graphTransaction().applyMutation(mutation);
     }
-    
+
+    @Override
+    public void updatePropertyKey(PropertyKey old, PropertyKey update) {
+        this.schemaTransaction().updatePropertyKey(old, update);
+    }
+
     public String creator() {
         return this.creator;
     }

@@ -615,4 +615,9 @@ public class SchemaTransaction extends IndexableTransaction {
         }
         return task.id();
     }
+
+    public void updatePropertyKey(PropertyKey old, PropertyKey update) {
+        this.removeSchema(old);
+        this.addSchema(update);
+    }
 }

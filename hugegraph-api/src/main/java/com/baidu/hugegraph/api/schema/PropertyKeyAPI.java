@@ -105,12 +105,9 @@ public class PropertyKeyAPI extends API {
                          PropertyKeyAPI.JsonPropertyKey jsonPropertyKey) {
 
         LOGGER.getServerLogger()
-            .logUpdateProperty(graph, action, jsonPropertyKey);
+              .logUpdateProperty(graph, action, jsonPropertyKey);
 
         checkUpdatingBody(jsonPropertyKey);
-        E.checkArgument(name.equals(jsonPropertyKey.name),
-                        "The name in url(%s) and body(%s) are different",
-                        name, jsonPropertyKey.name);
 
         HugeGraph g = graph(manager, graphSpace, graph);
         if (ACTION_CLEAR.equals(action)) {
@@ -123,6 +120,19 @@ public class PropertyKeyAPI extends API {
                     new SchemaElement.TaskWithSchema(propertyKey, id);
             return manager.serializer().writeTaskWithSchema(pk);
         }
+
+        if (ACTION_UPDATE.equals(action)) {
+            PropertyKey propertyKey = g.propertyKey(name);
+            PropertyKey.Builder builder = jsonPropertyKey.convert2Builder(g);
+            PropertyKey newPk = builder.updatePk(propertyKey);
+            // NOTE: use graph clear event to clear schema and graph caches
+            manager.meta().notifyGraphClear(graphSpace, name);
+            return manager.serializer().writePropertyKey(newPk);
+        }
+
+        E.checkArgument(name.equals(jsonPropertyKey.name),
+                        "The name in url(%s) and body(%s) are different",
+                        name, jsonPropertyKey.name);
 
         // Parse action parameter
         boolean append = checkAndParseAction(action);

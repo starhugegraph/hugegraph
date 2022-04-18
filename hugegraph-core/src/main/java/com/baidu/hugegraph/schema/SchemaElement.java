@@ -101,6 +101,10 @@ public abstract class SchemaElement implements Namifiable, Typifiable,
         this.userdata.putAll(userdata);
     }
 
+    public void userdata(Map<String, Object> userdata) {
+        this.userdata.putAll(userdata);
+    }
+
     public void removeUserdata(String key) {
         E.checkArgumentNotNull(key, "The userdata key can't be null");
         this.userdata.remove(key);
