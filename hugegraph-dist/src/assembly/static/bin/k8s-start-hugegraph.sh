@@ -132,7 +132,7 @@ echo "Starting HugeGraphServer..."
 
 export JAVA_HOME=/root/jdk1.8.0_271
 
-sed -i 's/ >> ${OUTPUT} 2>&1//' bin/hugegraph-server.sh
+sed -i 's/ >> ${OUTPUT} 2>&1//' $BIN/hugegraph-server.sh
 
 ${BIN}/hugegraph-server.sh ${CONF}/gremlin-server.yaml ${CONF}/rest-server.properties \
 ${GRAPH_SPACE} ${SERVICE_ID} ${NODE_ID} ${NODE_ROLE} ${META_SERVERS} \
