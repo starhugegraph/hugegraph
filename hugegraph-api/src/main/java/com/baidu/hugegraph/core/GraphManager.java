@@ -1013,7 +1013,7 @@ public final class GraphManager {
         }
         checkGraphName(name);
         GraphSpace gs = this.graphSpace(graphSpace);
-        if (!gs.tryOfferGraph()) {
+        if (!grpcThread && !gs.tryOfferGraph()) {
             throw new HugeException("Failed create graph due to Reach graph " +
                                     "limit for graph space '%s'", graphSpace);
         }
@@ -1061,7 +1061,9 @@ public final class GraphManager {
             this.metaManager.notifyGraphAdd(graphSpace, name);
         }
         this.graphs.put(graphName, graph);
-        this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
+        if (!grpcThread) {
+            this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
+        }
         // Let gremlin server and rest server context add graph
         this.eventHub.notify(Events.GRAPH_CREATE, graphName, graph);
 
@@ -1164,6 +1166,7 @@ public final class GraphManager {
     }
 
     public void dropGraph(String graphSpace, String name, boolean clear) {
+        boolean grpcThread = Thread.currentThread().getName().contains("grpc");
         HugeGraph g = this.graph(graphSpace, name);
         E.checkArgumentNotNull(g, "The graph '%s' doesn't exist", name);
         if (this.localGraphs.contains(name)) {
@@ -1191,8 +1194,10 @@ public final class GraphManager {
             }
         }
         GraphSpace gs = this.graphSpace(graphSpace);
-        gs.recycleGraph();
-        this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
+        if (!grpcThread) {
+            gs.recycleGraph();
+            this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
+        }
         // Let gremlin server and rest server context remove graph
         LOG.info("Notify remove graph {} by GRAPH_DROP event", name);
         this.eventHub.notify(Events.GRAPH_DROP, graphName);
