@@ -132,10 +132,12 @@ echo "Starting HugeGraphServer..."
 
 export JAVA_HOME=/root/jdk1.8.0_271
 
+sed -i 's/ >> ${OUTPUT} 2>&1//' bin/hugegraph-server.sh
+
 ${BIN}/hugegraph-server.sh ${CONF}/gremlin-server.yaml ${CONF}/rest-server.properties \
 ${GRAPH_SPACE} ${SERVICE_ID} ${NODE_ID} ${NODE_ROLE} ${META_SERVERS} \
 ${CLUSTER} ${PD_PEERS} ${WITH_CA} ${CA_FILE} ${CLIENT_CA} ${CLIENT_KEY} \
-${OPEN_SECURITY_CHECK} ${USER_OPTION} ${GC_OPTION} >>${LOGS}/hugegraph-server.log 2>&1 &
+${OPEN_SECURITY_CHECK} ${USER_OPTION} ${GC_OPTION} &
 
 PID="$!"
 # Write pid to file
@@ -156,5 +158,3 @@ if [ "$OPEN_MONITOR" == "true" ]; then
     fi
     echo "An HugeGraphServer monitor task has been append to crontab"
 fi
-
-while true;do sleep 1;done
