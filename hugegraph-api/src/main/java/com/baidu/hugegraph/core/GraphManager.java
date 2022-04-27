@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -1689,13 +1690,13 @@ public final class GraphManager {
                                     HugeConfig config,
                                     TypedOption<?, ?> option) {
         Object incomingValue = config.get(option);
-        for (String graphName : this.graphs.keySet()) {
-            String[] parts = graphName.split(DELIMITER);
-            HugeGraph hugeGraph = this.graph(graphSpace, parts[1]);
-            if (hugeGraph == null) {
+        for (Map.Entry<String, Graph> entry : this.graphs.entrySet()) {
+            String[] parts = entry.getKey().split(DELIMITER);
+            if (!Objects.equals(graphSpace, parts[0]) ||
+                !Objects.equals(incomingValue, parts[1])) {
                 continue;
             }
-            Object existedValue = hugeGraph.option(option);
+            Object existedValue = ((HugeGraph) entry.getValue()).option(option);
             E.checkArgument(!incomingValue.equals(existedValue),
                             "The option '%s' conflict with existed",
                             option.name());
