@@ -50,7 +50,6 @@ import com.baidu.hugegraph.pd.client.PDConfig;
 import com.baidu.hugegraph.pd.grpc.discovery.NodeInfo;
 import com.baidu.hugegraph.pd.grpc.discovery.NodeInfos;
 import com.baidu.hugegraph.pd.grpc.discovery.Query;
-import com.baidu.hugegraph.pd.grpc.discovery.RegisterType;
 import com.baidu.hugegraph.registerimpl.PdRegister;
 import com.baidu.hugegraph.space.SchemaTemplate;
 import com.baidu.hugegraph.traversal.optimize.HugeScriptTraversal;
@@ -1283,11 +1282,8 @@ public final class GraphManager {
 
     public Set<String> graphs(String graphSpace) {
         Set<String> graphs = new HashSet<>();
-        for (String key : this.graphs.keySet()) {
-            String[] parts = key.split(DELIMITER);
-            if (parts[0].equals(graphSpace)) {
-                graphs.add(parts[1]);
-            }
+        for (String key : this.metaManager.graphConfigs(graphSpace).keySet()) {
+            graphs.add(key.split(DELIMITER)[1]);
         }
         return graphs;
     }
@@ -1296,7 +1292,21 @@ public final class GraphManager {
         String key = String.join(DELIMITER, graphSpace, name);
         Graph graph = this.graphs.get(key);
         if (graph == null) {
-            return null;
+            Map<String, Map<String, Object>> configs =
+                    this.metaManager.graphConfigs(graphSpace);
+            if (!configs.containsKey(key)) {
+                return null;
+            }
+            Map<String, Object> config = configs.get(key);
+            String creator = String.valueOf(config.get("creator"));
+            Date createTime = parseDate(config.get("create_time"));
+            Date updateTime = parseDate(config.get("update_time"));
+            HugeGraph graph1 = this.createGraph(graphSpace, name,
+                                     creator, config, false);
+            graph1.createTime(createTime);
+            graph1.updateTime(updateTime);
+            this.graphs.put(key, graph1);
+            return graph1;
         } else if (graph instanceof HugeGraph) {
             return (HugeGraph) graph;
         }
