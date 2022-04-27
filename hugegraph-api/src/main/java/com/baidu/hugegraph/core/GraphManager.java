@@ -1027,7 +1027,7 @@ public final class GraphManager {
         }
         checkGraphName(name);
         GraphSpace gs = this.graphSpace(graphSpace);
-        if (!grpcThread && !gs.tryOfferGraph()) {
+        if (!grpcThread && init && !gs.tryOfferGraph()) {
             throw new HugeException("Failed create graph due to Reach graph " +
                                     "limit for graph space '%s'", graphSpace);
         }
