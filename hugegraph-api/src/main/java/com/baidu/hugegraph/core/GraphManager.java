@@ -50,7 +50,6 @@ import com.baidu.hugegraph.pd.client.PDConfig;
 import com.baidu.hugegraph.pd.grpc.discovery.NodeInfo;
 import com.baidu.hugegraph.pd.grpc.discovery.NodeInfos;
 import com.baidu.hugegraph.pd.grpc.discovery.Query;
-import com.baidu.hugegraph.pd.grpc.discovery.RegisterType;
 import com.baidu.hugegraph.registerimpl.PdRegister;
 import com.baidu.hugegraph.space.SchemaTemplate;
 import com.baidu.hugegraph.traversal.optimize.HugeScriptTraversal;
@@ -1302,20 +1301,12 @@ public final class GraphManager {
             String creator = String.valueOf(config.get("creator"));
             Date createTime = parseDate(config.get("create_time"));
             Date updateTime = parseDate(config.get("update_time"));
-            try {
-                HugeGraph graph1 = this.createGraph(graphSpace, name,
-                                         creator, config, false);
-                graph1.createTime(createTime);
-                graph1.updateTime(updateTime);
-                this.graphs.put(key, graph1);
-                return graph1;
-            } catch (HugeException e) {
-                if (!this.startIgnoreSingleGraphError) {
-                    throw e;
-                }
-                LOG.error(String.format("Failed to load graph '%s' from " +
-                                        "meta server", key), e);
-            }
+            HugeGraph graph1 = this.createGraph(graphSpace, name,
+                                     creator, config, false);
+            graph1.createTime(createTime);
+            graph1.updateTime(updateTime);
+            this.graphs.put(key, graph1);
+            return graph1;
         } else if (graph instanceof HugeGraph) {
             return (HugeGraph) graph;
         }
