@@ -158,3 +158,5 @@ if [ "$OPEN_MONITOR" == "true" ]; then
     fi
     echo "An HugeGraphServer monitor task has been append to crontab"
 fi
+
+while true;do sleep 1;done

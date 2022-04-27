@@ -70,7 +70,7 @@ public class ContextGremlinServer extends GremlinServer {
             String name = (String) event.args()[0];
             HugeGraph graph = (HugeGraph) event.args()[1];
             this.injectGraph(name, graph);
-            LOGGER.getServerLogger().logCreateGraph(graph.graphSpace(), graph.name());
+            LOGGER.getServerLogger().logCreateGraph(graph.graphSpace(), name);
             return null;
         });
         this.eventHub.listen(Events.GRAPH_DROP, event -> {
