@@ -20,7 +20,6 @@
 package com.baidu.hugegraph.task;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -159,7 +158,8 @@ public class EtcdTaskScheduler extends TaskScheduler {
         MetaManager manager = MetaManager.instance();
         for (int i = 0; i <= maxDepth.getValue(); i++) {
             TaskPriority priority = TaskPriority.fromValue(i);
-            manager.listenTaskAdded(graph.graph().graphSpace(), graph.name(), priority, this::taskEventHandler);
+            manager.listenTaskAdded(graph.graph().graphSpace(), graph.name(),
+                                    priority, this::taskEventHandler);
         }
     }
 
@@ -172,7 +172,8 @@ public class EtcdTaskScheduler extends TaskScheduler {
             result = manager.lock(EtcdTaskScheduler.TASK_COUNT_LOCK);
                 if (result.lockSuccess()) {
                 for(TaskStatus status : TaskStatus.PENDING_STATUSES) {
-                    count +=  manager.countTaskByStatus(this.graphSpace(), this.graphName, status);
+                    count +=  manager.countTaskByStatus(this.graphSpace(),
+                                                        this.graphName, status);
                 }
             }
         } catch (Throwable e) {
@@ -183,14 +184,18 @@ public class EtcdTaskScheduler extends TaskScheduler {
         return count;
     }
 
-    private static <V> LockResult lockTask(String graphSpace, String graphName, HugeTask<V> task) {
+    private static <V> LockResult lockTask(String graphSpace,
+                                           String graphName,
+                                           HugeTask<V> task) {
         if (task.lockResult() != null) {
             return task.lockResult();
         }
         return MetaManager.instance().lockTask(graphSpace, graphName, task);
     }
 
-    private static <V> void unlockTask(String graphSpace, String graphName, HugeTask<V> task) {
+    private static <V> void unlockTask(String graphSpace,
+                                       String graphName,
+                                       HugeTask<V> task) {
         if (task.lockResult() == null) {
             return;
         }
@@ -200,55 +205,80 @@ public class EtcdTaskScheduler extends TaskScheduler {
 
     private <V> void restoreTaskFromStatus(TaskStatus status) {
         MetaManager manager = MetaManager.instance();
-        List<HugeTask<V>> taskList = manager.listTasksByStatus(this.graphSpace(), this.graphName, status);
+        List<HugeTask<V>> taskList = manager.listTasksByStatus(this.graphSpace(),
+                                                               this.graphName,
+                                                               status);
         for(HugeTask<V> task : taskList) {
             if (null == task) {
                 continue;
             }
             
-            LockResult result = EtcdTaskScheduler.lockTask(this.graphSpace(), this.graphName, task);
+            LockResult result = EtcdTaskScheduler.lockTask(this.graphSpace(),
+                                                           this.graphName, task);
             if (result.lockSuccess()) {
                 task.lockResult(result);
                 this.visitedTasks.add(task.id().asString());
-                
-                TaskStatus current = manager.getTaskStatus(this.graphSpace(), this.graphName, task);
-                if (current != status) {
-                    EtcdTaskScheduler.unlockTask(this.graphSpace(), this.graphName, task);
-                    continue;
-                }
-                ExecutorService executor = this.pickExecutor(task.priority());
-                if (null == executor) {
-                    continue;
-                }
+                ExecutorService executor = null;
 
-                // process cancelling first
-                if (current == TaskStatus.CANCELLING) {
-                    EtcdTaskScheduler.updateTaskStatus(this.graphSpace(), this.graphName, task, TaskStatus.CANCELLED);
-                    continue;
-                }
+                try {
+                    TaskStatus current =
+                            manager.getTaskStatus(this.graphSpace(),
+                                                  this.graphName, task);
+                    if (current != status) {
+                        EtcdTaskScheduler.unlockTask(this.graphSpace(),
+                                                     this.graphName, task);
+                        continue;
+                    }
+                    executor = this.pickExecutor(task.priority());
+                    if (null == executor) {
+                        EtcdTaskScheduler.unlockTask(this.graphSpace(),
+                                                     this.graphName, task);
+                        continue;
+                    }
 
-                // pickup others
-                EtcdTaskScheduler.updateTaskStatus(this.graphSpace(), this.graphName, task, TaskStatus.RESTORING);
-                // Attach callable info
-                TaskCallable<?> callable = task.callable();
-                // Attach graph info
-                callable.graph(this.graph());
-                if (callable instanceof SysTaskCallable) {
-                    ((SysTaskCallable<?>)callable).params(this.graph);
+                    // process cancelling first
+                    if (current == TaskStatus.CANCELLING) {
+                        EtcdTaskScheduler.updateTaskStatus(this.graphSpace(),
+                                                           this.graphName, task,
+                                                           TaskStatus.CANCELLED);
+                        EtcdTaskScheduler.unlockTask(this.graphSpace(),
+                                                     this.graphName, task);
+                        continue;
+                    }
+
+                    // pickup others
+                    EtcdTaskScheduler.updateTaskStatus(this.graphSpace(),
+                                                       this.graphName, task,
+                                                       TaskStatus.RESTORING);
+                    // Attach callable info
+                    TaskCallable<?> callable = task.callable();
+                    // Attach graph info
+                    callable.graph(this.graph());
+                    if (callable instanceof SysTaskCallable) {
+                        ((SysTaskCallable<?>) callable).params(this.graph);
+                    }
+                    // Update status to queued
+                    EtcdTaskScheduler.updateTaskStatus(this.graphSpace(),
+                                                       this.graphName, task,
+                                                       TaskStatus.QUEUED);
+                    // Update local cache
+                    this.taskMap.put(task.id(), task);
+                    this.visitedTasks.add(task.id().asString());
+                    task.scheduler(this);
+                    // Use fake context if missing for compatible
+                    if (Strings.isNullOrEmpty(task.context())) {
+                        task.overwriteContext(TaskManager.getContext(true));
+                    }
+                    // Update retry
+                    EtcdTaskScheduler.updateTaskRetry(this.graphSpace(),
+                                                      this.graphName, task);
+                } catch (Exception e) {
+                    EtcdTaskScheduler.unlockTask(this.graphSpace(),
+                                                 this.graphName, task);
+                    throw e;
                 }
-                // Update status to queued
-                EtcdTaskScheduler.updateTaskStatus(this.graphSpace(), this.graphName, task, TaskStatus.QUEUED);
-                // Update local cache
-                this.taskMap.put(task.id(), task);
-                this.visitedTasks.add(task.id().asString());
-                task.scheduler(this);
-                // Use fake context if missing for compatible
-                if (Strings.isNullOrEmpty(task.context())) {
-                    task.overwriteContext(TaskManager.getContext(true));
-                }
-                // Update retry
-                EtcdTaskScheduler.updateTaskRetry(this.graphSpace(), this.graphName, task);
-                executor.submit(new TaskRunner<>(task, this.graph, this.processedTasks));
+                executor.submit(new TaskRunner<>(task, this.graph,
+                                                 this.processedTasks));
             }
         }
     }
@@ -299,11 +329,13 @@ public class EtcdTaskScheduler extends TaskScheduler {
     public <V> void cancel(HugeTask<V> task) {
         E.checkArgumentNotNull(task, "Task can't be null");
         try {
-            EtcdTaskScheduler.updateTaskStatus(this.graphSpace(), this.graphName, task, TaskStatus.CANCELLING);
+            EtcdTaskScheduler.updateTaskStatus(this.graphSpace(), this.graphName,
+                                               task, TaskStatus.CANCELLING);
             if (this.processedTasks.contains(task.id())) {
                 task.cancel(true);
             }
-            EtcdTaskScheduler.updateTaskStatus(this.graphSpace(), this.graphName, task, task.status());
+            EtcdTaskScheduler.updateTaskStatus(this.graphSpace(), this.graphName,
+                                               task, task.status());
         } catch (Throwable e) {
             LOGGER.logCriticalError(new Exception(e), "cancel task failed!");
         }
