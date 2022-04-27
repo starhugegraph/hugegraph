@@ -125,6 +125,7 @@ public final class GraphManager {
 
     public static final String NAME_REGEX = "^[a-z][a-z0-9_]{0,47}$";
     public static final String DELIMITER = "-";
+    public static final String NAMESPACE_CREATE = "namespace_create";
 
     private final String cluster;
     private final String graphsDir;
@@ -658,20 +659,34 @@ public final class GraphManager {
             if (!Strings.isNullOrEmpty(namespace)) {
                 Namespace current = k8sManager.namespace(namespace);
                 if (null == current) {
-                    current = k8sManager.createNamespace(namespace,
-                        ImmutableMap.of());
-                    if (null == current) {
-                        throw new HugeException("Cannot attach k8s namespace {}",
-                                                namespace);
-                    }
-                    isNewCreated = true;
-                    // start operator pod
-                    // read from computer-system or default ?
-                    // read from "hugegraph-computer-system"
-                    // String containerName = "hugegraph-operator";
-                    // String imageName = "";
-                    if (isOlap) {
-                        k8sManager.createOperatorPod(namespace, olapOperatorImage);
+                    LockResult lock = this.metaManager.lock(this.cluster,
+                                                            NAMESPACE_CREATE,
+                                                            namespace);
+                    try {
+                        current = k8sManager.namespace(namespace);
+                        if (null != current) {
+                            return false;
+                        }
+                        current = k8sManager.createNamespace(namespace,
+                                                             ImmutableMap.of());
+                        if (null == current) {
+                            throw new HugeException(
+                                      "Cannot attach k8s namespace {}",
+                                      namespace);
+                        }
+                        isNewCreated = true;
+                        // start operator pod
+                        // read from computer-system or default ?
+                        // read from "hugegraph-computer-system"
+                        // String containerName = "hugegraph-operator";
+                        // String imageName = "";
+                        if (isOlap) {
+                            k8sManager.createOperatorPod(namespace,
+                                                         olapOperatorImage);
+                        }
+                    } finally {
+                        this.metaManager.unlock(lock, this.cluster,
+                                                NAMESPACE_CREATE, namespace);
                     }
                 }
             }
