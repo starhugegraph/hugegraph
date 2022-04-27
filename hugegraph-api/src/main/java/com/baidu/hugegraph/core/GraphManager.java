@@ -1032,8 +1032,6 @@ public final class GraphManager {
                                     "limit for graph space '%s'", graphSpace);
         }
         E.checkArgumentNotNull(name, "The graph name can't be null");
-        E.checkArgument(!this.graphs(graphSpace).contains(name),
-                        "The graph name '%s' has existed", name);
 
         configs.put(ServerOptions.PD_PEERS.name(), this.pdPeers);
         configs.put(CoreOptions.GRAPH_SPACE.name(), graphSpace);
