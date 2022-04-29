@@ -46,6 +46,8 @@ public abstract class HstoreSessions extends BackendSessionPool {
     public abstract boolean existsTable(String table);
 
     public abstract void truncateTable(String table);
+
+    public abstract void clear();
     @Override
     public abstract Session session();
 
@@ -72,6 +74,7 @@ public abstract class HstoreSessions extends BackendSessionPool {
         public abstract boolean existsTable(String tableName);
         public abstract void truncateTable(String tableName);
 
+        public abstract void deleteGraph();
         public abstract Pair<byte[], byte[]> keyRange(String table);
 
         public abstract void put(String table, byte[] ownerKey,

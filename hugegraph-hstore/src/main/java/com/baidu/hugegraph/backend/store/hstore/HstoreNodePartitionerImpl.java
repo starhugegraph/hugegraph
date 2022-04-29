@@ -174,6 +174,15 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner,
         }
     }
 
+    public Metapb.Graph delGraph(String graphName){
+        try {
+            return pdClient.delGraph(graphName);
+        } catch (PDException e) {
+            LOG.error("delGraph {} exception, {}", graphName, e.getMessage());
+        }
+        return null;
+    }
+
     public void setNodeManager(HgStoreNodeManager nodeManager) {
         this.nodeManager = nodeManager;
     }
