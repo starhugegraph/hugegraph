@@ -171,6 +171,18 @@ public class PropertyKeyBuilder extends AbstractBuilder
         this.checkSchemaName(this.name);
 
         return this.lockCheckAndCreateSchema(type, old.name(), name -> {
+            boolean exist = false;
+            try {
+                this.graph().propertyKey(this.name);
+                exist = true;
+            } catch (IllegalArgumentException e) {
+                // ignore
+            }
+            if (exist) {
+                throw new IllegalArgumentException(String.format(
+                          "Already exist property key with name '%s'",
+                          this.name));
+            }
             PropertyKey propertyKey = new PropertyKey(this.graph(), old.id(),
                                                       this.name);
             propertyKey.dataType(old.dataType());
