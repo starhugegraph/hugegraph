@@ -396,6 +396,9 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
         try {
             // Drop tables with main disk
             this.sessions.dropTable(this.tableNames().toArray(new String[0]));
+            if (clearSpace) {
+                this.sessions.clear();
+            }
             LOG.debug("Store cleared: {}", this.store);
         } finally {
             writeLock.unlock();

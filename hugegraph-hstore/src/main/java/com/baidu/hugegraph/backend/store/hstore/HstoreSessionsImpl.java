@@ -163,7 +163,13 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
     @Override
     public void truncateTable(String table) {
+        this.session.truncateTable(table);
+    }
 
+    @Override
+    public void clear() {
+        this.session.deleteGraph();
+        nodePartitioner.delGraph(this.graphName);
     }
 
     @Override
@@ -293,6 +299,13 @@ public class HstoreSessionsImpl extends HstoreSessions {
         public void truncateTable(String tableName) {
             this.graph.deleteTable(tableName);
         }
+
+        @Override
+        public void deleteGraph() {
+            this.graph.deleteGraph(this.getGraphName());
+        }
+
+
 
         @Override
         public Pair<byte[], byte[]> keyRange(String table) {
