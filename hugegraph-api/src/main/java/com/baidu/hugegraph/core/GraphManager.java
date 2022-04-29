@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +51,6 @@ import com.baidu.hugegraph.pd.client.PDConfig;
 import com.baidu.hugegraph.pd.grpc.discovery.NodeInfo;
 import com.baidu.hugegraph.pd.grpc.discovery.NodeInfos;
 import com.baidu.hugegraph.pd.grpc.discovery.Query;
-import com.baidu.hugegraph.pd.grpc.discovery.RegisterType;
 import com.baidu.hugegraph.registerimpl.PdRegister;
 import com.baidu.hugegraph.space.SchemaTemplate;
 import com.baidu.hugegraph.traversal.optimize.HugeScriptTraversal;
@@ -126,6 +126,7 @@ public final class GraphManager {
 
     public static final String NAME_REGEX = "^[a-z][a-z0-9_]{0,47}$";
     public static final String DELIMITER = "-";
+    public static final String NAMESPACE_CREATE = "namespace_create";
 
     private final String cluster;
     private final String graphsDir;
@@ -659,20 +660,34 @@ public final class GraphManager {
             if (!Strings.isNullOrEmpty(namespace)) {
                 Namespace current = k8sManager.namespace(namespace);
                 if (null == current) {
-                    current = k8sManager.createNamespace(namespace,
-                        ImmutableMap.of());
-                    if (null == current) {
-                        throw new HugeException("Cannot attach k8s namespace {}",
-                                                namespace);
-                    }
-                    isNewCreated = true;
-                    // start operator pod
-                    // read from computer-system or default ?
-                    // read from "hugegraph-computer-system"
-                    // String containerName = "hugegraph-operator";
-                    // String imageName = "";
-                    if (isOlap) {
-                        k8sManager.createOperatorPod(namespace, olapOperatorImage);
+                    LockResult lock = this.metaManager.lock(this.cluster,
+                                                            NAMESPACE_CREATE,
+                                                            namespace);
+                    try {
+                        current = k8sManager.namespace(namespace);
+                        if (null != current) {
+                            return false;
+                        }
+                        current = k8sManager.createNamespace(namespace,
+                                                             ImmutableMap.of());
+                        if (null == current) {
+                            throw new HugeException(
+                                      "Cannot attach k8s namespace {}",
+                                      namespace);
+                        }
+                        isNewCreated = true;
+                        // start operator pod
+                        // read from computer-system or default ?
+                        // read from "hugegraph-computer-system"
+                        // String containerName = "hugegraph-operator";
+                        // String imageName = "";
+                        if (isOlap) {
+                            k8sManager.createOperatorPod(namespace,
+                                                         olapOperatorImage);
+                        }
+                    } finally {
+                        this.metaManager.unlock(lock, this.cluster,
+                                                NAMESPACE_CREATE, namespace);
                     }
                 }
             }
@@ -1013,13 +1028,11 @@ public final class GraphManager {
         }
         checkGraphName(name);
         GraphSpace gs = this.graphSpace(graphSpace);
-        if (!gs.tryOfferGraph()) {
+        if (!grpcThread && init && !gs.tryOfferGraph()) {
             throw new HugeException("Failed create graph due to Reach graph " +
                                     "limit for graph space '%s'", graphSpace);
         }
         E.checkArgumentNotNull(name, "The graph name can't be null");
-        E.checkArgument(!this.graphs(graphSpace).contains(name),
-                        "The graph name '%s' has existed", name);
 
         configs.put(ServerOptions.PD_PEERS.name(), this.pdPeers);
         configs.put(CoreOptions.GRAPH_SPACE.name(), graphSpace);
@@ -1061,7 +1074,9 @@ public final class GraphManager {
             this.metaManager.notifyGraphAdd(graphSpace, name);
         }
         this.graphs.put(graphName, graph);
-        this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
+        if (!grpcThread) {
+            this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
+        }
         // Let gremlin server and rest server context add graph
         this.eventHub.notify(Events.GRAPH_CREATE, graphName, graph);
 
@@ -1164,6 +1179,7 @@ public final class GraphManager {
     }
 
     public void dropGraph(String graphSpace, String name, boolean clear) {
+        boolean grpcThread = Thread.currentThread().getName().contains("grpc");
         HugeGraph g = this.graph(graphSpace, name);
         E.checkArgumentNotNull(g, "The graph '%s' doesn't exist", name);
         if (this.localGraphs.contains(name)) {
@@ -1191,8 +1207,10 @@ public final class GraphManager {
             }
         }
         GraphSpace gs = this.graphSpace(graphSpace);
-        gs.recycleGraph();
-        this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
+        if (!grpcThread) {
+            gs.recycleGraph();
+            this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
+        }
         // Let gremlin server and rest server context remove graph
         LOG.info("Notify remove graph {} by GRAPH_DROP event", name);
         this.eventHub.notify(Events.GRAPH_DROP, graphName);
@@ -1278,11 +1296,8 @@ public final class GraphManager {
 
     public Set<String> graphs(String graphSpace) {
         Set<String> graphs = new HashSet<>();
-        for (String key : this.graphs.keySet()) {
-            String[] parts = key.split(DELIMITER);
-            if (parts[0].equals(graphSpace)) {
-                graphs.add(parts[1]);
-            }
+        for (String key : this.metaManager.graphConfigs(graphSpace).keySet()) {
+            graphs.add(key.split(DELIMITER)[1]);
         }
         return graphs;
     }
@@ -1291,7 +1306,21 @@ public final class GraphManager {
         String key = String.join(DELIMITER, graphSpace, name);
         Graph graph = this.graphs.get(key);
         if (graph == null) {
-            return null;
+            Map<String, Map<String, Object>> configs =
+                    this.metaManager.graphConfigs(graphSpace);
+            if (!configs.containsKey(key)) {
+                return null;
+            }
+            Map<String, Object> config = configs.get(key);
+            String creator = String.valueOf(config.get("creator"));
+            Date createTime = parseDate(config.get("create_time"));
+            Date updateTime = parseDate(config.get("update_time"));
+            HugeGraph graph1 = this.createGraph(graphSpace, name,
+                                     creator, config, false);
+            graph1.createTime(createTime);
+            graph1.updateTime(updateTime);
+            this.graphs.put(key, graph1);
+            return graph1;
         } else if (graph instanceof HugeGraph) {
             return (HugeGraph) graph;
         }
@@ -1661,13 +1690,13 @@ public final class GraphManager {
                                     HugeConfig config,
                                     TypedOption<?, ?> option) {
         Object incomingValue = config.get(option);
-        for (String graphName : this.graphs.keySet()) {
-            String[] parts = graphName.split(DELIMITER);
-            HugeGraph hugeGraph = this.graph(graphSpace, parts[1]);
-            if (hugeGraph == null) {
+        for (Map.Entry<String, Graph> entry : this.graphs.entrySet()) {
+            String[] parts = entry.getKey().split(DELIMITER);
+            if (!Objects.equals(graphSpace, parts[0]) ||
+                !Objects.equals(incomingValue, parts[1])) {
                 continue;
             }
-            Object existedValue = hugeGraph.option(option);
+            Object existedValue = ((HugeGraph) entry.getValue()).option(option);
             E.checkArgument(!incomingValue.equals(existedValue),
                             "The option '%s' conflict with existed",
                             option.name());

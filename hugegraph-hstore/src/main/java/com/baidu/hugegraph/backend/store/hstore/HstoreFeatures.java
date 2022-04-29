@@ -127,6 +127,6 @@ public class HstoreFeatures implements BackendFeatures {
 
     @Override
     public boolean supportsFilterInStore(){
-        return false;
+        return true;
     }
 }

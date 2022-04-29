@@ -69,8 +69,6 @@ public abstract class SchemaElement implements Namifiable, Typifiable,
     }
 
     public HugeGraph graph() {
-        E.checkState(this.graph != null,
-                     "Graph is null of schema '%s'", this.name);
         return this.graph;
     }
 
@@ -98,6 +96,10 @@ public abstract class SchemaElement implements Namifiable, Typifiable,
     }
 
     public void userdata(Userdata userdata) {
+        this.userdata.putAll(userdata);
+    }
+
+    public void userdata(Map<String, Object> userdata) {
         this.userdata.putAll(userdata);
     }
 

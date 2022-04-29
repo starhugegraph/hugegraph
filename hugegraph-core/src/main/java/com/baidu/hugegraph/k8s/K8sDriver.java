@@ -109,6 +109,7 @@ public class K8sDriver {
     private static final String SERVICE_ID = "SERVICE_ID";
     private static final String META_SERVERS = "META_SERVERS";
     private static final String CLUSTER = "CLUSTER";
+    private static final String IMAGE_PULL_POLICY_ALWAYS = "Always";
 
     private static final String MY_NODE_NAME = "MY_NODE_NAME";
     private static final String MY_POD_IP = "MY_POD_IP";
@@ -614,6 +615,7 @@ public class K8sDriver {
                 .addNewContainer()
                 .withName(containerName)
                 .withImage(this.image(service))
+                .withImagePullPolicy(IMAGE_PULL_POLICY_ALWAYS)
                 .withResources(rr)
 
                 .withNewReadinessProbe()
