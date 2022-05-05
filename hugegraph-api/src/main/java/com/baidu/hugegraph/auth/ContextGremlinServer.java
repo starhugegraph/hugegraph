@@ -66,18 +66,22 @@ public class ContextGremlinServer extends GremlinServer {
 
     private void listenChanges() {
         this.eventHub.listen(Events.GRAPH_CREATE, event -> {
+            HugeGraphAuthProxy.setAdmin();
             event.checkArgs(String.class, HugeGraph.class);
             String name = (String) event.args()[0];
             HugeGraph graph = (HugeGraph) event.args()[1];
             this.injectGraph(name, graph);
             LOGGER.getServerLogger().logCreateGraph(graph.graphSpace(), name);
+            HugeGraphAuthProxy.resetContext();
             return null;
         });
         this.eventHub.listen(Events.GRAPH_DROP, event -> {
+            HugeGraphAuthProxy.setAdmin();
             event.checkArgs(String.class);
             String name = (String) event.args()[0];
             this.removeGraph(name);
             LOGGER.getServerLogger().logRemoveGraph(name);
+            HugeGraphAuthProxy.resetContext();
             return null;
         });
     }

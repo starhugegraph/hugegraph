@@ -476,15 +476,18 @@ public final class GraphManager {
 
     private void listenChanges() {
         this.eventHub.listen(Events.GRAPH_CREATE, event -> {
+            HugeGraphAuthProxy.setAdmin();
             LOG.info("RestServer accepts event 'graph.create'");
             event.checkArgs(String.class, HugeGraph.class);
             String name = (String) event.args()[0];
             HugeGraph graph = (HugeGraph) event.args()[1];
             graph.switchAuthManager(this.authManager);
             this.graphs.putIfAbsent(name, graph);
+            HugeGraphAuthProxy.resetContext();
             return null;
         });
         this.eventHub.listen(Events.GRAPH_DROP, event -> {
+            HugeGraphAuthProxy.setAdmin();
             LOG.info("RestServer accepts event 'graph.drop'");
             event.checkArgs(String.class);
             String name = (String) event.args()[0];
@@ -497,6 +500,7 @@ public final class GraphManager {
             } catch (Exception e) {
                 LOG.warn("Failed to close graph", e);
             }
+            HugeGraphAuthProxy.resetContext();
             return null;
         });
     }
