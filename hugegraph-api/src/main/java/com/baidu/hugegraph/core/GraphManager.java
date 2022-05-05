@@ -1026,13 +1026,12 @@ public final class GraphManager {
 
     public HugeGraph createGraph(String graphSpace, String name, String creator,
                                  Map<String, Object> configs, boolean init) {
-        boolean grpcThread = Thread.currentThread().getName().contains("grpc");
-        if (grpcThread) {
+        if (!init) {
             HugeGraphAuthProxy.setAdmin();
         }
         checkGraphName(name);
         GraphSpace gs = this.graphSpace(graphSpace);
-        if (!grpcThread && init && !gs.tryOfferGraph()) {
+        if (init && !gs.tryOfferGraph()) {
             throw new HugeException("Failed create graph due to Reach graph " +
                                     "limit for graph space '%s'", graphSpace);
         }
@@ -1078,20 +1077,22 @@ public final class GraphManager {
             this.metaManager.notifyGraphAdd(graphSpace, name);
         }
         this.graphs.put(graphName, graph);
-        if (!grpcThread) {
+        if (init) {
             this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
         }
         // Let gremlin server and rest server context add graph
         this.eventHub.notify(Events.GRAPH_CREATE, graphName, graph);
 
-        String schema = propConfig.getString(
-                        CoreOptions.SCHEMA_INIT_TEMPLATE.name());
-        if (schema == null || schema.isEmpty()) {
-            return graph;
+        if (init) {
+            String schema = propConfig.getString(
+                            CoreOptions.SCHEMA_INIT_TEMPLATE.name());
+            if (schema == null || schema.isEmpty()) {
+                return graph;
+            }
+            String schemas = this.schemaTemplate(graphSpace, schema).schema();
+            prepareSchema(graph, schemas);
         }
-        String schemas = this.schemaTemplate(graphSpace, schema).schema();
-        prepareSchema(graph, schemas);
-        if (grpcThread) {
+        if (!init) {
             HugeGraphAuthProxy.resetContext();
         }
         return graph;
