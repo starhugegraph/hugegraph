@@ -25,8 +25,6 @@ import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.backend.query.ConditionQuery;
 import com.baidu.hugegraph.backend.query.IdPrefixQuery;
 import com.baidu.hugegraph.backend.query.Query;
-import com.baidu.hugegraph.backend.serializer.BinaryBackendEntry;
-import com.baidu.hugegraph.backend.serializer.BytesBuffer;
 import com.baidu.hugegraph.backend.serializer.MergeIterator;
 import com.baidu.hugegraph.backend.store.AbstractBackendStore;
 import com.baidu.hugegraph.backend.store.BackendAction;
@@ -41,7 +39,6 @@ import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.type.HugeType;
 import com.baidu.hugegraph.type.define.GraphMode;
-import com.baidu.hugegraph.type.define.HugeKeys;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import org.apache.commons.collections.CollectionUtils;
@@ -299,20 +296,16 @@ public abstract class HstoreStore extends AbstractBackendStore<Session> {
             return new LinkedList<>();
         }
         List<HugeType> typeList = getHugeTypes(queries.get(0));
-        List<IdPrefixQuery> idPrefixQueries = queries.stream().map(q -> {
-                    assert q instanceof ConditionQuery;
-                    ConditionQuery cq = (ConditionQuery) q;
-                    Id ownerId = cq.condition(HugeKeys.OWNER_VERTEX);
-                    assert ownerId != null;
-                    BytesBuffer buffer = BytesBuffer.allocate(BytesBuffer.BUF_EDGE_ID);
-                    buffer.writeId(ownerId);
-                    return new IdPrefixQuery(cq, new BinaryBackendEntry.BinaryId(buffer.bytes(), ownerId));
-                }).collect(Collectors.toList());
+        List<IdPrefixQuery> idPrefixQueries = new ArrayList<>(queries.size());
+        for (Query q : queries) {
+            assert q instanceof ConditionQuery;
+            idPrefixQueries.add((IdPrefixQuery) queryWriter.apply(q));
+        }
         return query(typeList, idPrefixQueries);
     }
 
     public List<CIter<BackendEntry>> query(List<HugeType> typeList,
-                                              List<IdPrefixQuery> queries) {
+                                           List<IdPrefixQuery> queries) {
         Lock readLock = this.storeLock.readLock();
         readLock.lock();
         LinkedList<CIter<BackendEntry>> results = new LinkedList<>();

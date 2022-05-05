@@ -79,7 +79,7 @@ public class KoutTraverser extends OltpTraverser {
             }
             if (nearest) {
                 latest = this.adjacentVerticesBatch(sourceV, latest, dir, labelId,
-                                               all, degree, remaining);
+                                                    all, degree, remaining);
                 all.addAll(latest);
             } else {
                 latest = this.adjacentVerticesBatch(sourceV, latest, dir, labelId,
