@@ -1019,7 +1019,6 @@ public class GraphTransaction extends IndexableTransaction implements AutoClosea
             return Collections.emptyList();
         }
 
-        Query filter = queryList.get(0);
         return this.queryEdgesFromBackend(queryList);
     }
 
