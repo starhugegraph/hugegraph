@@ -260,7 +260,7 @@ public class K8sManager {
             StringWriter writer = new StringWriter();
             yaml.dump(quotaMap, writer);
             String yamlStr = writer.toString();
-            k8sDriver.createResourceQuota(namespace, yamlStr);
+            k8sDriver.createOrReplaceResourceQuota(namespace, yamlStr);
         } catch (Exception e) {
             LOGGER.logCriticalError(e, "Failed to load resource quota!");
         } finally {

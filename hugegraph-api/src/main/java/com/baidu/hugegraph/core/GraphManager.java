@@ -720,9 +720,9 @@ public final class GraphManager {
             int computeMemoryLimit = space.computeMemoryLimit() == 0 ?
                                      space.memoryLimit() : space.computeMemoryLimit();
             boolean sameNamespace = space.oltpNamespace().equals(space.olapNamespace());
-            boolean isNewCreated = attachK8sNamespace(space.oltpNamespace(),
-                                                      space.operatorImagePath(), sameNamespace);
-            if (isNewCreated && notDefault) {
+            attachK8sNamespace(space.oltpNamespace(),
+                               space.operatorImagePath(), sameNamespace);
+            if (notDefault) {
                 if (sameNamespace) {
                     this.makeResourceQuota(space.oltpNamespace(),
                                            cpuLimit + computeCpuLimit,
@@ -733,9 +733,9 @@ public final class GraphManager {
                 }
             }
             if (!sameNamespace) {
-                isNewCreated = attachK8sNamespace(space.olapNamespace(),
-                                                  space.operatorImagePath(), true);
-                if (isNewCreated && notDefault) {
+                attachK8sNamespace(space.olapNamespace(),
+                                   space.operatorImagePath(), true);
+                if (notDefault) {
                     this.makeResourceQuota(space.olapNamespace(),
                                            computeCpuLimit, computeMemoryLimit);
                 }

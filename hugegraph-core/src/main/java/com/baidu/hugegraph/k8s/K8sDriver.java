@@ -790,10 +790,10 @@ public class K8sDriver {
         }
     }
     
-    public void createResourceQuota(String namespace, String yaml) {
+    public void createOrReplaceResourceQuota(String namespace, String yaml) {
         InputStream is = new ByteArrayInputStream(yaml.getBytes());
         Resource<ResourceQuota> quota = this.client.resourceQuotas().inNamespace(namespace).load(is);
-        this.client.resourceQuotas().inNamespace(namespace).create(quota.get());
+        this.client.resourceQuotas().inNamespace(namespace).createOrReplace(quota.get());
     }
 
     private static String serviceAccountName(String namespace) {
