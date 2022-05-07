@@ -86,7 +86,6 @@ public abstract class AbstractBackendStore<Session extends BackendSession>
         return new ArrayList<>(typeSet);
     }
 
-
     @Override
     public List<CIter<BackendEntry>> query(List<Query> queries,
                                            Function<Query, Query> queryWriter) {

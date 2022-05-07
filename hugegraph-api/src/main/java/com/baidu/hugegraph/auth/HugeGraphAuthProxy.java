@@ -1409,7 +1409,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         
     }
 
-    static class Context {
+    public static class Context {
 
         private static final Context ADMIN = new Context(User.ADMIN);
 
