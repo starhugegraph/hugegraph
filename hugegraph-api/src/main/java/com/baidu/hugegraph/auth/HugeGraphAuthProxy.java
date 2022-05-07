@@ -1372,7 +1372,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     private static final ThreadLocal<Context> contexts =
                                               new InheritableThreadLocal<>();
 
-    public static final Context setContext(Context context) {
+    static final Context setContext(Context context) {
         Context old = contexts.get();
         contexts.set(context);
         return old;
@@ -1409,7 +1409,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         
     }
 
-    static class Context {
+    public static class Context {
 
         private static final Context ADMIN = new Context(User.ADMIN);
 

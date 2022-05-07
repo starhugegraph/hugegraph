@@ -1026,12 +1026,13 @@ public final class GraphManager {
 
     public HugeGraph createGraph(String graphSpace, String name, String creator,
                                  Map<String, Object> configs, boolean init) {
-        if (!init) {
+        boolean grpcThread = Thread.currentThread().getName().contains("grpc");
+        if (grpcThread) {
             HugeGraphAuthProxy.setAdmin();
         }
         checkGraphName(name);
         GraphSpace gs = this.graphSpace(graphSpace);
-        if (init && !gs.tryOfferGraph()) {
+        if (!grpcThread && init && !gs.tryOfferGraph()) {
             throw new HugeException("Failed create graph due to Reach graph " +
                                     "limit for graph space '%s'", graphSpace);
         }
@@ -1077,7 +1078,7 @@ public final class GraphManager {
             this.metaManager.notifyGraphAdd(graphSpace, name);
         }
         this.graphs.put(graphName, graph);
-        if (init) {
+        if (!grpcThread) {
             this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
         }
         // Let gremlin server and rest server context add graph
@@ -1092,7 +1093,7 @@ public final class GraphManager {
             String schemas = this.schemaTemplate(graphSpace, schema).schema();
             prepareSchema(graph, schemas);
         }
-        if (!init) {
+        if (grpcThread) {
             HugeGraphAuthProxy.resetContext();
         }
         return graph;
