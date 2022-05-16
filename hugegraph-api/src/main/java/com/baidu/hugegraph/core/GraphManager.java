@@ -1032,9 +1032,16 @@ public final class GraphManager {
         }
         checkGraphName(name);
         GraphSpace gs = this.graphSpace(graphSpace);
-        if (!grpcThread && init && !gs.tryOfferGraph()) {
-            throw new HugeException("Failed create graph due to Reach graph " +
-                                    "limit for graph space '%s'", graphSpace);
+        if (!grpcThread && init) {
+            if (gs.tryOfferGraph()) {
+                LOG.info("The graph_number_used successfully increased to {} " +
+                         "of graph space: {} for graph: {}",
+                         gs.graphNumberUsed(), gs.name(), name);
+            } else {
+                throw new HugeException("Failed create graph due to reach " +
+                                        "graph limit for graph space '%s'",
+                                        graphSpace);
+            }
         }
         E.checkArgumentNotNull(name, "The graph name can't be null");
 
@@ -1214,6 +1221,9 @@ public final class GraphManager {
         }
         GraphSpace gs = this.graphSpace(graphSpace);
         if (!grpcThread) {
+            LOG.info("The graph_number_used successfully decreased to {} " +
+                     "of graph space: {} for graph: {}",
+                     gs.graphNumberUsed(), gs.name(), name);
             gs.recycleGraph();
             this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
         }

@@ -171,8 +171,10 @@ public class HugeTask<V> extends FutureTask<V> {
     }
 
     public final void context(String context) {
-        if (!Strings.isNullOrEmpty(this.context)) {
-            LOG.warn("Task context must be set once, but already set '%s'", this.context);
+        if (!Strings.isNullOrEmpty(this.context) &&
+            !TaskManager.fakeContext(this.context)) {
+            LOG.warn("Task context must be set once, but already set '{}'",
+                     this.context);
             return;
         }
         E.checkArgument(this.status == TaskStatus.NEW,
