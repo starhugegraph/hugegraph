@@ -259,9 +259,9 @@ public abstract class OltpTraverser extends HugeTraverser
     }
 
     protected Set<Id> adjacentVerticesBatch(Id sourceV, Set<Id> vertices,
-                                       Directions dir, Id label,
-                                       Set<Id> excluded, long degree,
-                                       long limit) {
+                                            Directions dir, Id label,
+                                            Set<Id> excluded, long degree,
+                                            long limit) {
         if (limit == 0) {
             return ImmutableSet.of();
         }

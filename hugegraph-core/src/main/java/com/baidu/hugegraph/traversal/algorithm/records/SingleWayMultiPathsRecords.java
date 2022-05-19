@@ -46,6 +46,7 @@ import com.baidu.hugegraph.traversal.algorithm.records.record.Int2IntRecord;
 import com.baidu.hugegraph.traversal.algorithm.records.record.IntIterator;
 import com.baidu.hugegraph.traversal.algorithm.records.record.Record;
 import com.baidu.hugegraph.traversal.algorithm.records.record.RecordType;
+import com.google.common.collect.Sets;
 
 public abstract class SingleWayMultiPathsRecords extends AbstractRecords {
 
@@ -58,8 +59,8 @@ public abstract class SingleWayMultiPathsRecords extends AbstractRecords {
     private IntIterator parentRecordKeys;
 
     // collection of edges
-    private HashSet<Id> edgeIds = new HashSet<>();
-    private final ArrayList<Edge> edges = new ArrayList<>();
+    private Set<Id> edgeIds;
+    private List<Edge> edges;
 
     public SingleWayMultiPathsRecords(RecordType type, boolean concurrent,
                                       Id source, boolean nearest) {
@@ -74,6 +75,12 @@ public abstract class SingleWayMultiPathsRecords extends AbstractRecords {
 
         this.accessedVertices = concurrent ? new IntHashSet().asSynchronized() :
                                 new IntHashSet();
+
+        this.edgeIds = concurrent ? Sets.newConcurrentHashSet() :
+                       new HashSet<>();
+        this.edges = concurrent ?
+                     Collections.synchronizedList(new ArrayList<>()) :
+                     new ArrayList<>();
     }
 
     public SingleWayMultiPathsRecords(RecordType type, boolean concurrent,
@@ -229,8 +236,8 @@ public abstract class SingleWayMultiPathsRecords extends AbstractRecords {
     }
 
     protected void filterEdges(HashSet<Long> codePairs) {
-        HashSet<Id> edgeIds = this.edgeIds;
-        this.edgeIds = new HashSet<>();
+        Set<Id> edgeIds = this.edgeIds;
+        this.edgeIds = Sets.newConcurrentHashSet();
         for (Id id : edgeIds) {
             EdgeId edgeId = (EdgeId) id;
             Long pair = makeCodePair(this.code(edgeId.ownerVertexId()),

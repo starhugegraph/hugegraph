@@ -111,7 +111,8 @@ public class KoutTraverser extends OltpTraverser {
         long[] depth = new long[1];
         depth[0] = maxDepth;
         // forbidden concurrent when withEdge is true. todo: need optimised...
-        boolean concurrent = maxDepth >= this.concurrentDepth() && !withEdge;
+        //boolean concurrent = maxDepth >= this.concurrentDepth() && !withEdge;
+        boolean concurrent = true;
 
         KoutRecords records = new KoutRecords(RecordType.INT, concurrent,
                                               source, nearest, 0);
@@ -125,7 +126,7 @@ public class KoutTraverser extends OltpTraverser {
             while (!this.reachLimit(limit, depth[0], records.size()) &&
                    edges.hasNext()) {
                 HugeEdge edge = (HugeEdge) edges.next();
-                this.edgeIterCounter ++;
+                this.edgeIterCounter++;
                 Id target = edge.id().otherVertexId();
                 records.addPath(v, target);
                 if(withEdge) {
