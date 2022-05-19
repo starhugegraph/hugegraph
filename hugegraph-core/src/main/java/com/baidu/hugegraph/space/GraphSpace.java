@@ -278,6 +278,22 @@ public class GraphSpace {
         this.maxRoleNumber = maxRoleNumber;
     }
 
+    public int graphNumberUsed() {
+        return this.graphNumberUsed;
+    }
+
+    public void graphNumberUsed(int graphNumberUsed) {
+        this.graphNumberUsed = graphNumberUsed;
+    }
+
+    public int roleNumberUsed() {
+        return this.roleNumberUsed;
+    }
+
+    public void roleNumberUsed(int roleNumberUsed) {
+        this.roleNumberUsed = roleNumberUsed;
+    }
+
     public boolean auth() {
         return this.auth;
     }

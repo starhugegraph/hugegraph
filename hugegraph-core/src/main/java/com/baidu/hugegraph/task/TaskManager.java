@@ -438,6 +438,13 @@ public final class TaskManager {
         return context;
     }
 
+    public static boolean fakeContext(String context) {
+        if (Strings.isEmpty(context)) {
+            return false;
+        }
+        return context.equals(TaskManager.fakeContext);
+    }
+
     public static final void useFakeContext() {
         setContext(fakeContext);
     }

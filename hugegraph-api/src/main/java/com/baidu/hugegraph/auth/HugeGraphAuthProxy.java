@@ -1052,7 +1052,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
             if (result == "denied") {
                 LOGGER.getAuditLogger().logUserAccessDenied(username, status, ro);
             }
-
         }
         // result = null means no permission, throw if needed
         if (result == null && throwIfNoPerm) {
