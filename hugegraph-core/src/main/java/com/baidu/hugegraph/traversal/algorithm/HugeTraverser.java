@@ -165,6 +165,15 @@ public class HugeTraverser {
     }
 
     @Watched
+    protected EdgesOfVerticesIterator edgesOfVertices(Iterator<Id> sources,
+                                                      Directions dir,
+                                                      Id label, long limit,
+                                                      boolean withEdgeProperties) {
+
+        return new EdgesOfVerticesIterator(sources, dir, label, limit, withEdgeProperties);
+    }
+
+    @Watched
     protected EdgesOfVerticesIterator edgesOfVertices(Set<Id> sources, Directions dir,
                                            Id label, long limit,
                                            boolean withEdgeProperties) {
@@ -189,7 +198,13 @@ public class HugeTraverser {
         public EdgesOfVerticesIterator(Set<Id> sources, Directions dir,
                                        Id label, long limit,
                                        boolean withEdgeProperties) {
-            this.sources = sources.iterator();
+            this(sources.iterator(), dir, label, limit, withEdgeProperties);
+        }
+
+        public EdgesOfVerticesIterator(Iterator<Id> sources, Directions dir,
+                                       Id label, long limit,
+                                       boolean withEdgeProperties) {
+            this.sources = sources;
             if (label != null) {
                 labels = new Id[]{label};
             }
