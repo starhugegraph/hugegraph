@@ -29,6 +29,8 @@ import java.util.function.Consumer;
 
 import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.structure.HugeEdge;
+import com.baidu.hugegraph.traversal.algorithm.records.KneighborRecords;
+import com.baidu.hugegraph.traversal.algorithm.steps.Steps;
 import com.baidu.hugegraph.type.define.Directions;
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.lang3.tuple.Pair;
@@ -101,6 +103,39 @@ public abstract class OltpTraverser extends HugeTraverser
             }
             return count;
         }
+    }
+
+    protected long traverseIdsKneighbor(Iterator<Id> ids, Steps steps,
+                                        Consumer<Id> consumer,
+                                        boolean concurrent,
+                                        KneighborRecords records,
+                                        long limit,
+                                        boolean withEdge) {
+        long count = 0L;
+        if (steps.isEdgeStepPropertiesEmpty() && steps.isVertexEmpty()) {
+            Id labelId = null;
+            if (!steps.edgeSteps().isEmpty()) {
+                Steps.StepEntity step =
+                        steps.edgeSteps().values().iterator().next();
+                String label = step.getLabel();
+                labelId = this.getEdgeLabelId(label);
+            }
+
+            EdgesOfVerticesIterator edgeIts = edgesOfVertices(ids,
+                                                              steps.direction(),
+                                                              labelId,
+                                                              steps.degree(),
+                                                              false);
+            AdjacentVerticesBatchConsumer consumer1 =
+                    new AdjacentVerticesBatchConsumerKneighbor(records, limit,
+                                                               withEdge);
+            edgeIts.setAvgDegreeSupplier(consumer1::getAvgDegree);
+            this.traverseBatch(edgeIts, consumer1, "traverse-ite-edge", 1);
+
+        } else {
+            count = traverseIds(ids, consumer, concurrent);
+        }
+        return count;
     }
 
     protected long traverseIds(Iterator<Id> ids, Consumer<Id> consumer) {
@@ -347,14 +382,72 @@ public abstract class OltpTraverser extends HugeTraverser
         }
     }
 
+    class AdjacentVerticesBatchConsumerKneighbor extends AdjacentVerticesBatchConsumer {
+
+        private KneighborRecords records;
+        private boolean withEdge;
+
+        public AdjacentVerticesBatchConsumerKneighbor(KneighborRecords records,
+                                                      long limit,
+                                                      boolean withEdge) {
+            this(null, null, limit, null);
+            this.records = records;
+            this.withEdge = withEdge;
+        }
+
+        public AdjacentVerticesBatchConsumerKneighbor(Id sourceV,
+                                                      Set<Id> excluded,
+                                                      long limit,
+                                                      Set<Id> neighbors) {
+            super(sourceV, excluded, limit, neighbors);
+        }
+
+        @Override
+        public void accept(CIter<Edge> edges) {
+            if (this.reachLimit(limit, records.size())) {
+                return;
+            }
+
+            long degree = 0;
+            Id ownerId = null;
+
+            while (!this.reachLimit(limit, records.size()) && edges.hasNext()) {
+                edgeIterCounter++;
+                degree++;
+                HugeEdge e = (HugeEdge) edges.next();
+
+                Id source = e.id().ownerVertexId();
+                Id target = e.id().otherVertexId();
+                records.addPath(source, target);
+                if(withEdge) {
+                    // for breadth, we have to collect all edge during traversal,
+                    // to avoid over occupy for memory, we collect edgeId only.
+                    records.addEdgeId(e.id());
+                }
+
+                Id owner = e.id().ownerVertexId();
+                if (ownerId == null || ownerId.compareTo(owner) != 0) {
+                    vertexIterCounter++;
+                    this.avgDegree = this.avgDegreeRatio * this.avgDegree + (1 - this.avgDegreeRatio) * degree;
+                    degree = 0;
+                    ownerId = owner;
+                }
+            }
+        }
+
+        private boolean reachLimit(long limit, int size) {
+            return limit != NO_LIMIT && size >= limit;
+        }
+    }
+
     class AdjacentVerticesBatchConsumer implements Consumer<CIter<Edge>> {
 
-        private Id sourceV;
-        private Set<Id> excluded;
-        private long limit;
-        private Set<Id> neighbors;
-        private double avgDegreeRatio;
-        private double avgDegree;
+        protected Id sourceV;
+        protected Set<Id> excluded;
+        protected long limit;
+        protected Set<Id> neighbors;
+        protected double avgDegreeRatio;
+        protected double avgDegree;
 
         public AdjacentVerticesBatchConsumer(Id sourceV, Set<Id> excluded, long limit,
                                              Set<Id> neighbors) {
