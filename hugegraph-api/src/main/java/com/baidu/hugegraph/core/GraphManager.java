@@ -42,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import com.baidu.hugegraph.exception.ExistedException;
 import com.baidu.hugegraph.k8s.K8sDriver;
 import com.baidu.hugegraph.k8s.K8sDriverProxy;
 import com.baidu.hugegraph.meta.lock.LockResult;
@@ -1026,6 +1027,10 @@ public final class GraphManager {
 
     public HugeGraph createGraph(String graphSpace, String name, String creator,
                                  Map<String, Object> configs, boolean init) {
+        String key = String.join(DELIMITER, graphSpace, name);
+        if (this.graphs.containsKey(key)) {
+            throw new ExistedException("graph", key);
+        }
         boolean grpcThread = Thread.currentThread().getName().contains("grpc");
         if (grpcThread) {
             HugeGraphAuthProxy.setAdmin();
@@ -1221,10 +1226,10 @@ public final class GraphManager {
         }
         GraphSpace gs = this.graphSpace(graphSpace);
         if (!grpcThread) {
+            gs.recycleGraph();
             LOG.info("The graph_number_used successfully decreased to {} " +
                      "of graph space: {} for graph: {}",
                      gs.graphNumberUsed(), gs.name(), name);
-            gs.recycleGraph();
             this.metaManager.updateGraphSpaceConfig(graphSpace, gs);
         }
         // Let gremlin server and rest server context remove graph
