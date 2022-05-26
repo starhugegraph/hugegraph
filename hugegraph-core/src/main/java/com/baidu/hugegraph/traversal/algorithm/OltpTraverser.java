@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import com.baidu.hugegraph.iterator.CIter;
@@ -130,8 +131,7 @@ public abstract class OltpTraverser extends HugeTraverser
                     new AdjacentVerticesBatchConsumerKneighbor(records, limit,
                                                                withEdge);
             edgeIts.setAvgDegreeSupplier(consumer1::getAvgDegree);
-            this.traverseBatch(edgeIts, consumer1, "traverse-ite-edge", 1);
-
+            this.traverseBatchSingleThread(edgeIts, consumer1, "traverse-ite-edge", 1);
         } else {
             count = traverseIds(ids, consumer, concurrent);
         }
@@ -170,6 +170,49 @@ public abstract class OltpTraverser extends HugeTraverser
                 throw Consumers.wrapException(e);
             } finally {
                 executors.returnExecutor(consumers.executor());
+                CloseableIterator.closeIterator(iterator);
+            }
+        }
+        return total;
+    }
+
+    protected <K> long traverseBatchSingleThread(Iterator<CIter<K>> iterator,
+                                                 Consumer<CIter<K>> consumer,
+                                                 String name,
+                                                 int queueWorkerSize) {
+        if (!iterator.hasNext()) {
+            return 0L;
+        }
+
+        Consumers<CIter<K>> consumers = new Consumers<>(Executors.newSingleThreadExecutor(),
+                                                        consumer, null, queueWorkerSize);
+        consumers.start(name);
+        long total = 0L;
+        try {
+            while (iterator.hasNext()) {
+//                this.edgeIterCounter++;
+                total++;
+                CIter<K> v = iterator.next();
+                consumers.provide(v);
+            }
+        } catch (Consumers.StopExecution e) {
+            // pass
+        } catch (Throwable e) {
+            throw Consumers.wrapException(e);
+        } finally {
+            try {
+                consumers.await();
+            } catch (Throwable e) {
+                throw Consumers.wrapException(e);
+            } finally {
+                executors.returnExecutor(consumers.executor());
+                iterator.forEachRemaining(it -> {
+                    try {
+                        it.close();
+                    } catch (Exception ex) {
+                        LOG.warn("Exception when closing CIter", ex);
+                    }
+                });
                 CloseableIterator.closeIterator(iterator);
             }
         }
