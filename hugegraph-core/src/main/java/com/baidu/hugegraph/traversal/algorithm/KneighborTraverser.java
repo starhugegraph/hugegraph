@@ -162,8 +162,12 @@ public class KneighborTraverser extends OltpTraverser {
 
         while (maxDepth-- > 0) {
             records.startOneLayer(true);
-            traverseIds(records.keys(), consumer, concurrent);
+            traverseIdsKneighbor(records.keys(), steps, consumer, concurrent,
+                                 records, limit, withEdge);
             records.finishOneLayer();
+            if (this.reachLimit(limit, records.size())) {
+                break;
+            }
         }
 
         if (withEdge) {
