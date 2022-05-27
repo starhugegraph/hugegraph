@@ -555,7 +555,7 @@ public class CoreOptions extends OptionHolder {
                     "vertex.cache_capacity",
                     "The max cache size(items) of vertex cache.",
                     rangeInt(0L, Long.MAX_VALUE),
-                    (1000 * 1000 * 10L)
+                    (1000 * 1000L)
             );
 
     public static final ConfigOption<Integer> VERTEX_CACHE_EXPIRE =
