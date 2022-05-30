@@ -42,6 +42,7 @@ public class IKAnalyzer implements Analyzer {
     );
 
     private boolean smartSegMode;
+    private final IKSegmenter ik;
 
     public IKAnalyzer(String mode) {
         if (!SUPPORT_MODES.contains(mode)) {
@@ -50,13 +51,14 @@ public class IKAnalyzer implements Analyzer {
                       "the available values are %s", mode, SUPPORT_MODES);
         }
         this.smartSegMode = SUPPORT_MODES.get(0).equals(mode);
+        this.ik = new IKSegmenter(new StringReader(""),
+                                  this.smartSegMode);
     }
 
     @Override
     public Set<String> segment(String text) {
         Set<String> result = InsertionOrderUtil.newSet();
-        IKSegmenter ik = new IKSegmenter(new StringReader(text),
-                                         this.smartSegMode);
+        ik.reset(new StringReader(text));
         try {
             Lexeme word = null;
             while ((word = ik.next()) != null) {
