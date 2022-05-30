@@ -38,6 +38,7 @@ import com.baidu.hugegraph.auth.HugeUser;
 import com.baidu.hugegraph.util.StringEncoding;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.util.Strings;
 
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.AuthenticationFilter;
@@ -152,6 +153,32 @@ public class LoginAPI extends API {
 
     @POST
     @Timed
+    @Path("kgusers")
+    @Status(Status.CREATED)
+    @Consumes(APPLICATION_JSON)
+    @Produces(APPLICATION_JSON_WITH_CHARSET)
+    public String kgUserCreate(@Context GraphManager manager,
+                               JsonKgUser kgUserJson) {
+        LOGGER.logCustomDebug("Kg user create: {}",
+                              RestServer.EXECUTOR, kgUserJson);
+        checkCreatingBody(kgUserJson);
+
+        AuthManager authManager = manager.authManager();
+        HugeUser user = authManager.findUser(kgUserJson.name, false);
+        E.checkArgument(user == null,
+                        "Already exist kg user: %s", kgUserJson.name);
+
+        user = new HugeUser(kgUserJson.name);
+        user.password(StringEncoding.hashPassword(user.name()));
+        user.description("KG user");
+        user.id(authManager.createKgUser(user));
+        LOGGER.getAuditLogger().logCreateUser(user.idString(),
+                                              manager.authManager().username());
+        return manager.serializer().writeAuthElement(user);
+    }
+
+    @POST
+    @Timed
     @Path("kglogin")
     @Status(StatusFilter.Status.OK)
     @Consumes(APPLICATION_JSON)
@@ -169,15 +196,12 @@ public class LoginAPI extends API {
 
         AuthManager authManager = manager.authManager();
         HugeUser user = authManager.findUser(jsonLogin.name, false);
+        String token;
         if (user == null) {
-            LOGGER.logCustomDebug("Kg user not exist: {}, try to register.",
-                                  RestServer.EXECUTOR, jsonLogin);
-            user = new HugeUser(jsonLogin.name);
-            user.password(StringEncoding.hashPassword(user.name()));
-            user.description("KG user");
-            authManager.createKgUser(user);
+            token = Strings.EMPTY;
+        } else {
+            token = authManager.createToken(jsonLogin.name, jsonLogin.expire);
         }
-        String token = authManager.createToken(jsonLogin.name, jsonLogin.expire);
         LOGGER.getAuditLogger().logUserLogin(jsonLogin.name, "kglogin",
                                              "/auth/kglogin");
         return manager.serializer()
@@ -220,9 +244,33 @@ public class LoginAPI extends API {
         @JsonProperty("user_name")
         private String name;
         @JsonProperty("token_expire")
-        private long expire = 31536000;
+        private long expire = 315360000;
         @JsonProperty("sign")
         private String sign;
+
+        @Override
+        public void checkCreate(boolean isBatch) {
+            E.checkArgument(!StringUtils.isEmpty(this.name) &&
+                            this.name.matches(USER_NAME_PATTERN),
+                            "The name is 5-16 characters " +
+                            "and can only contain letters, " +
+                            "numbers or underscores");
+            E.checkArgument(this.expire >= 0 &&
+                            this.expire <= Long.MAX_VALUE,
+                            "The token_expire should be in " +
+                            "[0, Long.MAX_VALUE]");
+        }
+
+        @Override
+        public void checkUpdate() {}
+    }
+
+    private static class JsonKgUser implements Checkable {
+
+        @JsonProperty("user_name")
+        private String name;
+        @JsonProperty("token_expire")
+        private long expire = 315360000;
 
         @Override
         public void checkCreate(boolean isBatch) {
