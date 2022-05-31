@@ -69,6 +69,8 @@ public class GraphsAPI extends API {
     private static final HugeGraphLogger LOGGER
             = Log.getLogger(RestServer.class);
 
+    private static final String ROCKSDB = "rocksdb";
+
     private static final String GRAPH_ACTION = "action";
     private static final String CLEAR_SCHEMA = "clear_schema";
     private static final String GRAPH_ACTION_CLEAR = "clear";
@@ -151,6 +153,10 @@ public class GraphsAPI extends API {
         LOGGER.logCustomDebug("Create graph {} with config options '{}' in " +
                               "graph space '{}'", RestServer.EXECUTOR, name,
                               configs, graphSpace);
+        String backend = (String) configs.get(CoreOptions.BACKEND.name());
+        E.checkArgument(!ROCKSDB.equals(backend),
+                        "Not support rocksdb backend now, please use 'hstore'!");
+
         String creator = manager.authManager().username();
 
         HugeGraph graph = manager.createGraph(graphSpace, name, creator,
