@@ -131,7 +131,7 @@ public abstract class OltpTraverser extends HugeTraverser
                     new AdjacentVerticesBatchConsumerKneighbor(records, limit,
                                                                withEdge);
             edgeIts.setAvgDegreeSupplier(consumer1::getAvgDegree);
-            this.traverseBatchSingleThread(edgeIts, consumer1, "traverse-ite-edge", 1);
+            this.traverseBatchCurrentThread(edgeIts, consumer1, "traverse-ite-edge", 1);
         } else {
             count = traverseIds(ids, consumer, concurrent);
         }
@@ -176,15 +176,15 @@ public abstract class OltpTraverser extends HugeTraverser
         return total;
     }
 
-    protected <K> long traverseBatchSingleThread(Iterator<CIter<K>> iterator,
-                                                 Consumer<CIter<K>> consumer,
-                                                 String name,
-                                                 int queueWorkerSize) {
+    protected <K> long traverseBatchCurrentThread(Iterator<CIter<K>> iterator,
+                                                  Consumer<CIter<K>> consumer,
+                                                  String name,
+                                                  int queueWorkerSize) {
         if (!iterator.hasNext()) {
             return 0L;
         }
 
-        Consumers<CIter<K>> consumers = new Consumers<>(Executors.newSingleThreadExecutor(),
+        Consumers<CIter<K>> consumers = new Consumers<>(null,
                                                         consumer, null, queueWorkerSize);
         consumers.start(name);
         long total = 0L;
