@@ -181,6 +181,13 @@ public class HugeTraverser {
         return new EdgesOfVerticesIterator(sources, dir, label, limit, withEdgeProperties);
     }
 
+    /**
+     * @author xhtian
+     */
+    protected EdgesOfVerticesIterator edgesOfVerticesAF(Iterator<Id> sources, Steps steps, boolean withEdgeProperties){
+        return new EdgesOfVerticesIterator(sources, steps, withEdgeProperties);
+    }
+
     public class EdgesOfVerticesIterator implements Iterator<CIter<Edge>> {
 
         private int defaultBatchSize;
@@ -193,7 +200,30 @@ public class HugeTraverser {
         private Iterator<Id> sources;
         private Iterator<CIter<Edge>> currentIt;
         private Supplier<Double> avgDegreeSupplier;
+        private Steps steps; //xhtian add
 
+        /**
+         * @author xhtian
+         */
+        public EdgesOfVerticesIterator(Set<Id> sources, Steps steps, boolean withEdgeProperties ){
+            this(sources.iterator(), steps, withEdgeProperties);
+
+        }
+
+        /**
+         * @author xhtian
+         */
+        public EdgesOfVerticesIterator(Iterator<Id> sources, Steps steps, boolean withEdgeProperties){
+            this.steps = this.steps;
+            this.sources = sources;
+            this.dir = steps.direction();
+            this.limit = steps.limit();
+            this.labels = steps.edgeLabels();
+            this.withEdgeProperties = withEdgeProperties;
+            this.defaultBatchSize = graph().option(CoreOptions.OLTP_QUERY_BATCH_SIZE);
+            this.expectDegreePerBatch = graph().option(CoreOptions.OLTP_QUERY_BATCH_EXPECT_DEGREE);
+            this.batchSizeRatio = graph().option(CoreOptions.OLTP_QUERY_BATCH_AVG_DEGREE_RATIO);
+        }
 
         public EdgesOfVerticesIterator(Set<Id> sources, Directions dir,
                                        Id label, long limit,

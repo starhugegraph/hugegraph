@@ -298,9 +298,10 @@ public final class Consumers<V> {
         }
 
         public synchronized void returnExecutor(ExecutorService executor) {
-            E.checkNotNull(executor, "executor");
-            if (!this.executors.offer(executor)) {
-                executor.shutdown();
+            if (executor != null){
+                if (!this.executors.offer(executor)) {
+                    executor.shutdown();
+                }
             }
         }
 

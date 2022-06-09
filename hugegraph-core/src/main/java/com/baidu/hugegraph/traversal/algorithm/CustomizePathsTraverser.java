@@ -26,12 +26,10 @@ import java.util.Map;
 
 import javax.ws.rs.core.MultivaluedMap;
 
-import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.backend.id.Id;
-import com.baidu.hugegraph.structure.HugeEdge;
 import com.baidu.hugegraph.structure.HugeVertex;
 import com.baidu.hugegraph.traversal.algorithm.steps.WeightedEdgeStep;
 import com.baidu.hugegraph.util.CollectionUtil;
@@ -39,7 +37,7 @@ import com.baidu.hugegraph.util.E;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
-public class CustomizePathsTraverser extends HugeTraverser {
+public class CustomizePathsTraverser extends OltpTraverser {
 
     public CustomizePathsTraverser(HugeGraph graph) {
         super(graph);
@@ -69,55 +67,9 @@ public class CustomizePathsTraverser extends HugeTraverser {
         root : for (WeightedEdgeStep step : steps) {
             stepNum--;
             newVertices = newMultivalueMap();
-            Iterator<Edge> edges;
-            boolean withProperties = sorted && step.weightBy() != null;
-
-            // Traversal vertices of previous level
-            for (Map.Entry<Id, List<Node>> entry : sources.entrySet()) {
-                List<Node> adjacency = newList();
-                edges = this.edgesOfVertex(entry.getKey(), step.step(), withProperties);
-                while (edges.hasNext()) {
-                    HugeEdge edge = (HugeEdge) edges.next();
-                    Id target = edge.id().otherVertexId();
-                    for (Node n : entry.getValue()) {
-                        // If have loop, skip target
-                        if (n.contains(target)) {
-                            continue;
-                        }
-                        Node newNode;
-                        if (sorted) {
-                            double w = step.weightBy() != null ?
-                                       edge.value(step.weightBy().name()) :
-                                       step.defaultWeight();
-                            newNode = new WeightNode(target, n, w);
-                        } else {
-                            newNode = new Node(target, n);
-                        }
-                        adjacency.add(newNode);
-
-                        checkCapacity(capacity, ++access, "customized paths");
-                    }
-                }
-
-                if (step.sample() > 0) {
-                    // Sample current node's adjacent nodes
-                    adjacency = sample(adjacency, step.sample());
-                }
-
-                // Add current node's adjacent nodes
-                for (Node node : adjacency) {
-                    newVertices.add(node.id(), node);
-                    // Avoid exceeding limit
-                    if (stepNum == 0) {
-                        if (limit != NO_LIMIT && !sorted &&
-                            ++pathCount >= limit) {
-                            break root;
-                        }
-                    }
-                }
-            }
-            // Re-init sources
-            sources = newVertices;
+            sources = traverseNodesBatch(newVertices, sources, step, stepNum,
+                                         sorted, pathCount, access, capacity,
+                                         limit);
         }
         if (stepNum != 0) {
             return ImmutableList.of();

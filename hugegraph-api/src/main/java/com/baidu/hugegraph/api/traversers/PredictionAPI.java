@@ -42,10 +42,7 @@ import com.baidu.hugegraph.core.GraphManager;
 import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.traversal.algorithm.PredictionTraverser;
 import com.baidu.hugegraph.type.define.Directions;
-<<<<<<< HEAD
 import com.baidu.hugegraph.util.E;
-=======
->>>>>>> 4cac6342503721879e9c0aba014f67956f18b9b7
 import com.baidu.hugegraph.util.JsonUtil;
 import com.baidu.hugegraph.util.Log;
 import com.codahale.metrics.annotation.Timed;
