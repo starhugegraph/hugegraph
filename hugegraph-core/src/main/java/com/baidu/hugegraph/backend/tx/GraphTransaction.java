@@ -1013,7 +1013,7 @@ public class GraphTransaction extends IndexableTransaction implements AutoClosea
         return this.skipOffsetOrStopLimit(r, query);
     }
 
-    @Watched
+    @Watched	
     public List<CIter<Edge>> queryEdges(List<Query> queryList) {
         if (queryList == null || queryList.size() <= 0) {
             return Collections.emptyList();
@@ -1076,20 +1076,22 @@ public class GraphTransaction extends IndexableTransaction implements AutoClosea
         }
 
         List<CIter<BackendEntry>> queryResults = this.query(queryList);
+        
+        return null;
 
-        return queryResults.stream().map(it -> new FlatMapperIterator<>(it, entry -> {
-            // Edges are in a vertex
-            HugeVertex vertex = this.parseEntry(entry, withProperties);
-            if (vertex == null) {
-                LOG.warn("Fetching edges of vertex, got null vertex, entry.id {}", entry.id());
-                return null;
-            }
-            /*
-             * Copy to avoid ConcurrentModificationException when removing edge
-             * because HugeEdge.remove() will update edges in owner vertex
-             */
-            return new ListIterator<Edge>(ImmutableList.copyOf(vertex.getEdges()));
-        })).collect(Collectors.toList());
+//        return queryResults.stream().map(it -> new FlatMapperIterator<>(it, entry -> {
+//            // Edges are in a vertex
+//            HugeVertex vertex = this.parseEntry(entry, withProperties);
+//            if (vertex == null) {
+//                LOG.warn("Fetching edges of vertex, got null vertex, entry.id {}", entry.id());
+//                return null;
+//            }
+//            /*
+//             * Copy to avoid ConcurrentModificationException when removing edge
+//             * because HugeEdge.remove() will update edges in owner vertex
+//             */
+//            return new ListIterator<Edge>(ImmutableList.copyOf(vertex.getEdges()));
+//        })).collect(Collectors.toList());
     }
 
 
