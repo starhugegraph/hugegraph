@@ -182,7 +182,7 @@ public abstract class OltpTraverser extends HugeTraverser
                     new AdjacentVerticesBatchConsumerKout(records, limit, withedge);
             edgeIts.setAvgDegreeSupplier(consumer1::getAvgDegree);
             //使用单线程来做
-            this.traverseBatchSingleThread(edgeIts, consumer1, "traverse-ite-edge", 1);
+            this.traverseBatchCurrentThread(edgeIts, consumer1, "traverse-ite-edge", 1);
         }else{
             //如果包含属性过滤，则使用原来的方式遍历
             count = traverseIds(ids, consumer, concurrent);
