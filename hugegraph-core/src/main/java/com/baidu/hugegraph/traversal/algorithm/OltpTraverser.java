@@ -34,6 +34,7 @@ import javax.ws.rs.core.MultivaluedMap;
 import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.structure.HugeEdge;
 import com.baidu.hugegraph.traversal.algorithm.records.KneighborRecords;
+import com.baidu.hugegraph.traversal.algorithm.records.KoutRecords;
 import com.baidu.hugegraph.traversal.algorithm.steps.EdgeStep;
 import com.baidu.hugegraph.traversal.algorithm.steps.Steps;
 import com.baidu.hugegraph.traversal.algorithm.steps.WeightedEdgeStep;
@@ -111,6 +112,89 @@ public abstract class OltpTraverser extends HugeTraverser
             }
             return count;
         }
+    }
+    /**
+     * @author xhtian
+     */
+    class AdjacentVerticesBatchConsumerKout extends AdjacentVerticesBatchConsumer {
+
+        private KoutRecords records;
+        private boolean withEdge;
+
+        public AdjacentVerticesBatchConsumerKout(KoutRecords records,
+                                                 long limit,
+                                                 boolean withEdge) {
+            this(null, null, limit, null);
+            this.records = records;
+            this.withEdge = withEdge;
+        }
+
+        public AdjacentVerticesBatchConsumerKout(Id sourceV,
+                                                 Set<Id> excluded,
+                                                 long limit,
+                                                 Set<Id> neighbors) {
+            super(sourceV, excluded, limit, neighbors);
+        }
+
+        @Override
+        public void accept(CIter<Edge> edges) {
+            if (this.reachLimit(limit, records.size())) {
+                return;
+            }
+
+            long degree = 0;
+            Id ownerId = null;
+
+            while (!this.reachLimit(limit, records.size()) && edges.hasNext()) {
+                edgeIterCounter++;
+                degree++;
+                HugeEdge e = (HugeEdge) edges.next();
+
+                Id source = e.id().ownerVertexId();
+                Id target = e.id().otherVertexId();
+                records.addPath(source, target);
+                if(withEdge) {
+                    // for breadth, we have to collect all edge during traversal,
+                    // to avoid over occupy for memory, we collect edgeId only.
+                    records.addEdgeId(e.id());
+                }
+
+                Id owner = e.id().ownerVertexId();
+                if (ownerId == null || ownerId.compareTo(owner) != 0) {
+                    vertexIterCounter++;
+                    this.avgDegree = this.avgDegreeRatio * this.avgDegree + (1 - this.avgDegreeRatio) * degree;
+                    degree = 0;
+                    ownerId = owner;
+                }
+            }
+        }
+
+        private boolean reachLimit(long limit, int size) {
+            return limit != NO_LIMIT && size >= limit;
+        }
+    }
+
+    /**
+     * @author xhtian
+     */
+    protected long traverseIdsKout(Iterator<Id> ids, Steps steps, Consumer<Id> consumer, boolean concurrent,
+                                   KoutRecords records,
+                                   long limit,
+                                   boolean withedge){
+        long count = 0L;
+        if  (steps.isEdgeStepPropertiesEmpty() && steps.isVertexEmpty()){
+            //如果不过滤边属性且steps中对于节点的配置为空的话，则使用batch的方式遍历
+            EdgesOfVerticesIterator edgeIts = edgesOfVerticesAF(ids, steps,false);
+            AdjacentVerticesBatchConsumer consumer1 =
+                    new AdjacentVerticesBatchConsumerKout(records, limit, withedge);
+            edgeIts.setAvgDegreeSupplier(consumer1::getAvgDegree);
+            //使用单线程来做
+            this.traverseBatchCurrentThread(edgeIts, consumer1, "traverse-ite-edge", 1);
+        }else{
+            //如果包含属性过滤，则使用原来的方式遍历
+            count = traverseIds(ids, consumer, concurrent);
+        }
+        return count;
     }
 
     protected long traverseIdsKneighbor(Iterator<Id> ids, Steps steps,
