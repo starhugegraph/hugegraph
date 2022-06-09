@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import javax.inject.Singleton;
 import javax.ws.rs.Consumes;
@@ -41,6 +42,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.groovy.util.Maps;
 import org.slf4j.Logger;
 
@@ -84,7 +86,21 @@ public class ComputerDisAPI extends API {
                                     JsonTask jsonTask) {
         checkCreatingBody(jsonTask);
         E.checkArgument(K8sDriverProxy.isK8sApiEnabled(),
-                        "The k8s api is not enable.");
+        	    "The k8s api is not enable.");
+        E.checkArgument((Objects.nonNull(jsonTask.params.get("k8s.master_cpu")) && 
+        	    StringUtils.isNoneBlank(jsonTask.params.get("k8s.master_cpu").toString())) && 
+            (Objects.nonNull(jsonTask.params.get("k8s.worker_cpu")) && 
+        	    StringUtils.isNoneBlank(jsonTask.params.get("k8s.worker_cpu").toString())) && 
+        	    (Objects.nonNull(jsonTask.params.get("k8s.master_request_memory")) && 
+        	    StringUtils.isNoneBlank(jsonTask.params.get("k8s.master_request_memory").toString())) && 
+        	    (Objects.nonNull(jsonTask.params.get("k8s.worker_request_memory")) && 
+        	    StringUtils.isNoneBlank(jsonTask.params.get("k8s.worker_request_memory").toString())) && 
+            (Objects.nonNull(jsonTask.params.get("k8s.master_memory")) && 
+        	    StringUtils.isNoneBlank(jsonTask.params.get("k8s.master_memory").toString())) && 
+        	    (Objects.nonNull(jsonTask.params.get("k8s.worker_memory")) && 
+        	    StringUtils.isNoneBlank(jsonTask.params.get("k8s.worker_memory").toString())),
+                "The params k8s.master_cpu k8s.worker_cpu k8s.master_request_memory k8s.worker_request_memory"
+                + " k8s.master_memory k8s.worker_memory must be set.", jsonTask.params);
         LOG.info("Schedule computer dis job: {}, graph is {}", jsonTask, graph);
 
         // username is "" means generate token from current context
