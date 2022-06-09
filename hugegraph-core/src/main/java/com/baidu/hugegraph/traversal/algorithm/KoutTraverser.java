@@ -139,7 +139,7 @@ public class KoutTraverser extends OltpTraverser {
 
         while (depth[0]-- > 0) {
             records.startOneLayer(true);
-            traverseIds(records.keys(), consumer, concurrent);
+            traverseIdsKout(records.keys(), steps, consumer, concurrent, records, limit, withEdge); //support batch query
             records.finishOneLayer();
         }
 
