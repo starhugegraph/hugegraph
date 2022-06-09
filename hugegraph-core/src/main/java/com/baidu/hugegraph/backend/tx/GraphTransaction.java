@@ -1013,7 +1013,7 @@ public class GraphTransaction extends IndexableTransaction implements AutoClosea
         return this.skipOffsetOrStopLimit(r, query);
     }
 
-    @Watched	
+    @Watched
     public List<CIter<Edge>> queryEdges(List<Query> queryList) {
         if (queryList == null || queryList.size() <= 0) {
             return Collections.emptyList();
