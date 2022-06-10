@@ -19,6 +19,7 @@
 
 package com.baidu.hugegraph.traversal.algorithm.strategy;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +35,10 @@ public interface TraverseStrategy {
     public abstract void traverseOneLayer(
                          Map<Id, List<HugeTraverser.Node>> vertices,
                          EdgeStep step, BiConsumer<Id, EdgeStep> consumer);
+
+    public abstract void traverseOneLayerBatch(
+            Map<Id, List<HugeTraverser.Node>> vertices,
+            EdgeStep step, BiConsumer<Iterator<Id>, EdgeStep> consumer);
 
     public abstract Map<Id, List<HugeTraverser.Node>> newMultiValueMap();
 
