@@ -96,7 +96,7 @@ public class CustomizedPathsAPI extends API {
         List<HugeTraverser.Path> paths;
         try(CustomizePathsTraverser traverser = new CustomizePathsTraverser(g)){
             paths = traverser.customizedPaths(sources, steps, sorted,
-                    request.capacity, request.limit);
+                                              request.capacity, request.limit);
         }
 
         if (sorted) {
