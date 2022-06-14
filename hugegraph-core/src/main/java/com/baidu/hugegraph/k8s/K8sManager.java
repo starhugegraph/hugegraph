@@ -29,11 +29,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.slf4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.logger.HugeGraphLogger;
+import com.baidu.hugegraph.logger.MethodLogger;
 import com.baidu.hugegraph.space.GraphSpace;
 import com.baidu.hugegraph.space.Service;
 import com.baidu.hugegraph.util.Log;
@@ -44,6 +46,7 @@ import io.fabric8.kubernetes.api.model.Namespace;
 public class K8sManager {
 
     private static final HugeGraphLogger LOGGER = Log.getLogger(K8sManager.class);
+    private static final Logger LOG = Log.logger(K8sManager.class);
 
     private K8sDriver k8sDriver;
 
@@ -223,6 +226,8 @@ public class K8sManager {
             String image = "image: " + imagePath;
             content = content.replaceAll(TEMPLATE_OPERATOR_IMAGE, image);
 
+            LOG.info("Create or replace by yaml to create operator for " +
+                     "namespace {} with image {}", namespace, imagePath);
             k8sDriver.createOrReplaceByYaml(content);
         } catch (IOException e) {
             LOGGER.logCriticalError(e, "IO Exception when create operator");
