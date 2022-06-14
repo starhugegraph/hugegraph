@@ -687,6 +687,9 @@ public final class GraphManager {
                         // String containerName = "hugegraph-operator";
                         // String imageName = "";
                         if (isOlap) {
+                            LOG.info("Try to create operator pod for k8s " +
+                                     "namespace {} with operator image {}",
+                                     namespace, olapOperatorImage);
                             k8sManager.createOperatorPod(namespace,
                                                          olapOperatorImage);
                         }
