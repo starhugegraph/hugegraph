@@ -93,11 +93,13 @@ public class PathsAPI extends TraverserAPI {
         Directions dir = Directions.convert(EdgeAPI.parseDirection(direction));
 
         HugeGraph g = graph(manager, graphSpace, graph);
-        PathsTraverser traverser = new PathsTraverser(g);
-        HugeTraverser.PathSet paths = traverser.paths(sourceId, dir, targetId,
-                                                      dir.opposite(), edgeLabel,
-                                                      depth, maxDegree, capacity,
-                                                      limit);
+        HugeTraverser.PathSet paths;
+        try(PathsTraverser traverser = new PathsTraverser(g)){
+            paths = traverser.paths(sourceId, dir, targetId,
+                                    dir.opposite(), edgeLabel,
+                                    depth, maxDegree, capacity,
+                                    limit);
+        }
         return manager.serializer().writePaths("paths", paths, false);
     }
 

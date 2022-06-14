@@ -49,6 +49,7 @@ public class SingleTraverseStrategy extends OltpTraverser
         }
     }
 
+    @Override
     public void traverseOneLayerBatch(Map<Id, List<Node>> vertices,
                                  EdgeStep step,
                                  BiConsumer<Iterator<Id>, EdgeStep> biConsumer) {
