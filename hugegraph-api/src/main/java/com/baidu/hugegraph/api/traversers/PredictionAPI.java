@@ -123,8 +123,8 @@ public class PredictionAPI extends API {
         double score;
         try(PredictionTraverser traverser = new PredictionTraverser(g)){
             score = traverser.resourceAllocation(sourceId, targetId, dir,
-                    edgeLabel, maxDegree,
-                    limit);
+                                                 edgeLabel, maxDegree,
+                                                 limit);
         }
 
         return JsonUtil.toJson(ImmutableMap.of("resource_allocation", score));
