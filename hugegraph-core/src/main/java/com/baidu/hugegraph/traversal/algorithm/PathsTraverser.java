@@ -226,15 +226,15 @@ public class PathsTraverser extends OltpTraverser {
             }
 
             EdgesOfVerticesIterator edgeIts = edgesOfVertices(vids, direction,
-                                                                this.label, NO_LIMIT,
-                                                                false);
+                                                              this.label, NO_LIMIT,
+                                                              false);
 
 
             AdjacentVerticesBatchConsumer consumer =
                     new AdjacentVerticesBatchConsumerForward(this);
 
             edgeIts.setAvgDegreeSupplier(consumer::getAvgDegree);
-            traverseBatch(edgeIts, consumer, "traverse-ite-edge", 1);
+            traverseBatchCurrentThread(edgeIts, consumer, "traverse-ite-edge", 1);
 
             this.record.finishOneLayer();
         }
