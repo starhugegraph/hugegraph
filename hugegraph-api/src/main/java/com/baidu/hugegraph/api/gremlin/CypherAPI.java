@@ -34,8 +34,7 @@ public class CypherAPI extends GremlinQueryAPI {
     public Response query(@Context HttpHeaders headers,
                           @PathParam("graphspace") String graphspace,
                           @PathParam("graph") String graph,
-                          @QueryParam("cypher") String cypher
-    ) {
+                          @QueryParam("cypher") String cypher) {
 
         return this.queryByCypher(headers, graphspace, graph, cypher);
     }
@@ -62,7 +61,7 @@ public class CypherAPI extends GremlinQueryAPI {
                 "The graph parameter can't be null or empty");
         E.checkArgument(cypher != null && !cypher.isEmpty(),
                 "The cypher parameter can't be null or empty");
-        String gremlin = this.translateCpyher2Gremlin(cypher);
+        String gremlin = this.translateCypher2Gremlin(cypher);
         LOG.debug("translated gremlin is {}", gremlin);
         String auth = headers.getHeaderString(HttpHeaders.AUTHORIZATION);
         String graphInfo = graphspace + "-" + graph;
@@ -76,7 +75,7 @@ public class CypherAPI extends GremlinQueryAPI {
         return transformResponseIfNeeded(response);
     }
 
-    private String translateCpyher2Gremlin(String cypher) {
+    private String translateCypher2Gremlin(String cypher) {
         TranslationFacade translator = new TranslationFacade();
         String gremlin = translator.toGremlinGroovy(cypher);
         gremlin = this.buildQueryableGremlin(gremlin);

@@ -122,7 +122,6 @@ public final class ApiVersion {
      * [0.67] Issue-11: hugegraph with etcd/pd,
      *        add graphspace, remove auth server
      * [0.68] Issue-1763: Support adamic-adar & resource-allocation API
-     * [0.68] Issue-1763: Support adamic-adar & resource-allocation API
      * [0.69] Issue-1748: Support Cypher query RESTful API
      */
 

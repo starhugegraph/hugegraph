@@ -40,7 +40,8 @@ import com.baidu.hugegraph.dist.RegisterUtil;
     MetricsApiTest.class,
     UserApiTest.class,
     LoginApiTest.class,
-    TraversersApiTestSuite.class
+    TraversersApiTestSuite.class,
+    CypherApiTest.class
 })
 public class ApiTestSuite {
 
