@@ -93,10 +93,11 @@ public class CustomizedPathsAPI extends API {
         List<WeightedEdgeStep> steps = step(g, request);
         boolean sorted = request.sortBy != SortBy.NONE;
 
-        CustomizePathsTraverser traverser = new CustomizePathsTraverser(g);
         List<HugeTraverser.Path> paths;
-        paths = traverser.customizedPaths(sources, steps, sorted,
-                                          request.capacity, request.limit);
+        try(CustomizePathsTraverser traverser = new CustomizePathsTraverser(g)){
+            paths = traverser.customizedPaths(sources, steps, sorted,
+                                              request.capacity, request.limit);
+        }
 
         if (sorted) {
             boolean incr = request.sortBy == SortBy.INCR;
