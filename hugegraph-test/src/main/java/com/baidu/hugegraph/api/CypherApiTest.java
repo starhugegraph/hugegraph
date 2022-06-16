@@ -23,12 +23,13 @@ import static com.baidu.hugegraph.testutil.Assert.assertContains;
 
 import java.util.Map;
 
+import groovy.grape.GrapeIvy;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.google.common.collect.ImmutableMap;
 
-import jakarta.ws.rs.core.Response;
+import javax.ws.rs.core.Response;
 
 public class CypherApiTest extends BaseApiTest {
 
@@ -44,6 +45,7 @@ public class CypherApiTest extends BaseApiTest {
         BaseApiTest.initIndexLabel();
         BaseApiTest.initVertex();
         BaseApiTest.initEdge();
+        System.out.println("初始化完毕！");
     }
 
     @Test

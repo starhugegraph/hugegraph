@@ -8,19 +8,19 @@ import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 import com.codahale.metrics.annotation.Timed;
 
-import jakarta.inject.Singleton;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.HttpHeaders;
-import jakarta.ws.rs.core.Response;
+import javax.inject.Singleton;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Response;
 
-@Path("graphs/{graph}/cypher")
+@Path("graphspaces/{graphspace}/graphs/{graph}/cypher")
 @Singleton
 public class CypherAPI extends GremlinQueryAPI {
 
@@ -31,12 +31,13 @@ public class CypherAPI extends GremlinQueryAPI {
     @Timed
     @CompressInterceptor.Compress(buffer = (1024 * 40))
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    public Response query(@PathParam("graph") String graph,
-                          @Context HttpHeaders headers,
-                          @QueryParam("cypher") String cypher) {
-        LOG.debug("Graph [{}] query by cypher: {}", graph, cypher);
+    public Response query(@Context HttpHeaders headers,
+                          @PathParam("graphspace") String graphspace,
+                          @PathParam("graph") String graph,
+                          @QueryParam("cypher") String cypher
+    ) {
 
-        return this.queryByCypher(graph, headers, cypher);
+        return this.queryByCypher(headers, graphspace, graph, cypher);
     }
 
     @POST
@@ -44,41 +45,45 @@ public class CypherAPI extends GremlinQueryAPI {
     @CompressInterceptor.Compress
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    public Response post(@PathParam("graph") String graph,
-                         @Context HttpHeaders headers,
+    public Response post(@Context HttpHeaders headers,
+                         @PathParam("graphspace") String graphspace,
+                         @PathParam("graph") String graph,
                          String cypher) {
-        LOG.debug("Graph [{}] query by cypher: {}", graph, cypher);
-        return this.queryByCypher(graph, headers, cypher);
+
+        return this.queryByCypher(headers, graphspace, graph, cypher);
     }
 
-    private Response queryByCypher(String graph,
-                                   HttpHeaders headers,
-                                   String cypher) {
+    private Response queryByCypher(HttpHeaders headers, String graphspace,
+                                   String graph, String cypher) {
+
+        E.checkArgument(graphspace != null && !graphspace.isEmpty(),
+                "The graphspace parameter can't be null or empty");
+        E.checkArgument(graph != null && !graph.isEmpty(),
+                "The graph parameter can't be null or empty");
         E.checkArgument(cypher != null && !cypher.isEmpty(),
-                        "The cypher parameter can't be null or empty");
-
-        String gremlin = this.translateCpyher2Gremlin(graph, cypher);
+                "The cypher parameter can't be null or empty");
+        String gremlin = this.translateCpyher2Gremlin(cypher);
         LOG.debug("translated gremlin is {}", gremlin);
-
         String auth = headers.getHeaderString(HttpHeaders.AUTHORIZATION);
-        String request = "{"
-                         + "\"gremlin\":\"" + gremlin + "\","
-                         + "\"bindings\":{},"
-                         + "\"language\":\"gremlin-groovy\","
-                         + "\"aliases\":{\"g\":\"__g_" + graph + "\"}}";
-
-        Response response = this.client().doPostRequest(auth, request);
+        String graphInfo = graphspace + "-" + graph;
+        String gremlinQuery = "{"
+                + "\"gremlin\":\"" + gremlin + "\","
+                + "\"bindings\":{},"
+                + "\"language\":\"gremlin-groovy\","
+                + "\"aliases\":{\"graph\":" + "\"" + graphInfo + "\"" +
+                ", \"g\":\"__g_" + graphInfo + "\"" + "}}";
+        Response response = this.client().doPostRequest(auth, gremlinQuery);
         return transformResponseIfNeeded(response);
     }
 
-    private String translateCpyher2Gremlin(String graph, String cypher) {
+    private String translateCpyher2Gremlin(String cypher) {
         TranslationFacade translator = new TranslationFacade();
         String gremlin = translator.toGremlinGroovy(cypher);
-        gremlin = this.buildQueryableGremlin(graph, gremlin);
+        gremlin = this.buildQueryableGremlin(gremlin);
         return gremlin;
     }
 
-    private String buildQueryableGremlin(String graph, String gremlin) {
+    private String buildQueryableGremlin(String gremlin) {
         /*
          * `CREATE (a:person { name : 'test', age: 20) return a`
          * would be translated to:

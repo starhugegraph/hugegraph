@@ -108,6 +108,7 @@
             <groupId>org.opencypher.gremlin</groupId>
             <artifactId>translation</artifactId>
             <version>1.0.4</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 
