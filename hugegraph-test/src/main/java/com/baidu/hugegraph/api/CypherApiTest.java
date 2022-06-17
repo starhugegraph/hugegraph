@@ -23,7 +23,6 @@ import static com.baidu.hugegraph.testutil.Assert.assertContains;
 
 import java.util.Map;
 
-import groovy.grape.GrapeIvy;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -45,7 +44,6 @@ public class CypherApiTest extends BaseApiTest {
         BaseApiTest.initIndexLabel();
         BaseApiTest.initVertex();
         BaseApiTest.initEdge();
-        System.out.println("初始化完毕！");
     }
 
     @Test
