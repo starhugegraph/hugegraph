@@ -45,13 +45,12 @@ import com.google.common.collect.ImmutableSet;
 
 @Path("gremlin")
 @Singleton
-public class GremlinAPI extends API {
+public class GremlinAPI extends GremlinQueryAPI {
 
     private static final Histogram gremlinInputHistogram =
             MetricsUtil.registerHistogram(GremlinAPI.class, "gremlin-input");
     private static final Histogram gremlinOutputHistogram =
             MetricsUtil.registerHistogram(GremlinAPI.class, "gremlin-output");
-
     private static final Set<String> FORBIDDEN_REQUEST_EXCEPTIONS =
             ImmutableSet.of("java.lang.SecurityException",
                             "javax.ws.rs.ForbiddenException");
@@ -99,47 +98,5 @@ public class GremlinAPI extends API {
         gremlinInputHistogram.update(request.length());
         gremlinOutputHistogram.update(response.getLength());
         return transformResponseIfNeeded(response);
-    }
-
-    private static Response transformResponseIfNeeded(Response response) {
-        MediaType mediaType = response.getMediaType();
-        if (mediaType != null) {
-            // Append charset
-            assert MediaType.APPLICATION_JSON_TYPE.equals(mediaType);
-            response.getHeaders().putSingle(HttpHeaders.CONTENT_TYPE,
-                                            mediaType.withCharset(CHARSET));
-        }
-
-        Response.StatusType status = response.getStatusInfo();
-        if (status.getStatusCode() < 400) {
-            // No need to transform if normal response without error
-            return response;
-        }
-
-        if (mediaType == null || !JSON.equals(mediaType.getSubtype())) {
-            String message = response.readEntity(String.class);
-            throw new HugeGremlinException(status.getStatusCode(),
-                                           ImmutableMap.of("message", message));
-        }
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> map = response.readEntity(Map.class);
-        String exClassName = (String) map.get("Exception-Class");
-        if (FORBIDDEN_REQUEST_EXCEPTIONS.contains(exClassName)) {
-            status = Response.Status.FORBIDDEN;
-        } else if (matchBadRequestException(exClassName)) {
-            status = Response.Status.BAD_REQUEST;
-        }
-        throw new HugeGremlinException(status.getStatusCode(), map);
-    }
-
-    private static boolean matchBadRequestException(String exClass) {
-        if (exClass == null) {
-            return false;
-        }
-        if (BAD_REQUEST_EXCEPTIONS.contains(exClass)) {
-            return true;
-        }
-        return BAD_REQUEST_EXCEPTIONS.stream().anyMatch(exClass::startsWith);
     }
 }
