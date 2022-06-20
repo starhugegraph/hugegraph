@@ -21,11 +21,11 @@ package com.baidu.hugegraph.define;
 
 import java.math.BigDecimal;
 import java.util.Collection;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.baidu.hugegraph.util.DateUtil;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.NumericUtil;
 import com.google.common.collect.Sets;
@@ -60,12 +60,13 @@ public enum UpdateStrategy {
 
         @Override
         void checkPropertyType(Object oldProperty, Object newProperty) {
-            E.checkArgument((oldProperty instanceof Date ||
+            // propertyType of date is text
+            E.checkArgument((oldProperty instanceof String ||
                              oldProperty instanceof Number) &&
-                            (newProperty instanceof Date ||
+                            (newProperty instanceof String ||
                              newProperty instanceof Number),
                             this.formatError(oldProperty, newProperty,
-                                             "Date or Number"));
+                                             "String or Number"));
         }
     },
 
@@ -77,12 +78,13 @@ public enum UpdateStrategy {
 
         @Override
         void checkPropertyType(Object oldProperty, Object newProperty) {
-            E.checkArgument((oldProperty instanceof Date ||
+            // propertyType of date is text
+            E.checkArgument((oldProperty instanceof String ||
                              oldProperty instanceof Number) &&
-                            (newProperty instanceof Date ||
+                            (newProperty instanceof String ||
                              newProperty instanceof Number),
                             this.formatError(oldProperty, newProperty,
-                                             "Date or Number"));
+                                             "String or Number"));
         }
     },
 
@@ -184,8 +186,15 @@ public enum UpdateStrategy {
     protected static Object compareNumber(Object oldProperty,
                                           Object newProperty,
                                           UpdateStrategy strategy) {
-        Number oldNum = NumericUtil.convertToNumber(oldProperty);
-        Number newNum = NumericUtil.convertToNumber(newProperty);
+        Object oldComp = oldProperty;
+        Object newComp = newProperty;
+        // propertyType of date is text
+        if (oldProperty instanceof String) {
+            oldComp = DateUtil.parse(oldProperty.toString(), "yyyy-MM-dd");
+            newComp = DateUtil.parse(newProperty.toString(), "yyyy-MM-dd");
+        }
+        Number oldNum = NumericUtil.convertToNumber(oldComp);
+        Number newNum = NumericUtil.convertToNumber(newComp);
         int result = NumericUtil.compareNumber(oldNum, newNum);
         return strategy == BIGGER ? (result > 0 ? oldProperty : newProperty) :
                                     (result < 0 ? oldProperty : newProperty);
