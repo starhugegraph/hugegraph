@@ -49,6 +49,7 @@ import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.util.function.TriFunction;
 import org.slf4j.Logger;
 
+import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.api.API;
 import com.baidu.hugegraph.api.filter.CompressInterceptor.Compress;
@@ -471,6 +472,9 @@ public class EdgeAPI extends BatchAPI {
                 key = IdGenerator.of(id).asObject();
             }
             HugeVertex vertex = vertexMap.get(key);
+            if (vertex == null) {
+                throw new HugeException("Not exist vertex with id '%s'", key);
+            }
             if (vertex.id().number() &&
                 vertex.id().asLong() != ((Number) id).longValue() ||
                 !vertex.id().number() && !id.equals(vertex.id().asObject())) {
