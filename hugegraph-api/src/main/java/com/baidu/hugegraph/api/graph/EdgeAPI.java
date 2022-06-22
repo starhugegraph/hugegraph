@@ -148,7 +148,14 @@ public class EdgeAPI extends BatchAPI {
                                           getTargetVertices(g, jsonEdges) :
                                           newTargetVertices(g, jsonEdges);
 
-            for (int i = 0; i < sourceVertices.size(); i++) {
+            if (jsonEdges.size() != sourceVertices.size() &&
+                jsonEdges.size() != targetVertices.size()) {
+                throw new IllegalArgumentException(String.format(
+                        "Some vertex not exists when create edges and check " +
+                        "vertex."));
+            }
+
+            for (int i = 0; i < jsonEdges.size(); i++) {
                 /*
                  * NOTE: If the query param 'checkVertex' is false,
                  * then the label is correct and not matched id,
