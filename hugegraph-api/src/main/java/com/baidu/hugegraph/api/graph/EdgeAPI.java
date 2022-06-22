@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 import javax.annotation.security.RolesAllowed;
 import javax.inject.Singleton;
@@ -147,8 +148,11 @@ public class EdgeAPI extends BatchAPI {
             List<Vertex> targetVertices = checkVertex ?
                                           getTargetVertices(g, jsonEdges) :
                                           newTargetVertices(g, jsonEdges);
-
-            for (int i = 0; i < sourceVertices.size(); i++) {
+            E.checkArgument(jsonEdges.size() == sourceVertices.size() &&
+                            jsonEdges.size() == targetVertices.size(),
+                            "There are vertex ids in creating edges not " +
+                            "exist!");
+            for (int i = 0; i < jsonEdges.size(); i++) {
                 /*
                  * NOTE: If the query param 'checkVertex' is false,
                  * then the label is correct and not matched id,
@@ -431,8 +435,13 @@ public class EdgeAPI extends BatchAPI {
         int index = 0;
         for (JsonEdge jsonEdge : jsonEdges) {
             Object id = source ? jsonEdge.source : jsonEdge.target;
+            E.checkArgumentNotNull(id, "The vertex id can't be null in " +
+                                       "JsonEdge");
             ids[index] = id;
             String label = source ? jsonEdge.sourceLabel : jsonEdge.targetLabel;
+            E.checkArgument(label != null && !label.isEmpty(),
+                            "The vertex label can't be null or empty in " +
+                            "JsonEdge");
             labels[index++] = label;
         }
         Iterator<Vertex> vertexIterator;
@@ -446,7 +455,13 @@ public class EdgeAPI extends BatchAPI {
             HugeVertex vertex = (HugeVertex) vertexIterator.next();
             Object id = ids[index];
             String label = labels[index++];
-            if (label != null && !vertex.label().equals(label)) {
+            if (vertex.id().number() &&
+                vertex.id().asLong() != ((Number) id).longValue() ||
+                !vertex.id().number() && !id.equals(vertex.id().asObject())) {
+                throw new IllegalArgumentException(String.format(
+                          "The vertex with id '%s' not exist", id));
+            }
+            if (!label.equals(vertex.label())) {
                 throw new IllegalArgumentException(String.format(
                           "The label of vertex '%s' is unmatched, users " +
                           "expect label '%s', actual label stored is '%s'",
