@@ -473,7 +473,8 @@ public class EdgeAPI extends BatchAPI {
             }
             HugeVertex vertex = vertexMap.get(key);
             if (vertex == null) {
-                throw new HugeException("Not exist vertex with id '%s'", key);
+                throw new IllegalArgumentException(String.format(
+                          "Not exist vertex with id '%s'", key));
             }
             if (vertex.id().number() &&
                 vertex.id().asLong() != ((Number) id).longValue() ||
