@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.tinkerpop.gremlin.structure.Edge;
-import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.backend.id.Id;
@@ -136,17 +135,19 @@ public class ShortestPathTraverser extends HugeTraverser {
 
         private ShortestPathRecords record;
         private final Directions direction;
-        private final Map<Id, String> labels;
+        private final Map<Id, String> labelMap;
+        private final List<Id> labels;
         private final long degree;
         private final long skipDegree;
         private final long capacity;
 
         public Traverser(Id sourceV, Id targetV, Directions dir,
-                         Map<Id, String> labels, long degree,
+                         Map<Id, String> labelMap, long degree,
                          long skipDegree, long capacity) {
             this.record = new ShortestPathRecords(sourceV, targetV);
             this.direction = dir;
-            this.labels = labels;
+            this.labelMap = labelMap;
+            this.labels = newList(labelMap.keySet());
             this.degree = degree;
             this.skipDegree = skipDegree;
             this.capacity = capacity;
@@ -161,11 +162,16 @@ public class ShortestPathTraverser extends HugeTraverser {
             long degree = this.skipDegree > 0L ? this.skipDegree : this.degree;
 
             this.record.startOneLayer(true);
+            List<Id> vertices = newList();
             while (this.record.hasNextKey()) {
                 Id source = this.record.nextKey();
+                vertices.add(source);
+            }
 
-                Iterator<Edge> edges = edgesOfVertex(source, this.direction,
-                                                     this.labels, degree, false);
+            EdgesOfVerticesIterator edgeIts = edgesOfVertices(vertices.iterator(), this.direction, this.labels, degree, false);
+            while (edgeIts.hasNext()) {
+                Iterator<Edge> edges = edgeIts.next();
+
                 edges = skipSuperNodeIfNeeded(edges, this.degree,
                                               this.skipDegree);
                 while (edges.hasNext()) {
@@ -201,11 +207,18 @@ public class ShortestPathTraverser extends HugeTraverser {
             Directions opposite = this.direction.opposite();
 
             this.record.startOneLayer(false);
+            List<Id> vertices = newList();
             while (this.record.hasNextKey()) {
                 Id source = this.record.nextKey();
+                vertices.add(source);
+            }
 
-                Iterator<Edge> edges = edgesOfVertex(source, opposite,
-                                                     this.labels, degree, false);
+            EdgesOfVerticesIterator edgeIts = edgesOfVertices(vertices.iterator(), opposite, this.labels, degree, false);
+            while (edgeIts.hasNext()) {
+                Iterator<Edge> edges = edgeIts.next();
+
+                edges = skipSuperNodeIfNeeded(edges, this.degree,
+                        this.skipDegree);
                 edges = skipSuperNodeIfNeeded(edges, this.degree,
                                               this.skipDegree);
                 while (edges.hasNext()) {
@@ -241,7 +254,7 @@ public class ShortestPathTraverser extends HugeTraverser {
                 return false;
             }
             Iterator<Edge> edges = edgesOfVertex(vertex, direction,
-                                                 this.labels, this.skipDegree, false);
+                                                 this.labelMap, this.skipDegree, false);
             for( int i = 0; i < this.skipDegree && edges.hasNext(); i++ ) {
                 edges.next();
             }

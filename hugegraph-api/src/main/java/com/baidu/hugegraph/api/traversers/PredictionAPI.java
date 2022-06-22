@@ -85,9 +85,11 @@ public class PredictionAPI extends API {
         Directions dir = Directions.convert(EdgeAPI.parseDirection(direction));
 
         HugeGraph g = graph(manager, graphSpace, graph);
-        PredictionTraverser traverser = new PredictionTraverser(g);
-        double score = traverser.adamicAdar(sourceId, targetId, dir,
-                                            edgeLabel, maxDegree, limit);
+        double score;
+        try(PredictionTraverser traverser = new PredictionTraverser(g)){
+            score = traverser.adamicAdar(sourceId, targetId, dir,
+                                         edgeLabel, maxDegree, limit);
+        }
         return JsonUtil.toJson(ImmutableMap.of("adamic_adar", score));
     }
 
@@ -118,10 +120,13 @@ public class PredictionAPI extends API {
         Directions dir = Directions.convert(EdgeAPI.parseDirection(direction));
 
         HugeGraph g = graph(manager, graphSpace, graph);
-        PredictionTraverser traverser = new PredictionTraverser(g);
-        double score = traverser.resourceAllocation(sourceId, targetId, dir,
-                                                    edgeLabel, maxDegree,
-                                                    limit);
+        double score;
+        try(PredictionTraverser traverser = new PredictionTraverser(g)){
+            score = traverser.resourceAllocation(sourceId, targetId, dir,
+                                                 edgeLabel, maxDegree,
+                                                 limit);
+        }
+
         return JsonUtil.toJson(ImmutableMap.of("resource_allocation", score));
     }
 }

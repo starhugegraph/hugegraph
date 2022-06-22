@@ -19,6 +19,7 @@
 
 package com.baidu.hugegraph.traversal.algorithm.strategy;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,6 +50,13 @@ public class ConcurrentTraverseStrategy extends OltpTraverser
         traverseIds(vertices.keySet().iterator(), (id) -> {
             biConsumer.accept(id, step);
         });
+    }
+
+    @Override
+    public void traverseOneLayerBatch(Map<Id, List<Node>> vertices,
+                                      EdgeStep step,
+                                      BiConsumer<Iterator<Id>, EdgeStep> consumer) {
+        consumer.accept(vertices.keySet().iterator(), step);
     }
 
     @Override

@@ -34,7 +34,6 @@ import java.util.function.Supplier;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 
-import com.baidu.hugegraph.iterator.CIter;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.slf4j.Logger;
@@ -49,6 +48,7 @@ import com.baidu.hugegraph.backend.query.QueryResults;
 import com.baidu.hugegraph.backend.tx.GraphTransaction;
 import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.exception.NotFoundException;
+import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.iterator.ExtendableIterator;
 import com.baidu.hugegraph.iterator.FilterIterator;
 import com.baidu.hugegraph.iterator.LimitIterator;
@@ -174,6 +174,16 @@ public class HugeTraverser {
     }
 
     @Watched
+    protected EdgesOfVerticesIterator edgesOfVertices(Iterator<Id> sources,
+                                                      Directions dir,
+                                                      List<Id> labels, long limit,
+                                                      boolean withEdgeProperties) {
+
+        return new EdgesOfVerticesIterator(sources, dir,
+                labels == null ? null : labels.toArray(new Id[labels.size()]), limit, withEdgeProperties);
+    }
+
+    @Watched
     protected EdgesOfVerticesIterator edgesOfVertices(Set<Id> sources, Directions dir,
                                            Id label, long limit,
                                            boolean withEdgeProperties) {
@@ -234,9 +244,15 @@ public class HugeTraverser {
         public EdgesOfVerticesIterator(Iterator<Id> sources, Directions dir,
                                        Id label, long limit,
                                        boolean withEdgeProperties) {
+            this(sources, dir, label == null ? null : new Id[] {label}, limit, withEdgeProperties);
+        }
+
+        public EdgesOfVerticesIterator(Iterator<Id> sources, Directions dir,
+                                       Id[] labels, long limit,
+                                       boolean withEdgeProperties) {
             this.sources = sources;
-            if (label != null) {
-                labels = new Id[]{label};
+            if (labels != null) {
+                this.labels = labels;
             }
             this.dir = dir;
             this.limit = limit;

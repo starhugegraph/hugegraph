@@ -374,10 +374,12 @@ public abstract class OltpTraverser extends HugeTraverser
             EdgeStep edgeStep = step.step();
             Map<Id, String> labels = edgeStep.labels();
             Directions directions = edgeStep.direction();
+            Set<Id> idSet = newIdSet();
+            idSet.add(entry.getKey());
 
             if (labels == null || labels.isEmpty()) {
                 EdgesOfVerticesIterator edgeIts =
-                        edgesOfVertices(sources.keySet(), directions,
+                        edgesOfVertices(idSet, directions,
                                         (Id) null, edgeStep.limit(),
                                         withProperties);
                 edgeIts.setAvgDegreeSupplier(consumer::getAvgDegree);
@@ -387,7 +389,7 @@ public abstract class OltpTraverser extends HugeTraverser
             for (Id label : labels.keySet()) {
                 E.checkNotNull(label, "edge label");
                 EdgesOfVerticesIterator edgeIts =
-                        edgesOfVertices(sources.keySet(), directions, label,
+                        edgesOfVertices(idSet, directions, label,
                                         edgeStep.limit(), withProperties);
                 edgeIts.setAvgDegreeSupplier(consumer::getAvgDegree);
                 this.traverseBatch(edgeIts, consumer, "traverse-ite-edge", 1);
