@@ -101,7 +101,7 @@ public final class TaskManager {
                 ExecutorUtil.newFixedThreadPool(pool, BACKUP_TASK_WORKER);
         // For save/query task state, just one thread is ok
         this.taskDbExecutor = ExecutorUtil.newFixedThreadPool(
-                              1, TASK_DB_WORKER);
+                              8, TASK_DB_WORKER);
         this.serverInfoDbExecutor = ExecutorUtil.newFixedThreadPool(
                                     1, SERVER_INFO_DB_WORKER);
         // For schedule task to run, just one thread is ok
