@@ -166,6 +166,7 @@ public class EdgeAPI extends BatchAPI {
                                               jsonEdges.get(i).properties());
                 ids.add((Id) edge.id());
             }
+            // ****************************************************
             return manager.serializer().writeIds(ids);
         });
     }
