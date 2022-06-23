@@ -494,6 +494,17 @@ public class StandardAuthManager implements AuthManager {
     }
 
     @Override
+    public boolean isSpaceManager(String user) {
+        List<String> spaces = this.listGraphSpace();
+        for (String space: spaces) {
+            if (isSpaceManager(space, user)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
     public boolean isSpaceManager(String graphSpace, String user) {
         try {
             String belongId =
