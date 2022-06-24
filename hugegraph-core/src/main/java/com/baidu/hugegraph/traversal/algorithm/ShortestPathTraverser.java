@@ -167,10 +167,14 @@ public class ShortestPathTraverser extends HugeTraverser {
                 Id source = this.record.nextKey();
                 vertices.add(source);
             }
+            this.record.resetOneLayer();
 
             EdgesOfVerticesIterator edgeIts = edgesOfVertices(vertices.iterator(), this.direction, this.labels, degree, false);
-            while (edgeIts.hasNext()) {
-                Iterator<Edge> edges = edgeIts.next();
+            BufferGroupEdgesOfVerticesIterator bufferEdgeIts = new BufferGroupEdgesOfVerticesIterator(edgeIts,
+                    vertices);
+            while (this.record.hasNextKey()) {
+                Id source = this.record.nextKey();
+                Iterator<Edge> edges = bufferEdgeIts.get(source);
 
                 edges = skipSuperNodeIfNeeded(edges, this.degree,
                                               this.skipDegree);
@@ -212,10 +216,14 @@ public class ShortestPathTraverser extends HugeTraverser {
                 Id source = this.record.nextKey();
                 vertices.add(source);
             }
+            this.record.resetOneLayer();
 
             EdgesOfVerticesIterator edgeIts = edgesOfVertices(vertices.iterator(), opposite, this.labels, degree, false);
-            while (edgeIts.hasNext()) {
-                Iterator<Edge> edges = edgeIts.next();
+            BufferGroupEdgesOfVerticesIterator bufferEdgeIts = new BufferGroupEdgesOfVerticesIterator(edgeIts,
+                    vertices);
+            while (this.record.hasNextKey()) {
+                Id source = this.record.nextKey();
+                Iterator<Edge> edges = bufferEdgeIts.get(source);
 
                 edges = skipSuperNodeIfNeeded(edges, this.degree,
                         this.skipDegree);

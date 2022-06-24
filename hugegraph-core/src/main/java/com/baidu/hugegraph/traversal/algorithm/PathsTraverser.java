@@ -19,9 +19,8 @@
 
 package com.baidu.hugegraph.traversal.algorithm;
 
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
+import java.util.List;
 
 import org.apache.tinkerpop.gremlin.structure.Edge;
 
@@ -99,6 +98,11 @@ public class PathsTraverser extends OltpTraverser {
             if (this.traverser.reachLimit()) {
                 return;
             }
+            if (this.traverser.record.hasNextKey()) {
+                this.traverser.record.nextKey();
+            } else {
+                return;
+            }
 
             long degree = 0;
             Id ownerId = null;
@@ -147,6 +151,12 @@ public class PathsTraverser extends OltpTraverser {
             if (this.traverser.reachLimit()) {
                 return;
             }
+            if (this.traverser.record.hasNextKey()) {
+                this.traverser.record.nextKey();
+            } else {
+                return;
+            }
+
 
             long degree = 0;
             Id ownerId = null;
@@ -213,7 +223,7 @@ public class PathsTraverser extends OltpTraverser {
             this.record.startOneLayer(true);
 
 
-           Set vids = new HashSet<Id>();
+           List<Id> vids = newList();
 
             while (this.record.hasNextKey()) {
                 Id vid = this.record.nextKey();
@@ -224,17 +234,18 @@ public class PathsTraverser extends OltpTraverser {
 
                 vids.add(vid);
             }
+            this.record.resetOneLayer();
 
-            EdgesOfVerticesIterator edgeIts = edgesOfVertices(vids, direction,
+            EdgesOfVerticesIterator edgeIts = edgesOfVertices(vids.iterator(), direction,
                                                               this.label, NO_LIMIT,
                                                               false);
 
-
+            BufferGroupEdgesOfVerticesIterator bufferEdgeIts = new BufferGroupEdgesOfVerticesIterator(edgeIts, vids);
             AdjacentVerticesBatchConsumer consumer =
                     new AdjacentVerticesBatchConsumerForward(this);
 
             edgeIts.setAvgDegreeSupplier(consumer::getAvgDegree);
-            traverseBatchCurrentThread(edgeIts, consumer, "traverse-ite-edge", 1);
+            traverseBatchCurrentThread(bufferEdgeIts, consumer, "traverse-ite-edge", 1);
 
             this.record.finishOneLayer();
         }
@@ -248,7 +259,7 @@ public class PathsTraverser extends OltpTraverser {
 
             this.record.startOneLayer(false);
 
-            Set vids = new HashSet<Id>();
+            List<Id> vids = newList();
 
             while (this.record.hasNextKey()) {
                 Id vid = this.record.nextKey();
@@ -259,18 +270,19 @@ public class PathsTraverser extends OltpTraverser {
 
                 vids.add(vid);
             }
+            this.record.resetOneLayer();
 
-
-            EdgesOfVerticesIterator edgeIts = edgesOfVertices(vids, direction,
+            EdgesOfVerticesIterator edgeIts = edgesOfVertices(vids.iterator(), direction,
                                                               this.label,
                                                               this.degree,
                                                               false);
+            BufferGroupEdgesOfVerticesIterator bufferEdgeIts = new BufferGroupEdgesOfVerticesIterator(edgeIts, vids);
 
             AdjacentVerticesBatchConsumer consumer =
                     new AdjacentVerticesBatchConsumerBackword(this);
 
             edgeIts.setAvgDegreeSupplier(consumer::getAvgDegree);
-            traverseBatch(edgeIts, consumer, "traverse-ite-edge", 1);
+            traverseBatch(bufferEdgeIts, consumer, "traverse-ite-edge", 1);
 
             this.record.finishOneLayer();
         }
