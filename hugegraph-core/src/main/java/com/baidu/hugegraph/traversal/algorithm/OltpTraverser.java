@@ -24,19 +24,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import javax.ws.rs.core.MultivaluedMap;
 
 import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.structure.HugeEdge;
-import com.baidu.hugegraph.traversal.algorithm.records.KneighborRecords;
-import com.baidu.hugegraph.traversal.algorithm.records.KoutRecords;
 import com.baidu.hugegraph.traversal.algorithm.steps.EdgeStep;
-import com.baidu.hugegraph.traversal.algorithm.steps.Steps;
 import com.baidu.hugegraph.traversal.algorithm.steps.WeightedEdgeStep;
 import com.baidu.hugegraph.type.define.Directions;
 import com.baidu.hugegraph.util.CollectionUtil;
@@ -112,121 +106,6 @@ public abstract class OltpTraverser extends HugeTraverser
             }
             return count;
         }
-    }
-    /**
-     * @author xhtian
-     */
-    class AdjacentVerticesBatchConsumerKout extends AdjacentVerticesBatchConsumer {
-
-        private KoutRecords records;
-        private boolean withEdge;
-
-        public AdjacentVerticesBatchConsumerKout(KoutRecords records,
-                                                 long limit,
-                                                 boolean withEdge) {
-            this(null, null, limit, null);
-            this.records = records;
-            this.withEdge = withEdge;
-        }
-
-        public AdjacentVerticesBatchConsumerKout(Id sourceV,
-                                                 Set<Id> excluded,
-                                                 long limit,
-                                                 Set<Id> neighbors) {
-            super(sourceV, excluded, limit, neighbors);
-        }
-
-        @Override
-        public void accept(CIter<Edge> edges) {
-            if (this.reachLimit(limit, records.size())) {
-                return;
-            }
-
-            long degree = 0;
-            Id ownerId = null;
-
-            while (!this.reachLimit(limit, records.size()) && edges.hasNext()) {
-                edgeIterCounter++;
-                degree++;
-                HugeEdge e = (HugeEdge) edges.next();
-
-                Id source = e.id().ownerVertexId();
-                Id target = e.id().otherVertexId();
-                records.addPath(source, target);
-                if(withEdge) {
-                    // for breadth, we have to collect all edge during traversal,
-                    // to avoid over occupy for memory, we collect edgeId only.
-                    records.addEdgeId(e.id());
-                }
-
-                Id owner = e.id().ownerVertexId();
-                if (ownerId == null || ownerId.compareTo(owner) != 0) {
-                    vertexIterCounter++;
-                    this.avgDegree = this.avgDegreeRatio * this.avgDegree + (1 - this.avgDegreeRatio) * degree;
-                    degree = 0;
-                    ownerId = owner;
-                }
-            }
-        }
-
-        private boolean reachLimit(long limit, int size) {
-            return limit != NO_LIMIT && size >= limit;
-        }
-    }
-
-    /**
-     * @author xhtian
-     */
-    protected long traverseIdsKout(Iterator<Id> ids, Steps steps, Consumer<Id> consumer, boolean concurrent,
-                                   KoutRecords records,
-                                   long limit,
-                                   boolean withedge){
-        long count = 0L;
-        if  (steps.isEdgeStepPropertiesEmpty() && steps.isVertexEmpty()){
-            //如果不过滤边属性且steps中对于节点的配置为空的话，则使用batch的方式遍历
-            EdgesOfVerticesIterator edgeIts = edgesOfVerticesAF(ids, steps,false);
-            AdjacentVerticesBatchConsumer consumer1 =
-                    new AdjacentVerticesBatchConsumerKout(records, limit, withedge);
-            edgeIts.setAvgDegreeSupplier(consumer1::getAvgDegree);
-            //使用单线程来做
-            this.traverseBatchCurrentThread(edgeIts, consumer1, "traverse-ite-edge", 1);
-        }else{
-            //如果包含属性过滤，则使用原来的方式遍历
-            count = traverseIds(ids, consumer, concurrent);
-        }
-        return count;
-    }
-
-    protected long traverseIdsKneighbor(Iterator<Id> ids, Steps steps,
-                                        Consumer<Id> consumer,
-                                        boolean concurrent,
-                                        KneighborRecords records,
-                                        long limit,
-                                        boolean withEdge) {
-        long count = 0L;
-        if (steps.isEdgeStepPropertiesEmpty() && steps.isVertexEmpty()) {
-            Id labelId = null;
-            if (!steps.edgeSteps().isEmpty()) {
-                Steps.StepEntity step =
-                        steps.edgeSteps().values().iterator().next();
-                String label = step.getLabel();
-                labelId = this.getEdgeLabelId(label);
-            }
-
-            EdgesOfVerticesIterator edgeIts = edgesOfVertices(ids,
-                                                              steps.direction(),
-                                                              labelId,
-                                                              steps.degree(),
-                                                              false);
-            AdjacentVerticesBatchConsumer consumer1 =
-                    new AdjacentVerticesBatchConsumerKneighbor(records, limit,
-                                                               withEdge);
-            edgeIts.setAvgDegreeSupplier(consumer1::getAvgDegree);
-            this.traverseBatchCurrentThread(edgeIts, consumer1, "traverse-ite-edge", 1);
-        } else {
-            count = traverseIds(ids, consumer, concurrent);
-        }
-        return count;
     }
 
     protected long traverseIds(Iterator<Id> ids, Consumer<Id> consumer) {
@@ -413,67 +292,6 @@ public abstract class OltpTraverser extends HugeTraverser
         return p.isPresent() && Objects.equal(p.value(), value);
     }
 
-    public class ConcurrentMultiValuedMap<K, V>
-           extends ConcurrentHashMap<K, List<V>> {
-
-        private static final long serialVersionUID = -7249946839643493614L;
-
-        public ConcurrentMultiValuedMap() {
-            super();
-        }
-
-        public void add(K key, V value) {
-            List<V> values = this.getValues(key);
-            values.add(value);
-        }
-
-        public void addAll(K key, List<V> value) {
-            List<V> values = this.getValues(key);
-            values.addAll(value);
-        }
-
-        public List<V> getValues(K key) {
-            List<V> values = this.get(key);
-            if (values == null) {
-                values = new CopyOnWriteArrayList<>();
-                List<V> old = this.putIfAbsent(key, values);
-                if (old != null) {
-                    values = old;
-                }
-            }
-            return values;
-        }
-    }
-
-    protected Set<Id> adjacentVertices(Id sourceV, Set<Id> vertices,
-                                       Directions dir, Id label,
-                                       Set<Id> excluded, long degree,
-                                       long limit, boolean concurrent) {
-        if (limit == 0) {
-            return ImmutableSet.of();
-        }
-
-        Set<Id> neighbors = newSet(concurrent);
-
-        this.traverseIds(vertices.iterator(), new AdjacentVerticesConsumer(
-                sourceV, dir, label, excluded, degree, limit, neighbors
-        ), concurrent);
-
-        if (limit != NO_LIMIT && neighbors.size() > limit) {
-            int redundantNeighborsCount = (int) (neighbors.size() - limit);
-            List<Id> redundantNeighbors = new ArrayList<>(redundantNeighborsCount);
-            for (Id vId: neighbors) {
-                redundantNeighbors.add(vId);
-                if (redundantNeighbors.size() >= redundantNeighborsCount) {
-                    break;
-                }
-            }
-            redundantNeighbors.forEach(neighbors::remove);
-        }
-
-        return neighbors;
-    }
-
     protected Set<Id> adjacentVerticesBatch(Id sourceV, Set<Id> vertices,
                                        Directions dir, Id label,
                                        Set<Id> excluded, long degree,
@@ -503,122 +321,6 @@ public abstract class OltpTraverser extends HugeTraverser
         }
 
         return neighbors;
-    }
-
-
-    class AdjacentVerticesConsumer implements Consumer<Id> {
-
-        private Id sourceV;
-        private Directions dir;
-        private Id label;
-        private Set<Id> excluded;
-        private long degree;
-        private long limit;
-        private Set<Id> neighbors;
-
-        public AdjacentVerticesConsumer(Id sourceV, Directions dir, Id label,
-                                        Set<Id> excluded, long degree,
-                                        long limit, Set<Id> neighbors) {
-            this.sourceV = sourceV;
-            this.dir = dir;
-            this.label = label;
-            this.excluded = excluded;
-            this.degree = degree;
-            this.limit = limit;
-            this.neighbors = neighbors;
-        }
-
-        @Override
-        public void accept(Id id) {
-            Iterator<Edge> edges = edgesOfVertex(id, dir,
-                    label, degree, false);
-            while (edges.hasNext()) {
-                edgeIterCounter++;
-                HugeEdge e = (HugeEdge) edges.next();
-                Id target = e.id().otherVertexId();
-                boolean matchExcluded = (excluded != null &&
-                        excluded.contains(target));
-                if (matchExcluded || neighbors.contains(target) ||
-                        sourceV.equals(target)) {
-                    continue;
-                }
-                neighbors.add(target);
-                if (limit != NO_LIMIT && neighbors.size() >= limit) {
-                    return;
-                }
-            }
-        }
-
-        @Override
-        public Consumer<Id> andThen(Consumer<? super Id> after) {
-            java.util.Objects.requireNonNull(after);
-            return (Id t) -> {
-                accept(t);
-                if (limit != NO_LIMIT && neighbors.size() >= limit) {
-                    return;
-                } else {
-                    after.accept(t);
-                }
-            };
-        }
-    }
-
-    class AdjacentVerticesBatchConsumerKneighbor extends AdjacentVerticesBatchConsumer {
-
-        private KneighborRecords records;
-        private boolean withEdge;
-
-        public AdjacentVerticesBatchConsumerKneighbor(KneighborRecords records,
-                                                      long limit,
-                                                      boolean withEdge) {
-            this(null, null, limit, null);
-            this.records = records;
-            this.withEdge = withEdge;
-        }
-
-        public AdjacentVerticesBatchConsumerKneighbor(Id sourceV,
-                                                      Set<Id> excluded,
-                                                      long limit,
-                                                      Set<Id> neighbors) {
-            super(sourceV, excluded, limit, neighbors);
-        }
-
-        @Override
-        public void accept(CIter<Edge> edges) {
-            if (this.reachLimit(limit, records.size())) {
-                return;
-            }
-
-            long degree = 0;
-            Id ownerId = null;
-
-            while (!this.reachLimit(limit, records.size()) && edges.hasNext()) {
-                edgeIterCounter++;
-                degree++;
-                HugeEdge e = (HugeEdge) edges.next();
-
-                Id source = e.id().ownerVertexId();
-                Id target = e.id().otherVertexId();
-                records.addPath(source, target);
-                if(withEdge) {
-                    // for breadth, we have to collect all edge during traversal,
-                    // to avoid over occupy for memory, we collect edgeId only.
-                    records.addEdgeId(e.id());
-                }
-
-                Id owner = e.id().ownerVertexId();
-                if (ownerId == null || ownerId.compareTo(owner) != 0) {
-                    vertexIterCounter++;
-                    this.avgDegree = this.avgDegreeRatio * this.avgDegree + (1 - this.avgDegreeRatio) * degree;
-                    degree = 0;
-                    ownerId = owner;
-                }
-            }
-        }
-
-        private boolean reachLimit(long limit, int size) {
-            return limit != NO_LIMIT && size >= limit;
-        }
     }
 
     class AdjacentVerticesBatchConsumerCustomizedPaths

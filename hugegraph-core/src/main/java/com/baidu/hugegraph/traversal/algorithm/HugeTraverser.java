@@ -108,7 +108,11 @@ public class HugeTraverser {
     public HugeTraverser(HugeGraph graph) {
         this.graph = graph;
         if (collectionFactory == null) {
-            collectionFactory = new CollectionFactory(this.collectionType());
+            synchronized (HugeTraverser.class) {
+                if (collectionFactory == null) {
+                    collectionFactory = new CollectionFactory(this.collectionType());
+                }
+            }
         }
     }
 
