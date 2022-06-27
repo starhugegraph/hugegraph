@@ -21,6 +21,7 @@ package com.baidu.hugegraph.traversal.algorithm;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -260,14 +261,20 @@ public class KoutTraverser extends OltpTraverser {
                                    long limit,
                                    boolean withedge){
         long count = 0L;
-        if  (steps.isEdgeStepPropertiesEmpty() && steps.isVertexEmpty()){
+        if (steps.isEdgeStepPropertiesEmpty() && steps.isVertexEmpty()) {
+            List<Id> vids = newList();
+            while (ids.hasNext()) {
+                vids.add(ids.next());
+            }
             //如果不过滤边属性且steps中对于节点的配置为空的话，则使用batch的方式遍历
-            EdgesOfVerticesIterator edgeIts = edgesOfVerticesAF(ids, steps,false);
+            EdgesOfVerticesIterator edgeIts = edgesOfVerticesAF(vids.iterator(), steps, false);
             AdjacentVerticesBatchConsumer consumer1 =
                     new AdjacentVerticesBatchConsumerKout(records, limit, withedge);
             edgeIts.setAvgDegreeSupplier(consumer1::getAvgDegree);
+            BufferGroupEdgesOfVerticesIterator bufferEdgeIts = new BufferGroupEdgesOfVerticesIterator(edgeIts, vids,
+                                                                                                      steps.degree());
             //使用单线程来做
-            this.traverseBatchCurrentThread(edgeIts, consumer1, "traverse-ite-edge", 1);
+            this.traverseBatchCurrentThread(bufferEdgeIts, consumer1, "traverse-ite-edge", 1);
         }else{
             //如果包含属性过滤，则使用原来的方式遍历
             count = traverseIds(ids, consumer, concurrent);
