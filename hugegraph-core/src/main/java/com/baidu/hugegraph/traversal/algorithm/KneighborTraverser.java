@@ -20,6 +20,7 @@
 package com.baidu.hugegraph.traversal.algorithm;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -199,7 +200,13 @@ public class KneighborTraverser extends OltpTraverser {
                 labelId = this.getEdgeLabelId(label);
             }
 
-            EdgesOfVerticesIterator edgeIts = edgesOfVertices(ids,
+            List<Id> vids = newList();
+            while (ids.hasNext()) {
+                Id vid = ids.next();
+                vids.add(vid);
+            }
+
+            EdgesOfVerticesIterator edgeIts = edgesOfVertices(vids.iterator(),
                     steps.direction(),
                     labelId,
                     steps.degree(),
@@ -208,7 +215,9 @@ public class KneighborTraverser extends OltpTraverser {
                     new AdjacentVerticesBatchConsumerKneighbor(records, limit,
                             withEdge);
             edgeIts.setAvgDegreeSupplier(consumer1::getAvgDegree);
-            this.traverseBatchCurrentThread(edgeIts, consumer1, "traverse-ite-edge", 1);
+            BufferGroupEdgesOfVerticesIterator bufferEdgeIts = new BufferGroupEdgesOfVerticesIterator(edgeIts, vids,
+                    steps.degree());
+            this.traverseBatchCurrentThread(bufferEdgeIts, consumer1, "traverse-ite-edge", 1);
         } else {
             count = traverseIds(ids, consumer, concurrent);
         }

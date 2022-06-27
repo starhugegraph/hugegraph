@@ -106,7 +106,7 @@ public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>>
         return true;
     }
 
-    protected boolean loadMore(){
+    protected synchronized boolean loadMore(){
         int beforeLoadedCount = loadedEdgesCount;
         if(haveMoreData == true && loadedEdgesCount < MAX_LOAD_ITEMS){
             /* load not balance */
