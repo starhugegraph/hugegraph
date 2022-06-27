@@ -67,8 +67,6 @@ public class EtcdTaskScheduler extends TaskScheduler {
 
     private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
 
-    private static final String TASK_COUNT_LOCK = "TASK_COUNT_LOCK";
-
     private static final String TASK_NAME_PREFIX = "etcd-task-worker";
 
     private final ExecutorService producer = ExecutorUtil.newFixedThreadPool(1, EtcdTaskScheduler.class.getName() + "-task-producer");
@@ -167,19 +165,9 @@ public class EtcdTaskScheduler extends TaskScheduler {
     public int pendingTasks() {
         int count = 0;
         MetaManager manager = MetaManager.instance();
-        LockResult result = null;
-        try {
-            result = manager.lock(EtcdTaskScheduler.TASK_COUNT_LOCK);
-                if (result.lockSuccess()) {
-                for(TaskStatus status : TaskStatus.PENDING_STATUSES) {
-                    count +=  manager.countTaskByStatus(this.graphSpace(),
-                                                        this.graphName, status);
-                }
-            }
-        } catch (Throwable e) {
-
-        } finally {
-            manager.unlock(TASK_COUNT_LOCK, result);
+        for(TaskStatus status : TaskStatus.PENDING_STATUSES) {
+            count +=  manager.countTaskByStatus(this.graphSpace(),
+                                                this.graphName, status);
         }
         return count;
     }
