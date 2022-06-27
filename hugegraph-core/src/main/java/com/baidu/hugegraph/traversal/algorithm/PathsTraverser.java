@@ -276,7 +276,8 @@ public class PathsTraverser extends OltpTraverser {
                                                               this.label,
                                                               this.degree,
                                                               false);
-            BufferGroupEdgesOfVerticesIterator bufferEdgeIts = new BufferGroupEdgesOfVerticesIterator(edgeIts, vids);
+            BufferGroupEdgesOfVerticesIterator bufferEdgeIts = new BufferGroupEdgesOfVerticesIterator(edgeIts, vids,
+                                                                                                      this.degree);
 
             AdjacentVerticesBatchConsumer consumer =
                     new AdjacentVerticesBatchConsumerBackword(this);

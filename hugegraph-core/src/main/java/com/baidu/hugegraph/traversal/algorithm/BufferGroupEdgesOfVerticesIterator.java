@@ -35,8 +35,10 @@ import com.baidu.hugegraph.util.collection.MappingFactory;
 import com.baidu.hugegraph.util.collection.ObjectIntMapping;
 
 public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>> {
+     private static final int MAX_LOAD_ITEMS = 1000*10000;
     private static final int LOAD_ITEM_ONCE = 200;
     private int verticesOffset = 0;
+    private volatile int loadedEdgesCount = 0;
     private boolean concurrent = false;
     private boolean haveMoreData = true;
     private HugeTraverser.EdgesOfVerticesIterator edgeIts;
@@ -79,10 +81,12 @@ public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>>
     }
 
     private boolean doBufferData(int fetchLen) {
-        for(int i=0; i< fetchLen ;++i){
+        int count = 0;
+        while (count < fetchLen) {
             boolean loaded = false;
-            for(Iterator<Edge> edges : edgeIters){
-                if (edges.hasNext()){
+            for (int i = 0; i < edgeIters.size() && count < fetchLen && loadedEdgesCount < MAX_LOAD_ITEMS; ++i) {
+                Iterator<Edge> edges = edgeIters.get(i);
+                if (edges.hasNext()) {
                     HugeEdge edge = (HugeEdge) edges.next();
                     Id id = edge.id().ownerVertexId();
                     List<Edge> edgeList = bufferedData.get(code(id));
@@ -90,9 +94,11 @@ public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>>
                         edgeList.add(edge);
                     }
                     loaded = true;
+                    ++loadedEdgesCount;
+                    ++count;
                 }
             }
-            if (loaded == false){
+            if (loaded == false) {
                 return false;
             }
         }
@@ -100,11 +106,13 @@ public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>>
         return true;
     }
 
-    protected void loadMore(){
-        if(haveMoreData == true){
+    protected boolean loadMore(){
+        int beforeLoadedCount = loadedEdgesCount;
+        if(haveMoreData == true && loadedEdgesCount < MAX_LOAD_ITEMS){
             /* load not balance */
             haveMoreData = doBufferData(LOAD_ITEM_ONCE);
         }
+        return loadedEdgesCount > beforeLoadedCount;
     }
 
     private CIter<Edge> getNext() {
@@ -182,8 +190,13 @@ public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>>
             }else if(more == false){
                 return false;
             }
-            bufferWrapIter.loadMore();
-            more = (edges.size() - offset.get()) > 0;
+            while(true){
+                boolean loaded = bufferWrapIter.loadMore();;
+                more = (edges.size() - offset.get()) > 0;
+                if(loaded == false || more == true){
+                    break;
+                }
+            }
             return more;
         }
 

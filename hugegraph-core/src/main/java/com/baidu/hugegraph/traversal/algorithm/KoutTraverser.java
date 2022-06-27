@@ -272,7 +272,7 @@ public class KoutTraverser extends OltpTraverser {
                     new AdjacentVerticesBatchConsumerKout(records, limit, withedge);
             edgeIts.setAvgDegreeSupplier(consumer1::getAvgDegree);
             BufferGroupEdgesOfVerticesIterator bufferEdgeIts = new BufferGroupEdgesOfVerticesIterator(edgeIts, vids,
-                    limit);
+                                                                                                      steps.degree());
             //使用单线程来做
             this.traverseBatchCurrentThread(bufferEdgeIts, consumer1, "traverse-ite-edge", 1);
         }else{
