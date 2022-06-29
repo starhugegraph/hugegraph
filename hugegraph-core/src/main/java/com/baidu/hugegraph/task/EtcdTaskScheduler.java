@@ -52,11 +52,13 @@ import com.baidu.hugegraph.task.TaskCallable.SysTaskCallable;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Events;
 import com.baidu.hugegraph.util.ExecutorUtil;
+import com.baidu.hugegraph.util.Log;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.tinkerpop.gremlin.structure.Vertex;
+import org.slf4j.Logger;
 
 /**
  * EtcdTaskScheduler handle the distributed task by etcd
@@ -64,6 +66,8 @@ import org.apache.tinkerpop.gremlin.structure.Vertex;
  * @since 2022-01-01
  */
 public class EtcdTaskScheduler extends TaskScheduler {
+
+    private static final Logger LOG = Log.logger(TaskScheduler.class);
 
     private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
 
@@ -334,6 +338,7 @@ public class EtcdTaskScheduler extends TaskScheduler {
         task.scheduler(this);
         E.checkArgumentNotNull(task, "Task can't be null");
         HugeVertex v = this.call(() -> {
+            LOG.info("save task: {}", task);
             // Construct vertex from task
             HugeVertex vertex = this.tx().constructVertex(task);
             // Delete index of old vertex to avoid stale index
