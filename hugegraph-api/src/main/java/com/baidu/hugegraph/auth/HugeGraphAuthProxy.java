@@ -40,7 +40,6 @@ import javax.ws.rs.ForbiddenException;
 
 import com.baidu.hugegraph.backend.store.BackendStoreProvider;
 import com.baidu.hugegraph.iterator.CIter;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.tinkerpop.gremlin.groovy.jsr223.GroovyTranslator;
 import org.apache.tinkerpop.gremlin.process.computer.GraphComputer;
 import org.apache.tinkerpop.gremlin.process.traversal.Bytecode;
@@ -57,7 +56,6 @@ import org.apache.tinkerpop.gremlin.structure.Transaction;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.VertexProperty;
 import org.apache.tinkerpop.gremlin.structure.io.Io;
-import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
 import com.baidu.hugegraph.auth.HugeAuthenticator.RolePerm;
@@ -512,7 +510,8 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
     @Override
     public List<CIter<Edge>> edges(List<Query> queryList) {
-        throw new NotImplementedException();
+        return verifyElemPermission(HugePermission.READ,
+                                    this.hugegraph.edges(queryList));
     }
 
     @Override
@@ -934,6 +933,18 @@ public final class HugeGraphAuthProxy implements HugeGraph {
             V r = verifyElemPermission(actionPerm, false, () -> elem);
             return r != null;
         });
+    }
+
+    private List<CIter<Edge>> verifyElemPermission(HugePermission actionPerm,
+                                                   List<CIter<Edge>> edges) {
+        List<CIter<Edge>> results = new ArrayList<>();
+        for (CIter<Edge> edgeCIter : edges) {
+            results.add(new FilterIterator<>(edgeCIter, elem -> {
+                Edge r = verifyElemPermission(actionPerm, false, () -> elem);
+                return r != null;
+            }));
+        }
+        return results;
     }
 
     private <V extends Element> V verifyElemPermission(
