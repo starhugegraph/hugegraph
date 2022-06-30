@@ -61,6 +61,11 @@ public final class TaskManager {
                                "server-info-db-worker-%d";
     public static final String TASK_SCHEDULER = "task-scheduler-%d";
 
+    public static final String OLAP_TASK_WORKER = "olap-task-worker-%d";
+    public static final String SCHEMA_TASK_WORKER = "schema-task-worker-%d";
+    public static final String EPHEMERAL_TASK_WORKER = "ephemeral-task-worker-%d";
+    public static final String GREMLIN_TASK_WORKER = "gremlin-task-worker-%d";
+
     protected static final int SCHEDULE_PERIOD = 3; // Unit second
     private static int THREADS;
     private static TaskManager MANAGER;
@@ -74,6 +79,9 @@ public final class TaskManager {
     private final ExecutorService serverInfoDbExecutor;
     private final PausableScheduledThreadPool schedulerExecutor;
 
+    private final ExecutorService schemaTaskExecutor;
+    private final ExecutorService olapTaskExecutor;
+    private final ExecutorService ephemeralTaskExecutor;
 
 
     public static TaskManager instance(int threads) {
@@ -104,11 +112,18 @@ public final class TaskManager {
                               1, TASK_DB_WORKER);
         this.serverInfoDbExecutor = ExecutorUtil.newFixedThreadPool(
                                     1, SERVER_INFO_DB_WORKER);
+
+        this.schemaTaskExecutor = ExecutorUtil.newFixedThreadPool(2,
+                                                                  SCHEMA_TASK_WORKER);
+        this.olapTaskExecutor = ExecutorUtil.newFixedThreadPool(2,
+                                                                OLAP_TASK_WORKER);
+        this.ephemeralTaskExecutor = ExecutorUtil.newFixedThreadPool(2,
+                                                                     EPHEMERAL_TASK_WORKER);
         // For schedule task to run, just one thread is ok
         this.schedulerExecutor = ExecutorUtil.newPausableScheduledThreadPool(
                                  1, TASK_SCHEDULER);
         // Start after 10s waiting for HugeGraphServer startup
-        
+
         this.schedulerExecutor.scheduleWithFixedDelay(() -> {
                                                         this.scheduleOrExecuteJob(true);
                                                       },
@@ -132,6 +147,19 @@ public final class TaskManager {
                             this.serverInfoDbExecutor,
                             TaskPriority.LOW);
                     this.schedulers.put(graph, scheduler);
+                }
+                break;
+            case "distributed": {
+                TaskScheduler scheduler =
+                        new DistributedTaskScheduler(
+                                graph,
+                                taskDbExecutor,
+                                schemaTaskExecutor,
+                                olapTaskExecutor,
+                                taskExecutor,
+                                ephemeralTaskExecutor
+                        );
+                this.schedulers.put(graph, scheduler);
                 }
                 break;
             case "local":

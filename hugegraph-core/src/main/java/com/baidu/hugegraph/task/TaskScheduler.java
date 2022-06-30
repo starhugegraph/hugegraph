@@ -50,6 +50,7 @@ import com.google.common.collect.ImmutableMap;
 
 import org.apache.logging.log4j.util.Strings;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
+import org.slf4j.Logger;
 
 /**
  * Base class of task scheduler
@@ -58,6 +59,8 @@ public abstract class TaskScheduler {
 
     protected static final HugeGraphLogger LOGGER
         = Log.getLogger(TaskScheduler.class);
+
+    private static final Logger LOG = Log.logger(TaskScheduler.class);
 
     protected static final long NO_LIMIT = -1L;
     protected static final long PAGE_SIZE = 500L;
@@ -223,6 +226,7 @@ public abstract class TaskScheduler {
             callable = new ContextCallable<>(callable);
             return executor.submit(callable).get();
         } catch (Exception e) {
+            LOG.warn("Failed to update/query TaskStore", e);
             LOGGER.logCriticalError(e, "");
             throw new HugeException("Failed to update/query TaskStore: %s",
             e, e.toString());

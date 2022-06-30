@@ -31,6 +31,8 @@ import java.util.concurrent.FutureTask;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
+import com.baidu.hugegraph.job.GremlinJob;
+import com.baidu.hugegraph.job.schema.SchemaCallable;
 import org.apache.tinkerpop.gremlin.structure.Graph.Hidden;
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
@@ -320,6 +322,18 @@ public class HugeTask<V> extends FutureTask<V> {
     public boolean computer() {
         return ComputerDisJob.COMPUTER_DIS.equals(this.type) ||
                ComputerJob.COMPUTER.equals(this.type);
+    }
+
+    public boolean schemaTask() {
+        return this.callable instanceof SchemaCallable;
+    }
+
+    public boolean gremlinTask() {
+        return this.callable instanceof GremlinJob;
+    }
+
+    public boolean ephemeralTask() {
+        return this.callable instanceof EphemeralJob;
     }
 
     @Override
