@@ -760,6 +760,7 @@ public class HugeTask<V> extends FutureTask<V> {
     public static final class P {
 
         public static final String TASK = Hidden.hide("task");
+        public static final String TASKRESULT = Hidden.hide("taskresult");
 
         public static final String ID = T.id.getAccessor();
         public static final String LABEL = T.label.getAccessor();
