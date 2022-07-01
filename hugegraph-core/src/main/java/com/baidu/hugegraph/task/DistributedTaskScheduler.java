@@ -89,6 +89,7 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
         this.schedulerExecutor.scheduleWithFixedDelay(
                 () -> {
                     try {
+                        logCurrentState();
                         this.cronSchedule();
                     } catch (Throwable t) {
                         LOG.warn("cronScheduler exception ", t);
@@ -451,6 +452,21 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
             TaskRunner runner = new TaskRunner<>(task);
             chosenExecutor.submit(runner);
         }
+    }
+
+    protected void logCurrentState() {
+        int gremlinActive =
+                ((ThreadPoolExecutor) gremlinTaskExecutor).getActiveCount();
+        int schemaActive =
+                ((ThreadPoolExecutor) schemaTaskExecutor).getActiveCount();
+        int ephemeralActive =
+                ((ThreadPoolExecutor) ephemeralTaskExecutor).getActiveCount();
+        int olapActive =
+                ((ThreadPoolExecutor) olapTaskExecutor).getActiveCount();
+
+        LOG.info("Current State: gremlinTaskExecutor({}), schemaTaskExecutor" +
+                 "({}), ephemeralTaskExecutor({}), olapTaskExecutor({})",
+                 gremlinActive, schemaActive, ephemeralActive, olapActive);
     }
 
     private class TaskRunner<V> implements Runnable {
