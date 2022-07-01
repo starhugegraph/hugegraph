@@ -19,33 +19,32 @@
 
 package com.baidu.hugegraph.task;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 import org.apache.tinkerpop.gremlin.structure.Graph;
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.VertexProperty;
 
-import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.util.Blob;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.StringEncoding;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
 public class HugeTaskResult {
 
-    private final Id taskId;
+    private long taskId;
     private volatile String result;
 
     private static final float DECOMPRESS_RATIO = 10.0F;
 
-    public HugeTaskResult(Id taskId) {
+    public HugeTaskResult(long taskId) {
         this.taskId = taskId;
         this.result = null;
     }
 
-    public Id taskId() {
+    public long taskId() {
        return this.taskId;
     }
 
@@ -59,7 +58,7 @@ public class HugeTaskResult {
 
     protected synchronized Object[] asArray() {
 
-        List<Object> list = new ArrayList<>(4);
+        List<Object> list = new ArrayList<>(6);
 
         list.add(T.label);
         list.add(HugeTaskResult.P.TASKRESULT);
@@ -77,7 +76,7 @@ public class HugeTaskResult {
     }
 
     public static HugeTaskResult fromVertex(Vertex vertex) {
-        HugeTaskResult taskResult = new HugeTaskResult((Id) vertex.id());
+        HugeTaskResult taskResult = new HugeTaskResult((Long) vertex.id());
         for (Iterator<VertexProperty<Object>> iter = vertex.properties();
              iter.hasNext();) {
             VertexProperty<Object> prop = iter.next();
@@ -89,7 +88,10 @@ public class HugeTaskResult {
     protected void property(String key, Object value) {
         E.checkNotNull(key, "property key");
         switch (key) {
-            case HugeTaskResult.P.RESULT:
+            case P.TASKID:
+                this.taskId = (long) value;
+                break;
+            case P.RESULT:
                 this.result = StringEncoding.decompress(((Blob) value).bytes(),
                                                         DECOMPRESS_RATIO);
                 break;

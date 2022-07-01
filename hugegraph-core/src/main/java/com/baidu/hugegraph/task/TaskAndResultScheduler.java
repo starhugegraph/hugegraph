@@ -80,7 +80,7 @@ public abstract class TaskAndResultScheduler extends TaskScheduler {
 
         // 保存result 结果
         if (rawResult != null) {
-            HugeTaskResult result = new HugeTaskResult(task.id());
+            HugeTaskResult result = new HugeTaskResult(task.id().asLong());
             result.result(rawResult);
 
             this.call(() -> {
@@ -185,7 +185,7 @@ public abstract class TaskAndResultScheduler extends TaskScheduler {
 
         Iterator<HugeTaskResult> results = queryTaskResult(ids);
 
-        HashMap<Id, HugeTaskResult> resultCaches = new HashMap<>();
+        HashMap<Long, HugeTaskResult> resultCaches = new HashMap<>();
         while (results.hasNext()) {
             HugeTaskResult entry = results.next();
             resultCaches.put(entry.taskId(), entry);
@@ -275,7 +275,7 @@ public abstract class TaskAndResultScheduler extends TaskScheduler {
             VertexLabel vl = this.graph().vertexLabel(HugeTaskResult.P.TASKRESULT);
             query.eq(HugeKeys.LABEL, vl.id());
             PropertyKey pk = this.graph().propertyKey(HugeTaskResult.P.TASKID);
-            query.query(Condition.eq(pk.id(), taskid.asLong()));
+            query.query(Condition.eq(pk.id(), taskid));
             query.showHidden(true);
             Iterator<Vertex> vertices = this.tx().queryVertices(query);
             Vertex vertex = QueryResults.one(vertices);

@@ -109,7 +109,7 @@ public class TaskAndResultTransaction extends TaskTransaction {
 
     private String[] initTaskResultProperties() {
         List<String> props = new ArrayList<>();
-        props.add(createPropertyKey(HugeTaskResult.P.TASKID, DataType.INT));
+        props.add(createPropertyKey(HugeTaskResult.P.TASKID, DataType.LONG));
         props.add(createPropertyKey(HugeTaskResult.P.RESULT, DataType.BLOB));
 
         return props.toArray(new String[0]);
