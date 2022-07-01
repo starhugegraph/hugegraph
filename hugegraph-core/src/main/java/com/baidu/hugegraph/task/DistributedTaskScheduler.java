@@ -20,7 +20,6 @@
 package com.baidu.hugegraph.task;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,8 +31,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com.baidu.hugegraph.config.CoreOptions;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
@@ -54,7 +51,7 @@ import com.baidu.hugegraph.util.Events;
 import com.baidu.hugegraph.util.ExecutorUtil;
 import com.baidu.hugegraph.util.Log;
 
-public class DistributedTaskScheduler extends TaskScheduler{
+public class DistributedTaskScheduler extends TaskAndResultScheduler{
     private static final Logger LOG = Log.logger(DistributedTaskScheduler.class);
 
     protected static final int SCHEDULE_PERIOD = 3;
@@ -94,8 +91,7 @@ public class DistributedTaskScheduler extends TaskScheduler{
                     try {
                         this.cronSchedule();
                     } catch (Throwable t) {
-                        LOG.warn("cronScheduler exception ",
-                                 t);
+                        LOG.warn("cronScheduler exception ", t);
                     }
                 },
                 10L, SCHEDULE_PERIOD,
@@ -106,23 +102,26 @@ public class DistributedTaskScheduler extends TaskScheduler{
         // 执行周期调度任务
 
         // 处理NEW状态的任务
-        Iterator<HugeTask<Object>> news = queryTaskByStatus(
+        Iterator<HugeTask<Object>> news = queryTaskWithoutResultByStatus(
                 TaskStatus.NEW);
 
         while (news.hasNext()) {
             HugeTask newTask = news.next();
             initTaskParams(newTask);
+            LOG.info("Try to start task({})", newTask.id());
             tryStartHugeTask(newTask);
         }
 
         // 处理runnning状态的任务
         Iterator<HugeTask<Object>> runnings =
-                queryTaskByStatus(TaskStatus.RUNNING);
+                queryTaskWithoutResultByStatus(TaskStatus.RUNNING);
 
         while (runnings.hasNext()) {
             HugeTask running = runnings.next();
             if (!MetaManager.instance().isLockedTask(graphSpace, graphName,
                                                     running.id().toString())) {
+                LOG.info("Try to update task({}) status(RUNNING->FAILED)",
+                         running.id());
                 updateStatusWithLock(running.id(), TaskStatus.RUNNING,
                                      TaskStatus.FAILED);
                 runningTasks.remove(running.id());
@@ -130,19 +129,21 @@ public class DistributedTaskScheduler extends TaskScheduler{
         }
 
         // 处理FAIELD/HANGING状态的任务
-        Iterator<HugeTask<Object>> faileds = queryTaskByStatus(
+        Iterator<HugeTask<Object>> faileds = queryTaskWithoutResultByStatus(
                 TaskStatus.FAILED);
 
         while (faileds.hasNext()) {
             HugeTask<Object> failed = faileds.next();
             if (failed.retries() < 3) {
+                LOG.info("Try to update task({}) status(FAILED->NEW)",
+                         failed.id());
                 updateStatusWithLock(failed.id(), TaskStatus.FAILED,
                                      TaskStatus.NEW);
             }
         }
 
         // 处理CANCELLING状态的任务
-        Iterator<HugeTask<Object>> cancellings = queryTaskByStatus(
+        Iterator<HugeTask<Object>> cancellings = queryTaskWithoutResultByStatus(
                 TaskStatus.CANCELLING);
 
         while (cancellings.hasNext()) {
@@ -152,6 +153,8 @@ public class DistributedTaskScheduler extends TaskScheduler{
                 cancelling.cancel(true);
 
                 if (cancelling.completed()) {
+                    LOG.info("Try to update task({}) status(CANCELLING " +
+                            "-> CANCELLED)", cancelling.id());
                     updateStatusWithLock(cancelling.id(), TaskStatus.CANCELLING,
                                          TaskStatus.CANCELLED);
                 }
@@ -159,7 +162,7 @@ public class DistributedTaskScheduler extends TaskScheduler{
         }
 
         // 处理DELETING状态的任务
-        Iterator<HugeTask<Object>> deletings = queryTaskByStatus(
+        Iterator<HugeTask<Object>> deletings = queryTaskWithoutResultByStatus(
                 TaskStatus.DELETING);
 
         while (deletings.hasNext()) {
@@ -169,15 +172,19 @@ public class DistributedTaskScheduler extends TaskScheduler{
                 deleting.cancel(true);
 
                 if (deleting.completed()) {
+                    LOG.info("Try to delete task({})", deleting.id());
                     deleteFromDB(deletingId);
                 }
             }
         }
-
     }
 
     protected <V> Iterator<HugeTask<V>> queryTaskByStatus(TaskStatus status) {
         return queryTask(HugeTask.P.STATUS, status.code(), NO_LIMIT, null);
+    }
+
+    protected <V> Iterator<HugeTask<V>> queryTaskWithoutResultByStatus(TaskStatus status) {
+        return queryTaskWithoutResult(HugeTask.P.STATUS, status.code(), NO_LIMIT, null);
     }
 
     @Override
@@ -185,7 +192,7 @@ public class DistributedTaskScheduler extends TaskScheduler{
         int count = 0;
         for(TaskStatus status : TaskStatus.PENDING_STATUSES) {
 
-            count += Iterators.size(queryTaskByStatus(status));
+            count += Iterators.size(queryTaskWithoutResultByStatus(status));
         }
 
         return count;
@@ -208,9 +215,9 @@ public class DistributedTaskScheduler extends TaskScheduler{
             return this.ephemeralTaskExecutor.submit(task);
         }
 
-        // TODO 处理schema任务
-        // TODO 处理gremlin任务
-        // TODO 处理OLAP计算任务
+        // 处理schema任务
+        // 处理gremlin任务
+        // 处理OLAP计算任务
         // 添加任务到DB， 当前任务状态为NEW
         this.save(task);
 
@@ -234,21 +241,6 @@ public class DistributedTaskScheduler extends TaskScheduler{
     public <V> void cancel(HugeTask<V> task) {
         // 更新状态为CANCELLING
         this.updateStatusWithLock(task.id(), null, TaskStatus.CANCELLING);
-    }
-
-
-    @Override
-    public <V> void save(HugeTask<V> task) {
-        task.scheduler(this);
-        E.checkArgumentNotNull(task, "Task can't be null");
-        this.call(() -> {
-            // Construct vertex from task
-            HugeVertex vertex = this.tx().constructVertex(task);
-            // Delete index of old vertex to avoid stale index
-            this.tx().deleteIndex(vertex);
-            // Add or update task info to backend store
-            return this.tx().addVertex(vertex);
-        });
     }
 
     protected <V> HugeTask<V> deleteFromDB(Id id) {
@@ -284,39 +276,6 @@ public class DistributedTaskScheduler extends TaskScheduler{
     @Override
     public void flushAllTask() {
         // Do Nothing!
-    }
-
-    @Override
-    public <V> HugeTask<V> task(Id id) {
-
-        HugeTask<V> result =  this.call(() -> {
-            Iterator<Vertex> vertices = this.tx().queryVertices(id);
-            Vertex vertex = QueryResults.one(vertices);
-            if (vertex == null) {
-                return null;
-            }
-            return HugeTask.fromVertex(vertex);
-        });
-
-        if (result == null) {
-            throw new NotFoundException("Can't find task with id '%s'", id);
-        }
-
-        return result;
-    }
-
-    @Override
-    public <V> Iterator<HugeTask<V>> tasks(List<Id> ids) {
-        return this.queryTask(ids);
-    }
-
-    @Override
-    public <V> Iterator<HugeTask<V>> tasks(TaskStatus status, long limit,
-                                           String page) {
-        if (status == null) {
-            return this.queryTask(ImmutableMap.of(), limit, page);
-        }
-        return this.queryTask(HugeTask.P.STATUS, status.code(), limit, page);
     }
 
     private EventListener listenChanges() {
@@ -376,7 +335,7 @@ public class DistributedTaskScheduler extends TaskScheduler{
         HugeTask<V> task = null;
         for (long pass = 0;; pass++) {
             try {
-                task = this.task(id);
+                task = this.taskWithoutResult(id);
             } catch (NotFoundException e) {
                 if (task != null && task.completed()) {
                     assert task.id().asLong() < 0L : task.id();
@@ -451,7 +410,7 @@ public class DistributedTaskScheduler extends TaskScheduler{
 
         if (lockResult.lockSuccess()) {
             try {
-                HugeTask<Object> task = this.task(id);
+                HugeTask<Object> task = this.taskWithoutResult(id);
                 if (prestatus == null || task.status() == prestatus) {
                     task.status(status);
                     this.save(task);
@@ -473,7 +432,6 @@ public class DistributedTaskScheduler extends TaskScheduler{
     }
 
     protected void tryStartHugeTask(HugeTask task) {
-        // TODO Lock
         TaskCallable callable = task.callable();
         ExecutorService chosenExecutor = gremlinTaskExecutor;
 

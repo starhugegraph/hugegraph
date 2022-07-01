@@ -242,6 +242,10 @@ public class HugeTask<V> extends FutureTask<V> {
         return this.result;
     }
 
+    public synchronized void result(HugeTaskResult result) {
+        this.result = result.result();
+    }
+
     public synchronized boolean result(TaskStatus status, String result) {
         checkPropertySize(result, P.RESULT);
         if (this.status(status)) {
@@ -630,6 +634,76 @@ public class HugeTask<V> extends FutureTask<V> {
         return list.toArray();
     }
 
+    // 仅处理任务相关，不保存任务结果
+    protected synchronized Object[] asArrayWithoutResult() {
+        E.checkState(this.type != null, "Task type can't be null");
+        E.checkState(this.name != null, "Task name can't be null");
+
+        List<Object> list = new ArrayList<>(28);
+
+        list.add(T.label);
+        list.add(P.TASK);
+
+        list.add(T.id);
+        list.add(this.id);
+
+        list.add(P.TYPE);
+        list.add(this.type);
+
+        list.add(P.NAME);
+        list.add(this.name);
+
+        list.add(P.CALLABLE);
+        list.add(this.callable.getClass().getName());
+
+        list.add(P.STATUS);
+        list.add(this.status.code());
+
+        list.add(P.PROGRESS);
+        list.add(this.progress);
+
+        list.add(P.CREATE);
+        list.add(this.create);
+
+        list.add(P.RETRIES);
+        list.add(this.retries);
+
+        if (this.description != null) {
+            list.add(P.DESCRIPTION);
+            list.add(this.description);
+        }
+
+        if (this.context != null) {
+            list.add(P.CONTEXT);
+            list.add(this.context);
+        }
+
+        if (this.update != null) {
+            list.add(P.UPDATE);
+            list.add(this.update);
+        }
+
+        if (this.dependencies != null) {
+            list.add(P.DEPENDENCIES);
+            list.add(this.dependencies.stream().map(Id::asLong)
+                                      .collect(toOrderSet()));
+        }
+
+        if (this.input != null) {
+            byte[] bytes = StringEncoding.compress(this.input);
+            checkPropertySize(bytes.length, P.INPUT);
+            list.add(P.INPUT);
+            list.add(bytes);
+        }
+
+        if (this.server != null) {
+            list.add(P.SERVER);
+            list.add(this.server.asString());
+        }
+
+        return list.toArray();
+    }
+
     public Map<String, Object> asMap() {
         return this.asMap(true);
     }
@@ -760,7 +834,6 @@ public class HugeTask<V> extends FutureTask<V> {
     public static final class P {
 
         public static final String TASK = Hidden.hide("task");
-        public static final String TASKRESULT = Hidden.hide("taskresult");
 
         public static final String ID = T.id.getAccessor();
         public static final String LABEL = T.label.getAccessor();
