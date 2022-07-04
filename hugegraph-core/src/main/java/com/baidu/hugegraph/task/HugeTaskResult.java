@@ -28,6 +28,7 @@ import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.VertexProperty;
 
+import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.util.Blob;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.StringEncoding;
@@ -76,7 +77,8 @@ public class HugeTaskResult {
     }
 
     public static HugeTaskResult fromVertex(Vertex vertex) {
-        HugeTaskResult taskResult = new HugeTaskResult((Long) vertex.id());
+        Id taskId = (Id) vertex.id();
+        HugeTaskResult taskResult = new HugeTaskResult(taskId.asLong());
         for (Iterator<VertexProperty<Object>> iter = vertex.properties();
              iter.hasNext();) {
             VertexProperty<Object> prop = iter.next();

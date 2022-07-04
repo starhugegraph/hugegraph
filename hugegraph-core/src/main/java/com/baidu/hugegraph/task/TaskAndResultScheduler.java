@@ -275,7 +275,7 @@ public abstract class TaskAndResultScheduler extends TaskScheduler {
             VertexLabel vl = this.graph().vertexLabel(HugeTaskResult.P.TASKRESULT);
             query.eq(HugeKeys.LABEL, vl.id());
             PropertyKey pk = this.graph().propertyKey(HugeTaskResult.P.TASKID);
-            query.query(Condition.eq(pk.id(), taskid));
+            query.query(Condition.eq(pk.id(), taskid.asLong()));
             query.showHidden(true);
             Iterator<Vertex> vertices = this.tx().queryVertices(query);
             Vertex vertex = QueryResults.one(vertices);
