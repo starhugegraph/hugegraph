@@ -107,6 +107,9 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         HugeGraph.registerTraversalStrategies(HugeGraphAuthProxy.class);
     }
 
+    private static final Logger LOG = Log.logger(HugeGraphAuthProxy.class);
+
+
     private static final HugeGraphLogger LOGGER
             = Log.getLogger(HugeGraphAuthProxy.class);
     private final Cache<Id, UserWithRole> usersRoleCache;
@@ -1091,6 +1094,9 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         @Override
         public <V> Future<?> schedule(HugeTask<V> task) {
             verifyTaskPermission(HugePermission.EXECUTE);
+            LOG.info("Set context ({}) for task ({}) @ {}/{}",
+                     getContextString(), task.id(), this.graphSpace,
+                     this.graph.name());
             task.context(getContextString());
             return this.taskScheduler.schedule(task);
         }
@@ -1373,6 +1379,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
     static final Context setContext(Context context) {
         Context old = contexts.get();
+        LOG.info("Set context ({}) @{}/{} ", context);
         contexts.set(context);
         return old;
     }
@@ -1425,6 +1432,11 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
         public static Context admin() {
             return ADMIN;
+        }
+
+        @Override
+        public String toString() {
+            return this.user.toJson();
         }
     }
 

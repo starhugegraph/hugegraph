@@ -181,8 +181,12 @@ public class HugeTask<V> extends FutureTask<V> {
                         "Task context must be set in state NEW instead of %s",
                         this.status);
         if (Strings.isNullOrEmpty(context)) {
+            LOG.info("Use fake context for task ({}) @{}/{}", this.id,
+                     this.graphSpace, this.graphName);
             this.context = TaskManager.getContext(true);
         } else {
+            LOG.info("Set task context ({}) for task ({}) @{}/{}", context,
+                     this.id, this.graphSpace, this.graphName);
             this.context = context;
         }
     }
@@ -334,6 +338,7 @@ public class HugeTask<V> extends FutureTask<V> {
             return;
         }
 
+        LOG.info("Run task ({}) use context ({})", this.id, this.context);
         TaskManager.setContext(this.context());
         try {
             assert this.status.code() <= TaskStatus.RUNNING.code() : this.status;
@@ -345,6 +350,7 @@ public class HugeTask<V> extends FutureTask<V> {
             this.setException(e);
         } finally {
             LOG.debug("Task is finished {}", this);
+            LOG.info("Run task ({}) done, clear context", this.id);
             TaskManager.resetContext();
         }
     }

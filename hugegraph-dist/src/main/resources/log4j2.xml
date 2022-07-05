@@ -132,12 +132,6 @@
             <appender-ref ref="console"/>
             <appender-ref ref="file"/>
         </AsyncLogger>
-        <AsyncLogger name="com.baidu.hugegraph.auth" level="INFO" additivity="false">
-            <appender-ref ref="console"/>
-        </AsyncLogger>
-        <AsyncLogger name="com.baidu.hugegraph.api.filter.AuthenticationFilter" level="INFO" additivity="false">
-            <appender-ref ref="console"/>
-        </AsyncLogger>
         <AsyncLogger name="audit-log-appender" level="INFO" additivity="false">
             <appender-ref ref="audit" />
         </AsyncLogger>

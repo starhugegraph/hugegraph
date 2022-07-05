@@ -83,7 +83,9 @@ public class JobBuilder<V> {
         HugeTask<V> task = new HugeTask<>(this.genTaskId(), null, job);
         task.type(this.job.type());
         task.name(this.name);
-        task.context(context);
+        if (context != null) {
+            task.context(context);
+        }
         if (this.input != null) {
             task.input(this.input);
         }
