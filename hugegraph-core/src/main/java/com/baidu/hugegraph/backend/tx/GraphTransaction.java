@@ -1019,15 +1019,21 @@ public class GraphTransaction extends IndexableTransaction implements AutoClosea
             return Collections.emptyList();
         }
         List<CIter<Edge>> results = this.queryEdgesFromBackend(queryList);
-        return results.stream().map(it -> new FilterIterator<>(it, entry -> {
-            for (Query filter : queryList) {
-                if (filter.test((HugeElement) entry)) {
-                    return true;
+        Query query = queryList.iterator().next();
+
+        if (query instanceof ConditionQuery &&
+            ((ConditionQuery) query).containsCondition(HugeKeys.LABEL)) {
+            return results.stream().map(it -> new FilterIterator<>(it, entry -> {
+                for (Query filter : queryList) {
+                    if (filter.test((HugeElement) entry)) {
+                        return true;
+                    }
                 }
-            }
-            return false;
-        })).collect(Collectors.toList());
-        //return this.queryEdgesFromBackend(queryList);
+                return false;
+            })).collect(Collectors.toList());
+        } else {
+            return this.queryEdgesFromBackend(queryList);
+        }
     }
 
     protected Iterator<HugeEdge> queryEdgesFromBackend(Query query) {
