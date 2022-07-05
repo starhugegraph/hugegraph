@@ -83,13 +83,12 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
 
         // For schedule task to run, just one thread is ok
         this.schedulerExecutor = ExecutorUtil.newPausableScheduledThreadPool(
-                1, "distributed-" + graph.name() + "-%d");
+                1, "distributed-" + graphSpace() + "-" + graph.name() + "-%d");
         // Start after 10s waiting for HugeGraphServer startup
 
         this.schedulerExecutor.scheduleWithFixedDelay(
                 () -> {
                     try {
-                        logCurrentState();
                         this.cronSchedule();
                     } catch (Throwable t) {
                         LOG.warn("cronScheduler exception ", t);
@@ -107,9 +106,13 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
                 TaskStatus.NEW);
 
         while (news.hasNext()) {
+            // Print Scheudler status
+            logCurrentState();
+
             HugeTask newTask = news.next();
             initTaskParams(newTask);
-            LOG.info("Try to start task({})", newTask.id());
+            LOG.info("Try to start task({})@({}/{})", newTask.id(),
+                     this.graphSpace, this.graphName);
             tryStartHugeTask(newTask);
         }
 
@@ -121,8 +124,9 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
             HugeTask running = runnings.next();
             if (!MetaManager.instance().isLockedTask(graphSpace, graphName,
                                                     running.id().toString())) {
-                LOG.info("Try to update task({}) status(RUNNING->FAILED)",
-                         running.id());
+                LOG.info("Try to update task({})@({}/{}) status" +
+                         "(RUNNING->FAILED)", running.id(), this.graphSpace,
+                         this.graphName);
                 updateStatusWithLock(running.id(), TaskStatus.RUNNING,
                                      TaskStatus.FAILED);
                 runningTasks.remove(running.id());
@@ -136,8 +140,8 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
         while (faileds.hasNext()) {
             HugeTask<Object> failed = faileds.next();
             if (failed.retries() < 3) {
-                LOG.info("Try to update task({}) status(FAILED->NEW)",
-                         failed.id());
+                LOG.info("Try to update task({})@({}/{}) status(FAILED->NEW)",
+                         failed.id(), this.graphSpace, this.graphName);
                 updateStatusWithLock(failed.id(), TaskStatus.FAILED,
                                      TaskStatus.NEW);
             }
@@ -154,8 +158,9 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
                 cancelling.cancel(true);
 
                 if (cancelling.completed()) {
-                    LOG.info("Try to update task({}) status(CANCELLING " +
-                            "-> CANCELLED)", cancelling.id());
+                    LOG.info("Try to update task({})@({}/{}) status" +
+                             "(CANCELLING -> CANCELLED)", cancelling.id(),
+                             this.graphSpace, this.graphName);
                     updateStatusWithLock(cancelling.id(), TaskStatus.CANCELLING,
                                          TaskStatus.CANCELLED);
                 }
@@ -173,7 +178,8 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
                 deleting.cancel(true);
 
                 if (deleting.completed()) {
-                    LOG.info("Try to delete task({})", deleting.id());
+                    LOG.info("Try to delete task({})@({}/{})", deleting.id(),
+                             this.graphSpace, this.graphName);
                     deleteFromDB(deletingId);
                 }
             }
@@ -418,7 +424,7 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
                     LOG.info("Update task({}) success: pre({}), status({})",
                              id, prestatus, status);
                 } else {
-                    LOG.warn("Update task({}) status conflict: current({}), " +
+                    LOG.info("Update task({}) status conflict: current({}), " +
                                      "pre({}), status({})", id, task.status(),
                              prestatus, status);
                 }
