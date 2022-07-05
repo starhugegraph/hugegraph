@@ -24,6 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
 import com.baidu.hugegraph.backend.query.Condition;
 import com.baidu.hugegraph.backend.query.ConditionQuery;
@@ -291,11 +292,15 @@ public abstract class TaskAndResultScheduler extends TaskScheduler {
     protected Iterator<HugeTaskResult> queryTaskResult(List<Id> taskids) {
         return this.call(() -> {
 
+            List<Long> longTaskids =
+                    taskids.stream().map((taskid) -> taskid.asLong())
+                           .collect(Collectors.toList());
+
             ConditionQuery query = new ConditionQuery(HugeType.VERTEX);
             VertexLabel vl = this.graph().vertexLabel(HugeTaskResult.P.TASKRESULT);
             query.eq(HugeKeys.LABEL, vl.id());
             PropertyKey pk = this.graph().propertyKey(HugeTaskResult.P.TASKID);
-            query.query(Condition.in(pk.id(), taskids));
+            query.query(Condition.in(pk.id(), longTaskids));
             query.showHidden(true);
 
             Iterator<Vertex> vertices = this.tx().queryVertices(query);
