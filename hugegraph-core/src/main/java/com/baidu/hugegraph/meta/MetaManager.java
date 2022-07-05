@@ -532,6 +532,10 @@ public class MetaManager {
         this.metaDriver.delete(this.graphConfKey(graphSpace, graph));
     }
 
+    public void removeGraphTaskInfos(String graphSpace, String graph) {
+        this.metaDriver.deleteWithPrefix(this.taskBaseKey(graphSpace, graph));
+    }
+
     public void notifyGraphAdd(String graphSpace, String graph) {
         this.metaDriver.put(this.graphAddKey(),
                             this.graphName(graphSpace, graph));
