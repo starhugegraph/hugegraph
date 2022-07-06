@@ -30,12 +30,12 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import com.baidu.hugegraph.config.CoreOptions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.slf4j.Logger;
 
+import com.baidu.hugegraph.config.CoreOptions;
 import com.baidu.hugegraph.HugeGraphParams;
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.backend.query.QueryResults;
@@ -89,6 +89,8 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
         this.schedulerExecutor.scheduleWithFixedDelay(
                 () -> {
                     try {
+                        // 使用超级管理员权限，查询任务
+                        TaskManager.useFakeContext();
                         this.cronSchedule();
                     } catch (Throwable t) {
                         LOG.warn("cronScheduler exception ", t);
