@@ -173,20 +173,7 @@ public class HugeTask<V> extends FutureTask<V> {
     }
 
     public final void context(String context) {
-        if (!Strings.isNullOrEmpty(this.context) &&
-            !TaskManager.fakeContext(this.context)) {
-            LOG.warn("Task context must be set once, but already set '{}'",
-                     this.context);
-            return;
-        }
-        E.checkArgument(this.status == TaskStatus.NEW,
-                        "Task context must be set in state NEW instead of %s",
-                        this.status);
-        if (Strings.isNullOrEmpty(context)) {
-            this.context = TaskManager.getContext(true);
-        } else {
-            this.context = context;
-        }
+        this.context = context;
     }
 
     public final String context() {
@@ -352,7 +339,13 @@ public class HugeTask<V> extends FutureTask<V> {
             return;
         }
 
-        TaskManager.setContext(this.context());
+        // 当任务的context(权限上下文)为null时，使用默认fakecontext
+        // 默认fakecontext一般初始化为ADMIN权限。
+        if (this.context != null) {
+            TaskManager.setContext(this.context());
+        } else {
+            TaskManager.useFakeContext();
+        }
         try {
             assert this.status.code() <= TaskStatus.RUNNING.code() : this.status;
             if (this.checkDependenciesSuccess()) {
