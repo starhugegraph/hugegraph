@@ -335,29 +335,45 @@ public interface HugeAuthenticator extends Authenticator {
                 return false;
             }
 
-            Map<HugePermission, Object> permissions = innerRoles.get(owner);
-            if (permissions == null) {
-                permissions = innerRoles.get(GENERAL_PATTERN);
+            for (Map.Entry<String, Map<HugePermission, Object>> e :
+                    innerRoles.entrySet()) {
+                // check: graph prefix match
+                String prefix = e.getKey();
+                if (!prefix.equals(owner)) {
+                    if (prefix.endsWith("*")) {
+                        prefix = prefix.substring(0, prefix.length() - 1);
+                        if (!owner.startsWith(prefix)) {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
+                Map<HugePermission, Object> permissions = e.getValue();
                 if (permissions == null) {
+                    permissions = innerRoles.get(GENERAL_PATTERN);
+                    if (permissions == null) {
+                        return false;
+                    }
+                }
+                Object permission = matchedAction(requiredAction, permissions);
+                if (permission == null) {
+                    // Deny all if no specified permission
                     return false;
                 }
-            }
-            Object permission = matchedAction(requiredAction, permissions);
-            if (permission == null) {
-                // Deny all if no specified permission
-                return false;
-            }
-            List<HugeResource> ress;
-            if (permission instanceof List) {
-                @SuppressWarnings("unchecked")
-                List<HugeResource> list = (List<HugeResource>) permission;
-                ress = list;
-            } else {
-                ress = HugeResource.parseResources(permission.toString());
-            }
-            for (HugeResource res : ress) {
-                if (res.filter(requiredResource)) {
-                    return true;
+                List<HugeResource> ress;
+                if (permission instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<HugeResource> list = (List<HugeResource>) permission;
+                    ress = list;
+                } else {
+                    ress = HugeResource.parseResources(permission.toString());
+                }
+                for (HugeResource res : ress) {
+                    if (res.filter(requiredResource)) {
+                        return true;
+                    }
                 }
             }
             return false;
