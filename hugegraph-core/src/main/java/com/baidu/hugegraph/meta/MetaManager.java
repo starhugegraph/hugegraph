@@ -2109,7 +2109,8 @@ public class MetaManager {
                                 String taskId) {
 
         String key = taskLockKey(graphSpace, graphName, taskId);
-        return this.metaDriver.isLocked(key);
+        // 判断当前锁下面的节点数
+        return metaDriver.scanWithPrefix(key).size() > 0;
     }
 
     @Deprecated

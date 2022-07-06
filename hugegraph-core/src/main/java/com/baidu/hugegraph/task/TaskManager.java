@@ -62,9 +62,10 @@ public final class TaskManager {
     public static final String TASK_SCHEDULER = "task-scheduler-%d";
 
     public static final String OLAP_TASK_WORKER = "olap-task-worker-%d";
-    public static final String SCHEMA_TASK_WORKER = "schema-task-worker-%d";
+    public static final String SCHEMA_TASK_WORKER_PREFIX = "schema-task-worker";
+    public static final String SCHEMA_TASK_WORKER =
+            SCHEMA_TASK_WORKER_PREFIX + "-%d";
     public static final String EPHEMERAL_TASK_WORKER = "ephemeral-task-worker-%d";
-    public static final String GREMLIN_TASK_WORKER = "gremlin-task-worker-%d";
 
     protected static final int SCHEDULE_PERIOD = 3; // Unit second
     private static int THREADS;
@@ -211,6 +212,10 @@ public final class TaskManager {
             this.closeTaskTx(graph);
         }
 
+        if (!this.schemaTaskExecutor.isTerminated()) {
+            this.closeSchemaTaskTx(graph);
+        }
+
         if (!this.backupForLoadTaskExecutor.isTerminated()) {
             this.closeBackupForLoadTaskTx(graph);
         }
@@ -255,6 +260,23 @@ public final class TaskManager {
             }
         } catch (Exception e) {
             throw new HugeException("Exception when closing backup task tx", e);
+        }
+    }
+
+    private void closeSchemaTaskTx(HugeGraphParams graph) {
+        final boolean selfIsTaskWorker = Thread.currentThread().getName()
+                                               .startsWith(SCHEMA_TASK_WORKER_PREFIX);
+        final int totalThreads = selfIsTaskWorker ? THREADS - 1 : THREADS;
+        try {
+            if (selfIsTaskWorker) {
+                // Call closeTx directly if myself is task thread(ignore others)
+                graph.closeTx();
+            } else {
+                Consumers.executeOncePerThread(this.schemaTaskExecutor,
+                                               totalThreads, graph::closeTx);
+            }
+        } catch (Exception e) {
+            throw new HugeException("Exception when closing schema task tx", e);
         }
     }
 
@@ -335,6 +357,33 @@ public final class TaskManager {
             this.taskDbExecutor.shutdown();
             try {
                 terminated = this.taskDbExecutor.awaitTermination(timeout, unit);
+            } catch (Throwable e) {
+                ex = e;
+            }
+        }
+
+        if (terminated && !this.ephemeralTaskExecutor.isShutdown()) {
+            this.ephemeralTaskExecutor.shutdown();
+            try {
+                terminated = this.ephemeralTaskExecutor.awaitTermination(timeout, unit);
+            } catch (Throwable e) {
+                ex = e;
+            }
+        }
+
+        if (terminated && !this.schemaTaskExecutor.isShutdown()) {
+            this.schemaTaskExecutor.shutdown();
+            try {
+                terminated = this.schemaTaskExecutor.awaitTermination(timeout, unit);
+            } catch (Throwable e) {
+                ex = e;
+            }
+        }
+
+        if (terminated && !this.olapTaskExecutor.isShutdown()) {
+            this.olapTaskExecutor.shutdown();
+            try {
+                terminated = this.olapTaskExecutor.awaitTermination(timeout, unit);
             } catch (Throwable e) {
                 ex = e;
             }

@@ -124,8 +124,9 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
 
         while (runnings.hasNext()) {
             HugeTask running = runnings.next();
+            initTaskParams(running);
             if (!MetaManager.instance().isLockedTask(graphSpace, graphName,
-                                                    running.id().toString())) {
+                                                     running.id().toString())) {
                 LOG.info("Try to update task({})@({}/{}) status" +
                          "(RUNNING->FAILED)", running.id(), this.graphSpace,
                          this.graphName);
@@ -136,11 +137,12 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
         }
 
         // 处理FAIELD/HANGING状态的任务
-        Iterator<HugeTask<Object>> faileds = queryTaskWithoutResultByStatus(
-                TaskStatus.FAILED);
+        Iterator<HugeTask<Object>> faileds =
+                queryTaskWithoutResultByStatus(TaskStatus.FAILED);
 
         while (faileds.hasNext()) {
             HugeTask<Object> failed = faileds.next();
+            initTaskParams(failed);
             if (failed.retries() < 3) {
                 LOG.info("Try to update task({})@({}/{}) status(FAILED->NEW)",
                          failed.id(), this.graphSpace, this.graphName);
@@ -155,15 +157,17 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
 
         while (cancellings.hasNext()) {
             Id cancellingId = cancellings.next().id();
-            if (runningTasks.contains(cancellingId)) {
+            if (runningTasks.containsKey(cancellingId)) {
                 HugeTask cancelling  = runningTasks.get(cancellingId);
+                initTaskParams(cancelling);
                 cancelling.cancel(true);
 
-                if (cancelling.completed()) {
-                    LOG.info("Try to update task({})@({}/{}) status" +
-                             "(CANCELLING -> CANCELLED)", cancelling.id(),
-                             this.graphSpace, this.graphName);
-                    updateStatusWithLock(cancelling.id(), TaskStatus.CANCELLING,
+                runningTasks.remove(cancellingId);
+            } else {
+                // 本地没有执行任务，但是当前任务已经无节点在执行
+                if (!MetaManager.instance().isLockedTask(graphSpace, graphName,
+                                                         cancellingId.toString())) {
+                    updateStatusWithLock(cancellingId, TaskStatus.CANCELLING,
                                          TaskStatus.CANCELLED);
                 }
             }
@@ -175,13 +179,19 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
 
         while (deletings.hasNext()) {
             Id deletingId = deletings.next().id();
-            if (runningTasks.contains(deletingId)) {
+            if (runningTasks.containsKey(deletingId)) {
                 HugeTask deleting = runningTasks.get(deletingId);
+                initTaskParams(deleting);
                 deleting.cancel(true);
 
-                if (deleting.completed()) {
-                    LOG.info("Try to delete task({})@({}/{})", deleting.id(),
-                             this.graphSpace, this.graphName);
+                // 删除存储信息
+                deleteFromDB(deletingId);
+
+                runningTasks.remove(deletingId);
+            } else {
+                // 本地没有执行任务，但是当前任务已经无节点在执行
+                if (!MetaManager.instance().isLockedTask(graphSpace, graphName,
+                                                         deletingId.toString())) {
                     deleteFromDB(deletingId);
                 }
             }
@@ -249,7 +259,7 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
     @Override
     public <V> void cancel(HugeTask<V> task) {
         // 更新状态为CANCELLING
-        this.updateStatusWithLock(task.id(), null, TaskStatus.CANCELLING);
+        this.updateStatus(task.id(), null, TaskStatus.CANCELLING);
     }
 
     protected <V> HugeTask<V> deleteFromDB(Id id) {
@@ -270,7 +280,7 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
     public <V> HugeTask<V> delete(Id id, boolean force) {
         if (!force) {
             // 更改状态为DELETING，通过自动调度实现删除操作。
-            this.updateStatusWithLock(id, null, TaskStatus.DELETING);
+            this.updateStatus(id, null, TaskStatus.DELETING);
             return null;
         } else {
             return this.deleteFromDB(id);
@@ -409,6 +419,29 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
         return this.call(Executors.callable(runnable, null));
     }
 
+    protected boolean updateStatus(Id id, TaskStatus prestatus,
+                                   TaskStatus status) {
+        HugeTask<Object> task = this.taskWithoutResult(id);
+        initTaskParams(task);
+        if (prestatus == null || task.status() == prestatus) {
+            task.status(status);
+            // 如果状态更新为FAILED->NEW，则增加重试次数。
+            if (prestatus == TaskStatus.FAILED && status == TaskStatus.NEW) {
+                task.retry();
+            }
+            this.save(task);
+            LOG.info("Update task({}) success: pre({}), status({})",
+                     id, prestatus, status);
+
+            return true;
+        } else {
+            LOG.info("Update task({}) status conflict: current({}), " +
+                             "pre({}), status({})", id, task.status(),
+                     prestatus, status);
+            return false;
+        }
+    }
+
     protected boolean updateStatusWithLock(Id id, TaskStatus prestatus,
                                            TaskStatus status) {
 
@@ -419,17 +452,7 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
 
         if (lockResult.lockSuccess()) {
             try {
-                HugeTask<Object> task = this.taskWithoutResult(id);
-                if (prestatus == null || task.status() == prestatus) {
-                    task.status(status);
-                    this.save(task);
-                    LOG.info("Update task({}) success: pre({}), status({})",
-                             id, prestatus, status);
-                } else {
-                    LOG.info("Update task({}) status conflict: current({}), " +
-                                     "pre({}), status({})", id, task.status(),
-                             prestatus, status);
-                }
+                return updateStatus(id, prestatus, status);
             } finally {
                 MetaManager.instance().unlockTask(this.graphSpace,
                                                   this.graphName,
