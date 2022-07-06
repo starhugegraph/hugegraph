@@ -153,8 +153,11 @@ public class TaskAPI extends API {
 
         TaskScheduler scheduler = graph(manager, graphSpace, graph)
                                   .taskScheduler();
-        HugeTask<?> task = scheduler.delete(IdGenerator.of(id), force);
+        HugeTask<?> task = scheduler.task(IdGenerator.of(id));
         E.checkArgument(task != null, "There is no task with id '%s'", id);
+
+        scheduler.delete(IdGenerator.of(id), force);
+
         LOGGER.getServerLogger().logDeleteTask(graphSpace, Long.toString(id));
     }
 
