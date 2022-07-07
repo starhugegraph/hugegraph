@@ -66,6 +66,8 @@ public final class TaskManager {
     public static final String SCHEMA_TASK_WORKER =
             SCHEMA_TASK_WORKER_PREFIX + "-%d";
     public static final String EPHEMERAL_TASK_WORKER = "ephemeral-task-worker-%d";
+    public static final String DISTRIBUTED_TASK_SCHEDULER =
+            "distributed-scheduler-%d";
 
     protected static final int SCHEDULE_PERIOD = 3; // Unit second
     private static int THREADS;
@@ -83,6 +85,7 @@ public final class TaskManager {
     private final ExecutorService schemaTaskExecutor;
     private final ExecutorService olapTaskExecutor;
     private final ExecutorService ephemeralTaskExecutor;
+    private final PausableScheduledThreadPool distributedSchedulerExecutor;
 
 
     public static TaskManager instance(int threads) {
@@ -120,6 +123,10 @@ public final class TaskManager {
                                                                 OLAP_TASK_WORKER);
         this.ephemeralTaskExecutor = ExecutorUtil.newFixedThreadPool(2,
                                                                      EPHEMERAL_TASK_WORKER);
+        this.distributedSchedulerExecutor =
+                ExecutorUtil.newPausableScheduledThreadPool(2,
+                                                            DISTRIBUTED_TASK_SCHEDULER);
+
         // For schedule task to run, just one thread is ok
         this.schedulerExecutor = ExecutorUtil.newPausableScheduledThreadPool(
                                  1, TASK_SCHEDULER);
@@ -156,6 +163,7 @@ public final class TaskManager {
                 TaskScheduler scheduler =
                         new DistributedTaskScheduler(
                                 graph,
+                                distributedSchedulerExecutor,
                                 taskDbExecutor,
                                 schemaTaskExecutor,
                                 olapTaskExecutor,
@@ -222,6 +230,10 @@ public final class TaskManager {
 
         if (!this.schedulerExecutor.isTerminated()) {
             this.closeSchedulerTx(graph);
+        }
+
+        if (!this.distributedSchedulerExecutor.isTerminated()) {
+            this.closeDistributedSchedulerTx(graph);
         }
     }
 
@@ -295,6 +307,21 @@ public final class TaskManager {
         }
     }
 
+    private void closeDistributedSchedulerTx(HugeGraphParams graph) {
+        final Callable<Void> closeTx = () -> {
+            // Do close-tx for current thread
+            graph.closeTx();
+            // Let other threads run
+            Thread.yield();
+            return null;
+        };
+        try {
+            this.distributedSchedulerExecutor.submit(closeTx).get();
+        } catch (Exception e) {
+            throw new HugeException("Exception when closing scheduler tx", e);
+        }
+    }
+
     public void pauseScheduledThreadPool() {
         this.schedulerExecutor.pauseSchedule();
     }
@@ -319,6 +346,16 @@ public final class TaskManager {
             try {
                 terminated = this.schedulerExecutor.awaitTermination(timeout,
                                                                      unit);
+            } catch (Throwable e) {
+                ex = e;
+            }
+        }
+
+        if (!this.distributedSchedulerExecutor.isShutdown()) {
+            this.distributedSchedulerExecutor.shutdown();
+            try {
+                terminated = this.distributedSchedulerExecutor
+                                 .awaitTermination(timeout, unit);
             } catch (Throwable e) {
                 ex = e;
             }

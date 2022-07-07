@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -61,11 +62,12 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
     private final ExecutorService olapTaskExecutor;
     private final ExecutorService ephemeralTaskExecutor;
     private final ExecutorService gremlinTaskExecutor;
-    private final PausableScheduledThreadPool schedulerExecutor;
+    private final ScheduledThreadPoolExecutor schedulerExecutor;
 
     private ConcurrentHashMap<Id, HugeTask> runningTasks = new ConcurrentHashMap();
 
     public DistributedTaskScheduler(HugeGraphParams graph,
+                                    ScheduledThreadPoolExecutor schedulerExecutor,
                                     ExecutorService taskDbExecutor,
                                     ExecutorService schemaTaskExecutor,
                                     ExecutorService olapTaskExecutor,
@@ -81,10 +83,7 @@ public class DistributedTaskScheduler extends TaskAndResultScheduler{
 
         this.eventListener =  this.listenChanges();
 
-        // For schedule task to run, just one thread is ok
-        this.schedulerExecutor = ExecutorUtil.newPausableScheduledThreadPool(
-                1, "distributed-" + graphSpace() + "-" + graph.name() + "-%d");
-        // Start after 10s waiting for HugeGraphServer startup
+        this.schedulerExecutor = schedulerExecutor;
 
         this.schedulerExecutor.scheduleWithFixedDelay(
                 () -> {
