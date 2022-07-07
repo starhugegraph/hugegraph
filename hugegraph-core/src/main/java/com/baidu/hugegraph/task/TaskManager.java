@@ -61,13 +61,20 @@ public final class TaskManager {
                                "server-info-db-worker-%d";
     public static final String TASK_SCHEDULER = "task-scheduler-%d";
 
-    public static final String OLAP_TASK_WORKER = "olap-task-worker-%d";
+    public static final String OLAP_TASK_WORKER_PREFIX = "olap-task-worker";
+    public static final String OLAP_TASK_WORKER =
+            OLAP_TASK_WORKER_PREFIX + "-%d";
     public static final String SCHEMA_TASK_WORKER_PREFIX = "schema-task-worker";
     public static final String SCHEMA_TASK_WORKER =
             SCHEMA_TASK_WORKER_PREFIX + "-%d";
-    public static final String EPHEMERAL_TASK_WORKER = "ephemeral-task-worker-%d";
+    public static final String EPHEMERAL_TASK_WORKER_PREFIX =
+            "ephemeral-task-worker";
+    public static final String EPHEMERAL_TASK_WORKER =
+            EPHEMERAL_TASK_WORKER_PREFIX + "-%d";
+    public static final String DISTRIBUTED_TASK_SCHEDULER_PREFIX =
+            "distributed-scheduler";
     public static final String DISTRIBUTED_TASK_SCHEDULER =
-            "distributed-scheduler-%d";
+            DISTRIBUTED_TASK_SCHEDULER_PREFIX + "-%d";
 
     protected static final int SCHEDULE_PERIOD = 3; // Unit second
     private static int THREADS;
@@ -85,6 +92,8 @@ public final class TaskManager {
     private final ExecutorService schemaTaskExecutor;
     private final ExecutorService olapTaskExecutor;
     private final ExecutorService ephemeralTaskExecutor;
+
+    protected static final int DistributedSchedulerThread = 2;
     private final PausableScheduledThreadPool distributedSchedulerExecutor;
 
 
@@ -117,14 +126,14 @@ public final class TaskManager {
         this.serverInfoDbExecutor = ExecutorUtil.newFixedThreadPool(
                                     1, SERVER_INFO_DB_WORKER);
 
-        this.schemaTaskExecutor = ExecutorUtil.newFixedThreadPool(2,
+        this.schemaTaskExecutor = ExecutorUtil.newFixedThreadPool(pool,
                                                                   SCHEMA_TASK_WORKER);
-        this.olapTaskExecutor = ExecutorUtil.newFixedThreadPool(2,
+        this.olapTaskExecutor = ExecutorUtil.newFixedThreadPool(pool,
                                                                 OLAP_TASK_WORKER);
-        this.ephemeralTaskExecutor = ExecutorUtil.newFixedThreadPool(2,
+        this.ephemeralTaskExecutor = ExecutorUtil.newFixedThreadPool(pool,
                                                                      EPHEMERAL_TASK_WORKER);
         this.distributedSchedulerExecutor =
-                ExecutorUtil.newPausableScheduledThreadPool(2,
+                ExecutorUtil.newPausableScheduledThreadPool(DistributedSchedulerThread,
                                                             DISTRIBUTED_TASK_SCHEDULER);
 
         // For schedule task to run, just one thread is ok
@@ -220,10 +229,6 @@ public final class TaskManager {
             this.closeTaskTx(graph);
         }
 
-        if (!this.schemaTaskExecutor.isTerminated()) {
-            this.closeSchemaTaskTx(graph);
-        }
-
         if (!this.backupForLoadTaskExecutor.isTerminated()) {
             this.closeBackupForLoadTaskTx(graph);
         }
@@ -235,6 +240,19 @@ public final class TaskManager {
         if (!this.distributedSchedulerExecutor.isTerminated()) {
             this.closeDistributedSchedulerTx(graph);
         }
+
+        if (!this.schemaTaskExecutor.isTerminated()) {
+            this.closeSchemaTaskTx(graph);
+        }
+
+        if (!this.olapTaskExecutor.isTerminated()) {
+            this.closeOlapTaskTx(graph);
+        }
+
+        if (!this.ephemeralTaskExecutor.isTerminated()) {
+            this.closeEphemeralTaskTx(graph);
+        }
+
     }
 
     public void forceRemoveScheduler(HugeGraphParams params) {
@@ -292,6 +310,60 @@ public final class TaskManager {
         }
     }
 
+    private void closeOlapTaskTx(HugeGraphParams graph) {
+        final boolean selfIsTaskWorker = Thread.currentThread().getName()
+                                               .startsWith(OLAP_TASK_WORKER_PREFIX);
+        final int totalThreads = selfIsTaskWorker ? THREADS - 1 : THREADS;
+        try {
+            if (selfIsTaskWorker) {
+                // Call closeTx directly if myself is task thread(ignore others)
+                graph.closeTx();
+            } else {
+                Consumers.executeOncePerThread(this.olapTaskExecutor,
+                                               totalThreads, graph::closeTx);
+            }
+        } catch (Exception e) {
+            throw new HugeException("Exception when closing olap task tx", e);
+        }
+    }
+
+    private void closeEphemeralTaskTx(HugeGraphParams graph) {
+        final boolean selfIsTaskWorker = Thread.currentThread().getName()
+                                               .startsWith(EPHEMERAL_TASK_WORKER_PREFIX);
+        final int totalThreads = selfIsTaskWorker ? THREADS - 1 : THREADS;
+        try {
+            if (selfIsTaskWorker) {
+                // Call closeTx directly if myself is task thread(ignore others)
+                graph.closeTx();
+            } else {
+                Consumers.executeOncePerThread(this.ephemeralTaskExecutor,
+                                               totalThreads, graph::closeTx);
+            }
+        } catch (Exception e) {
+            throw new HugeException("Exception when closing ephemeral task tx",
+                                    e);
+        }
+    }
+
+    private void closeDistributedSchedulerTx(HugeGraphParams graph) {
+        final boolean selfIsTaskWorker = Thread.currentThread().getName()
+                                               .startsWith(DISTRIBUTED_TASK_SCHEDULER_PREFIX);
+        final int totalThreads = selfIsTaskWorker ?
+                DistributedSchedulerThread - 1 : DistributedSchedulerThread;
+        try {
+            if (selfIsTaskWorker) {
+                // Call closeTx directly if myself is task thread(ignore others)
+                graph.closeTx();
+            } else {
+                Consumers.executeOncePerThread(this.distributedSchedulerExecutor,
+                                               totalThreads, graph::closeTx);
+            }
+        } catch (Exception e) {
+            throw new HugeException("Exception when closing distributed " +
+                                    "scheduler tx", e);
+        }
+    }
+
     private void closeSchedulerTx(HugeGraphParams graph) {
         final Callable<Void> closeTx = () -> {
             // Do close-tx for current thread
@@ -302,21 +374,6 @@ public final class TaskManager {
         };
         try {
             this.schedulerExecutor.submit(closeTx).get();
-        } catch (Exception e) {
-            throw new HugeException("Exception when closing scheduler tx", e);
-        }
-    }
-
-    private void closeDistributedSchedulerTx(HugeGraphParams graph) {
-        final Callable<Void> closeTx = () -> {
-            // Do close-tx for current thread
-            graph.closeTx();
-            // Let other threads run
-            Thread.yield();
-            return null;
-        };
-        try {
-            this.distributedSchedulerExecutor.submit(closeTx).get();
         } catch (Exception e) {
             throw new HugeException("Exception when closing scheduler tx", e);
         }
@@ -423,7 +480,7 @@ public final class TaskManager {
         if (terminated && !this.schemaTaskExecutor.isShutdown()) {
             this.schemaTaskExecutor.shutdown();
             LOG.info("schemaTaskexecutor running count({})",
-                     ((ThreadPoolExecutor)this.schemaTaskExecutor).getActiveCount());
+                     ((ThreadPoolExecutor) this.schemaTaskExecutor).getActiveCount());
             try {
                 terminated = this.schemaTaskExecutor.awaitTermination(timeout, unit);
                 LOG.info("Shutdown schemaTaskExecutor result: {}", terminated);
