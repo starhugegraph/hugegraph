@@ -422,6 +422,8 @@ public final class TaskManager {
 
         if (terminated && !this.schemaTaskExecutor.isShutdown()) {
             this.schemaTaskExecutor.shutdown();
+            LOG.info("schemaTaskexecutor running count({})",
+                     ((ThreadPoolExecutor)this.schemaTaskExecutor).getActiveCount());
             try {
                 terminated = this.schemaTaskExecutor.awaitTermination(timeout, unit);
                 LOG.info("Shutdown schemaTaskExecutor result: {}", terminated);

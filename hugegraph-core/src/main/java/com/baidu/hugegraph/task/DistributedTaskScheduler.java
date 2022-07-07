@@ -49,7 +49,6 @@ import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.structure.HugeVertex;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Events;
-import com.baidu.hugegraph.util.ExecutorUtil;
 import com.baidu.hugegraph.util.Log;
 
 public class DistributedTaskScheduler extends TaskAndResultScheduler{
