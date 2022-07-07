@@ -24,6 +24,7 @@ import java.util.Map;
 
 import javax.ws.rs.core.Response;
 
+import jersey.repackaged.com.google.common.collect.ImmutableList;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -79,7 +80,7 @@ public class TaskApiTest extends BaseApiTest {
                           r.getStatus() == 202 || r.getStatus() == 400);
         if (r.getStatus() == 202) {
             String status = assertJsonContains(content, "task_status");
-            Assert.assertEquals("cancelling", status);
+            Assert.assertTrue(ImmutableList.of("cancelling", "cancelled").contains(status));
         } else {
             assert r.getStatus() == 400;
             String error = String.format(
