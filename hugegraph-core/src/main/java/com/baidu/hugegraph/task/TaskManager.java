@@ -346,8 +346,9 @@ public final class TaskManager {
             try {
                 terminated = this.schedulerExecutor.awaitTermination(timeout,
                                                                      unit);
+                LOG.info("Shutdown schedulerExecutor result: {}", terminated);
             } catch (Throwable e) {
-                ex = e;
+                ex = new HugeException("Shutdown SchedulerExecutor error", e);
             }
         }
 
@@ -356,8 +357,10 @@ public final class TaskManager {
             try {
                 terminated = this.distributedSchedulerExecutor
                                  .awaitTermination(timeout, unit);
+                LOG.info("Shutdown distributedSchedulerExecutor result: {}",
+                         terminated);
             } catch (Throwable e) {
-                ex = e;
+                ex = new HugeException("Shutdown SchedulerExecutor error", e);
             }
         }
 
@@ -365,6 +368,7 @@ public final class TaskManager {
             this.taskExecutor.shutdown();
             try {
                 terminated = this.taskExecutor.awaitTermination(timeout, unit);
+                LOG.info("Shutdown taskExecutor result: {}", terminated);
             } catch (Throwable e) {
                 ex = e;
             }
@@ -375,6 +379,8 @@ public final class TaskManager {
             try {
                 terminated = this.backupForLoadTaskExecutor
                                  .awaitTermination(timeout, unit);
+                LOG.info("Shutdown backupForLoadTaskExecutor result: {}",
+                         terminated);
             } catch (Throwable e) {
                 ex = e;
             }
@@ -385,6 +391,8 @@ public final class TaskManager {
             try {
                 terminated = this.serverInfoDbExecutor.awaitTermination(timeout,
                                                                         unit);
+                LOG.info("Shutdown serverInfoDbExecutor result: {}",
+                         terminated);
             } catch (Throwable e) {
                 ex = e;
             }
@@ -394,6 +402,8 @@ public final class TaskManager {
             this.taskDbExecutor.shutdown();
             try {
                 terminated = this.taskDbExecutor.awaitTermination(timeout, unit);
+                LOG.info("Shutdown taskDbExecutor result: {}",
+                         terminated);
             } catch (Throwable e) {
                 ex = e;
             }
@@ -403,6 +413,8 @@ public final class TaskManager {
             this.ephemeralTaskExecutor.shutdown();
             try {
                 terminated = this.ephemeralTaskExecutor.awaitTermination(timeout, unit);
+                LOG.info("Shutdown ephemeralTaskExecutor result: {}",
+                         terminated);
             } catch (Throwable e) {
                 ex = e;
             }
@@ -412,6 +424,7 @@ public final class TaskManager {
             this.schemaTaskExecutor.shutdown();
             try {
                 terminated = this.schemaTaskExecutor.awaitTermination(timeout, unit);
+                LOG.info("Shutdown schemaTaskExecutor result: {}", terminated);
             } catch (Throwable e) {
                 ex = e;
             }
@@ -421,6 +434,7 @@ public final class TaskManager {
             this.olapTaskExecutor.shutdown();
             try {
                 terminated = this.olapTaskExecutor.awaitTermination(timeout, unit);
+                LOG.info("Shutdown olapTaskExecutor result: {}", terminated);
             } catch (Throwable e) {
                 ex = e;
             }
