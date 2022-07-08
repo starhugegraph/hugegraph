@@ -35,7 +35,7 @@ import com.baidu.hugegraph.util.collection.MappingFactory;
 import com.baidu.hugegraph.util.collection.ObjectIntMapping;
 
 public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>> {
-     private static final int MAX_LOAD_ITEMS = 1000*10000;
+     private static final int MAX_LOAD_ITEMS = 1000 * 10000;
     private static final int LOAD_ITEM_ONCE = 200;
     private int verticesOffset = 0;
     private volatile int loadedEdgesCount = 0;
@@ -66,7 +66,7 @@ public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>>
             bufferedData.put(code(id), CollectionFactory.newList(CollectionType.JCF));
             remainingDataCount.put(code(id), new AtomicInteger(0));
         }
-        while(edgeIts.hasNext()){
+        while (edgeIts.hasNext()){
             edgeIters.add(edgeIts.next());
         }
     }
@@ -108,7 +108,7 @@ public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>>
 
     protected synchronized boolean loadMore(){
         int beforeLoadedCount = loadedEdgesCount;
-        if(haveMoreData == true && loadedEdgesCount < MAX_LOAD_ITEMS){
+        if (haveMoreData == true && loadedEdgesCount < MAX_LOAD_ITEMS){
             /* load not balance */
             haveMoreData = doBufferData(LOAD_ITEM_ONCE);
         }
@@ -181,19 +181,19 @@ public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>>
 
         @Override
         public synchronized boolean hasNext() {
-            if( degree != HugeTraverser.NO_LIMIT && offset.get()>= degree){
+            if (degree != HugeTraverser.NO_LIMIT && offset.get() >= degree) {
                 return false;
             }
             int remaining = edges.size() - offset.get() - 1;
-            if(remaining > 0){
+            if (remaining > 0){
                 return true;
-            }else if(more == false){
+            } else if (more == false){
                 return false;
             }
-            while(true){
+            while (true) {
                 boolean loaded = bufferWrapIter.loadMore();;
                 more = (edges.size() - offset.get()) > 0;
-                if(loaded == false || more == true){
+                if (loaded == false || more == true) {
                     break;
                 }
             }

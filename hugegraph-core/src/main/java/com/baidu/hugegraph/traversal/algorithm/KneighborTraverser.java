@@ -97,7 +97,7 @@ public class KneighborTraverser extends OltpTraverser {
                 this.edgeIterCounter++;
                 Id target = edge.id().otherVertexId();
                 records.addPath(v, target);
-                if(withEdge) {
+                if (withEdge) {
                     // for breadth, we have to collect all edge during traversal,
                     // to avoid over occupy for memory, we collect edgeId only.
                     records.addEdgeId(edge.id());
@@ -261,7 +261,7 @@ public class KneighborTraverser extends OltpTraverser {
                 Id source = e.id().ownerVertexId();
                 Id target = e.id().otherVertexId();
                 records.addPath(source, target);
-                if(withEdge) {
+                if (withEdge) {
                     // for breadth, we have to collect all edge during traversal,
                     // to avoid over occupy for memory, we collect edgeId only.
                     records.addEdgeId(e.id());
