@@ -226,9 +226,13 @@ public class AuthenticationFilter implements ContainerRequestFilter {
             RequiredPerm requiredPerm;
 
             if (!required.startsWith(HugeAuthenticator.KEY_GRAPHSPACE)) {
-                // Permission format like: "admin"
+                // Permission format like: "admin", "space"
                 requiredPerm = new RequiredPerm();
                 requiredPerm.owner(required);
+                if (required.equals("space")) {
+                    String graphSpace = this.getPathParameter("graphspace");
+                    requiredPerm.graphSpace(graphSpace);
+                }
                 valid = RolePerm.match(this.role(), requiredPerm);
             } else {
                 // The required like:

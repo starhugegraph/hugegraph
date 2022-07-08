@@ -55,7 +55,7 @@ public class HugeUser extends Entity {
 
     @Override
     public ResourceType type() {
-        return ResourceType.USER_GROUP;
+        return ResourceType.USER;
     }
 
     @Override

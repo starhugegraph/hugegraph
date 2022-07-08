@@ -45,7 +45,7 @@ public class RolePermissionTest {
     @Test
     public void testBuiltinAdmin() {
         RolePermission admin = RolePermission.admin();
-        RolePermission role1 = RolePermission.role("SYSTEM", "SYSTEM", HugePermission.ANY);
+        RolePermission role1 = RolePermission.role("SYSTEM", "SYSTEM", HugePermission.ADMIN);
         Assert.assertEquals(admin, role1);
         Assert.assertSame(admin, RolePermission.builtin(admin));
         Assert.assertSame(admin, RolePermission.builtin(role1));
@@ -137,21 +137,6 @@ public class RolePermissionTest {
 
     @Test
     public void testResourceType() {
-        // ROOT
-        Assert.assertTrue(ResourceType.ROOT.match(ResourceType.NONE));
-        Assert.assertTrue(ResourceType.ROOT.match(ResourceType.STATUS));
-        Assert.assertTrue(ResourceType.ROOT.match(ResourceType.VERTEX));
-        Assert.assertTrue(ResourceType.ROOT.match(ResourceType.EDGE));
-        Assert.assertTrue(ResourceType.ROOT.match(ResourceType.VERTEX_LABEL));
-        Assert.assertTrue(ResourceType.ROOT.match(ResourceType.META));
-        Assert.assertTrue(ResourceType.ROOT.match(ResourceType.ALL));
-        Assert.assertTrue(ResourceType.ROOT.match(ResourceType.GRANT));
-        Assert.assertTrue(ResourceType.ROOT.match(ResourceType.USER_GROUP));
-        Assert.assertTrue(ResourceType.ROOT.match(ResourceType.TARGET));
-        Assert.assertTrue(ResourceType.ROOT.match(ResourceType.METRICS));
-        Assert.assertTrue(ResourceType.ROOT.match(ResourceType.PROJECT));
-        Assert.assertTrue(ResourceType.ROOT.match(ResourceType.ROOT));
-
         // ALL
         Assert.assertTrue(ResourceType.ALL.match(ResourceType.NONE));
         Assert.assertTrue(ResourceType.ALL.match(ResourceType.STATUS));
@@ -161,12 +146,9 @@ public class RolePermissionTest {
         Assert.assertTrue(ResourceType.ALL.match(ResourceType.META));
         Assert.assertTrue(ResourceType.ALL.match(ResourceType.ALL));
 
-        Assert.assertFalse(ResourceType.ALL.match(ResourceType.GRANT));
-        Assert.assertFalse(ResourceType.ALL.match(ResourceType.USER_GROUP));
-        Assert.assertFalse(ResourceType.ALL.match(ResourceType.PROJECT));
-        Assert.assertFalse(ResourceType.ALL.match(ResourceType.TARGET));
-        Assert.assertFalse(ResourceType.ALL.match(ResourceType.METRICS));
-        Assert.assertFalse(ResourceType.ALL.match(ResourceType.ROOT));
+        Assert.assertTrue(ResourceType.ALL.match(ResourceType.GRANT));
+        Assert.assertTrue(ResourceType.ALL.match(ResourceType.USER));
+        Assert.assertTrue(ResourceType.ALL.match(ResourceType.TARGET));
 
         // SCHEMA
         Assert.assertTrue(ResourceType.SCHEMA.match(ResourceType.NONE));
@@ -187,49 +169,38 @@ public class RolePermissionTest {
         Assert.assertFalse(ResourceType.SCHEMA.match(ResourceType.META));
         Assert.assertFalse(ResourceType.SCHEMA.match(ResourceType.ALL));
         Assert.assertFalse(ResourceType.SCHEMA.match(ResourceType.GRANT));
-        Assert.assertFalse(ResourceType.SCHEMA.match(ResourceType.USER_GROUP));
-        Assert.assertFalse(ResourceType.SCHEMA.match(ResourceType.PROJECT));
+        Assert.assertFalse(ResourceType.SCHEMA.match(ResourceType.USER));
         Assert.assertFalse(ResourceType.SCHEMA.match(ResourceType.TARGET));
-        Assert.assertFalse(ResourceType.SCHEMA.match(ResourceType.METRICS));
-        Assert.assertFalse(ResourceType.SCHEMA.match(ResourceType.ROOT));
 
         // isRepresentative
-        Assert.assertTrue(ResourceType.ROOT.isRepresentative());
         Assert.assertTrue(ResourceType.ALL.isRepresentative());
         Assert.assertTrue(ResourceType.SCHEMA.isRepresentative());
 
         Assert.assertFalse(ResourceType.NONE.isRepresentative());
         Assert.assertFalse(ResourceType.VERTEX.isRepresentative());
         Assert.assertFalse(ResourceType.META.isRepresentative());
-        Assert.assertFalse(ResourceType.METRICS.isRepresentative());
 
         // isAuth
         Assert.assertTrue(ResourceType.GRANT.isAuth());
-        Assert.assertTrue(ResourceType.USER_GROUP.isAuth());
-        Assert.assertTrue(ResourceType.PROJECT.isAuth());
+        Assert.assertTrue(ResourceType.USER.isAuth());
         Assert.assertTrue(ResourceType.TARGET.isAuth());
 
-        Assert.assertFalse(ResourceType.ROOT.isAuth());
         Assert.assertFalse(ResourceType.ALL.isAuth());
         Assert.assertFalse(ResourceType.SCHEMA.isAuth());
         Assert.assertFalse(ResourceType.NONE.isAuth());
         Assert.assertFalse(ResourceType.VERTEX.isAuth());
         Assert.assertFalse(ResourceType.META.isAuth());
-        Assert.assertFalse(ResourceType.METRICS.isAuth());
 
         // isGrantOrUser
         Assert.assertTrue(ResourceType.GRANT.isGrantOrUser());
-        Assert.assertTrue(ResourceType.USER_GROUP.isGrantOrUser());
-        Assert.assertFalse(ResourceType.PROJECT.isGrantOrUser());
+        Assert.assertTrue(ResourceType.USER.isGrantOrUser());
         Assert.assertFalse(ResourceType.TARGET.isGrantOrUser());
 
-        Assert.assertFalse(ResourceType.ROOT.isGrantOrUser());
         Assert.assertFalse(ResourceType.ALL.isGrantOrUser());
         Assert.assertFalse(ResourceType.SCHEMA.isGrantOrUser());
         Assert.assertFalse(ResourceType.NONE.isGrantOrUser());
         Assert.assertFalse(ResourceType.VERTEX.isGrantOrUser());
         Assert.assertFalse(ResourceType.META.isGrantOrUser());
-        Assert.assertFalse(ResourceType.METRICS.isGrantOrUser());
 
         // isSchema
         Assert.assertTrue(ResourceType.PROPERTY_KEY.isSchema());
@@ -238,7 +209,6 @@ public class RolePermissionTest {
         Assert.assertTrue(ResourceType.INDEX_LABEL.isSchema());
         Assert.assertTrue(ResourceType.SCHEMA.isSchema());
 
-        Assert.assertFalse(ResourceType.ROOT.isSchema());
         Assert.assertFalse(ResourceType.ALL.isSchema());
         Assert.assertFalse(ResourceType.NONE.isSchema());
         Assert.assertFalse(ResourceType.STATUS.isSchema());
@@ -246,13 +216,11 @@ public class RolePermissionTest {
         Assert.assertFalse(ResourceType.GREMLIN.isSchema());
         Assert.assertFalse(ResourceType.TASK.isSchema());
         Assert.assertFalse(ResourceType.META.isSchema());
-        Assert.assertFalse(ResourceType.METRICS.isSchema());
 
         // isGraph
         Assert.assertTrue(ResourceType.VERTEX.isGraph());
         Assert.assertTrue(ResourceType.EDGE.isGraph());
 
-        Assert.assertFalse(ResourceType.ROOT.isGraph());
         Assert.assertFalse(ResourceType.ALL.isGraph());
         Assert.assertFalse(ResourceType.SCHEMA.isGraph());
         Assert.assertFalse(ResourceType.NONE.isGraph());
@@ -263,7 +231,6 @@ public class RolePermissionTest {
         Assert.assertFalse(ResourceType.GREMLIN.isGraph());
         Assert.assertFalse(ResourceType.TASK.isGraph());
         Assert.assertFalse(ResourceType.META.isGraph());
-        Assert.assertFalse(ResourceType.METRICS.isGraph());
     }
 
     @Test
@@ -480,11 +447,11 @@ public class RolePermissionTest {
         // user
         ResourceObject<?> r3 = ResourceObject.of("DEFAULT",
                                                  "g1",
-                                                 ResourceType.USER_GROUP,
+                                                 ResourceType.USER,
                                                  NameObject.ANY);
         Assert.assertFalse(all.filter(r3));
 
-        HugeResource user = new HugeResource(ResourceType.USER_GROUP,
+        HugeResource user = new HugeResource(ResourceType.USER,
                                              HugeResource.ANY, null);
         Assert.assertTrue(user.filter(r3));
 
@@ -493,12 +460,12 @@ public class RolePermissionTest {
                                                  new HugeUser("fake"));
         Assert.assertTrue(user.filter(r4));
 
-        HugeResource user2 = new HugeResource(ResourceType.USER_GROUP,
+        HugeResource user2 = new HugeResource(ResourceType.USER,
                                               "bj-.*", null);
         Assert.assertTrue(user2.filter(r3));
         Assert.assertFalse(user2.filter(r4));
 
-        HugeResource user3 = new HugeResource(ResourceType.USER_GROUP,
+        HugeResource user3 = new HugeResource(ResourceType.USER,
                                               "fa.*", null);
         Assert.assertTrue(user3.filter(r3));
         Assert.assertTrue(user3.filter(r4));
@@ -509,7 +476,7 @@ public class RolePermissionTest {
                                               ""));
         Assert.assertFalse(user.filter(r5));
 
-        HugeResource root = new HugeResource(ResourceType.ROOT,
+        HugeResource root = new HugeResource(ResourceType.ALL,
                                              HugeResource.ANY, null);
         Assert.assertTrue(root.filter(r3));
         Assert.assertTrue(root.filter(r4));

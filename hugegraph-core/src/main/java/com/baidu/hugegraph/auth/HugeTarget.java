@@ -82,7 +82,7 @@ public class HugeTarget extends Entity {
 
     @Override
     public ResourceType type() {
-        return ResourceType.TARGET;
+        return ResourceType.GRANT;
     }
 
     @Override

@@ -83,8 +83,6 @@ public class VertexAPI extends BatchAPI {
     @Status(Status.CREATED)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
-                            "$action=vertex_write"})
     public String create(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          @PathParam("graph") String graph,
@@ -105,8 +103,6 @@ public class VertexAPI extends BatchAPI {
     @Status(Status.CREATED)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
-                            "$action=vertex_write"})
     public String create(@Context HugeConfig config,
                          @Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
@@ -139,8 +135,6 @@ public class VertexAPI extends BatchAPI {
     @Path("batch")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
-                            "$action=vertex_write"})
     public String update(@Context HugeConfig config,
                          @Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
@@ -193,8 +187,6 @@ public class VertexAPI extends BatchAPI {
     @Path("{id}")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
-                            "$action=vertex_write"})
     public String update(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          @PathParam("graph") String graph,
@@ -229,7 +221,7 @@ public class VertexAPI extends BatchAPI {
     @Timed
     @Compress
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
+    @RolesAllowed({"space", "$graphspace=$graphspace $owner=$graph " +
                             "$action=vertex_read"})
     public String list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
@@ -293,8 +285,6 @@ public class VertexAPI extends BatchAPI {
     @Timed
     @Path("{id}")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
-                            "$action=vertex_read"})
     public String get(@Context GraphManager manager,
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("graph") String graph,
@@ -317,8 +307,6 @@ public class VertexAPI extends BatchAPI {
     @Timed
     @Path("{id}")
     @Consumes(APPLICATION_JSON)
-    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
-                            "$action=vertex_delete"})
     public void delete(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("graph") String graph,

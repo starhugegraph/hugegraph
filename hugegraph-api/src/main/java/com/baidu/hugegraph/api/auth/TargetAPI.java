@@ -22,6 +22,7 @@ package com.baidu.hugegraph.api.auth;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.security.RolesAllowed;
 import javax.inject.Singleton;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -62,6 +63,7 @@ public class TargetAPI extends API {
     @Status(Status.CREATED)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String create(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          JsonTarget jsonTarget) {
@@ -73,7 +75,7 @@ public class TargetAPI extends API {
 
         HugeTarget target = jsonTarget.build(graphSpace);
         AuthManager authManager = manager.authManager();
-        target.id(authManager.createTarget(graphSpace, target, true));
+        target.id(authManager.createTarget(graphSpace, target, false));
         return manager.serializer().writeAuthElement(target);
     }
 
@@ -82,6 +84,7 @@ public class TargetAPI extends API {
     @Path("{id}")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String update(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          @PathParam("id") String id,
@@ -101,13 +104,14 @@ public class TargetAPI extends API {
             throw new IllegalArgumentException("Invalid target id: " + id);
         }
         target = jsonTarget.build(target);
-        target = authManager.updateTarget(graphSpace, target, true);
+        target = authManager.updateTarget(graphSpace, target, false);
         return manager.serializer().writeAuthElement(target);
     }
 
     @GET
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
@@ -116,7 +120,7 @@ public class TargetAPI extends API {
 
         AuthManager authManager = manager.authManager();
         List<HugeTarget> targets = authManager.listAllTargets(graphSpace,
-                                                              limit, true);
+                                                              limit, false);
         return manager.serializer().writeAuthElements("targets", targets);
     }
 
@@ -124,6 +128,7 @@ public class TargetAPI extends API {
     @Timed
     @Path("{id}")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String get(@Context GraphManager manager,
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("id") String id) {
@@ -132,7 +137,7 @@ public class TargetAPI extends API {
 
         AuthManager authManager = manager.authManager();
         HugeTarget target = authManager.getTarget(graphSpace,
-                            UserAPI.parseId(id), true);
+                            UserAPI.parseId(id), false);
         return manager.serializer().writeAuthElement(target);
     }
 
@@ -140,6 +145,7 @@ public class TargetAPI extends API {
     @Timed
     @Path("{id}")
     @Consumes(APPLICATION_JSON)
+    @RolesAllowed({"space"})
     public void delete(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("id") String id) {
@@ -148,7 +154,7 @@ public class TargetAPI extends API {
 
         try {
             AuthManager authManager = manager.authManager();
-            authManager.deleteTarget(graphSpace, UserAPI.parseId(id), true);
+            authManager.deleteTarget(graphSpace, UserAPI.parseId(id), false);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid target id: " + id);
         }

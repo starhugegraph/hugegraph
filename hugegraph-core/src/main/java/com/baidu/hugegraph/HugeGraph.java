@@ -75,6 +75,7 @@ public interface HugeGraph extends Graph {
     public Id getNextId(HugeType type);
 
     public Id addPropertyKey(PropertyKey key);
+    public void updatePropertyKey(PropertyKey old, PropertyKey upadte);
     public Id removePropertyKey(Id key);
     public Id clearPropertyKey(PropertyKey propertyKey);
     public Collection<PropertyKey> propertyKeys();
@@ -277,6 +278,4 @@ public interface HugeGraph extends Graph {
     }
 
     public void applyMutation(BackendMutation mutation);
-
-    public void updatePropertyKey(PropertyKey old, PropertyKey upadte);
 }

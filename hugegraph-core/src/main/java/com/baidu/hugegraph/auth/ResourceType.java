@@ -53,19 +53,13 @@ public enum ResourceType {
 
     META,
 
-    ALL,
-
     GRANT,
-
-    USER_GROUP,
-
-    PROJECT,
 
     TARGET,
 
-    METRICS,
+    USER,
 
-    ROOT;
+    ALL;
 
     public boolean match(ResourceType required) {
         if (this == required) {
@@ -80,7 +74,6 @@ public enum ResourceType {
         }
 
         switch (this) {
-            case ROOT:
             case ALL:
                 return this.ordinal() >= required.ordinal();
             case SCHEMA:
@@ -104,15 +97,15 @@ public enum ResourceType {
 
     public boolean isAuth() {
         int ord = this.ordinal();
-        return GRANT.ordinal() <= ord && ord <= TARGET.ordinal();
+        return GRANT.ordinal() <= ord && ord <= USER.ordinal();
     }
 
     public boolean isGrantOrUser() {
-        return this == GRANT || this == USER_GROUP;
+        return this == GRANT || this == USER;
     }
 
     public boolean isRepresentative() {
-        return this == ROOT || this == ALL || this == SCHEMA;
+        return this == ALL || this == SCHEMA;
     }
 
     public static ResourceType from(HugeType type) {

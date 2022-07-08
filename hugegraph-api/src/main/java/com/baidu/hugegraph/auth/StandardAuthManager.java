@@ -139,6 +139,7 @@ public class StandardAuthManager implements AuthManager {
                                       boolean throwIfNoPerm,
                                       Supplier<ResourceObject<V>> fetcher,
                                       Supplier<Boolean> checker) {
+        // TODO: delete this method
         // TODO: call verifyPermission() before actual action
         HugeGraphAuthProxy.Context context = HugeGraphAuthProxy.getContext();
         E.checkState(context != null,
@@ -236,7 +237,7 @@ public class StandardAuthManager implements AuthManager {
             HugeUser existed = this.findUser(user.name(), false);
             if (required && !existed.name().equals(currentUsername())) {
                 // Only admin could update user
-                verifyUserPermission("", HugePermission.ANY, user);
+                verifyUserPermission("", HugePermission.ADMIN, user);
             }
 
             this.updateCreator(user);
