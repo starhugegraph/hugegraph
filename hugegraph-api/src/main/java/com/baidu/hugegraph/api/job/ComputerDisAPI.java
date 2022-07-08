@@ -86,21 +86,24 @@ public class ComputerDisAPI extends API {
                                     JsonTask jsonTask) {
         checkCreatingBody(jsonTask);
         E.checkArgument(K8sDriverProxy.isK8sApiEnabled(),
-        	    "The k8s api is not enable.");
-        E.checkArgument((Objects.nonNull(jsonTask.params.get("k8s.master_cpu")) && 
-        	    StringUtils.isNoneBlank(jsonTask.params.get("k8s.master_cpu").toString())) && 
-            (Objects.nonNull(jsonTask.params.get("k8s.worker_cpu")) && 
-        	    StringUtils.isNoneBlank(jsonTask.params.get("k8s.worker_cpu").toString())) && 
-        	    (Objects.nonNull(jsonTask.params.get("k8s.master_request_memory")) && 
-        	    StringUtils.isNoneBlank(jsonTask.params.get("k8s.master_request_memory").toString())) && 
-        	    (Objects.nonNull(jsonTask.params.get("k8s.worker_request_memory")) && 
-        	    StringUtils.isNoneBlank(jsonTask.params.get("k8s.worker_request_memory").toString())) && 
-            (Objects.nonNull(jsonTask.params.get("k8s.master_memory")) && 
-        	    StringUtils.isNoneBlank(jsonTask.params.get("k8s.master_memory").toString())) && 
-        	    (Objects.nonNull(jsonTask.params.get("k8s.worker_memory")) && 
-        	    StringUtils.isNoneBlank(jsonTask.params.get("k8s.worker_memory").toString())),
-                "The params k8s.master_cpu k8s.worker_cpu k8s.master_request_memory k8s.worker_request_memory"
-                + " k8s.master_memory k8s.worker_memory must be set.", jsonTask.params);
+                "The k8s api is not enable.");
+        // 图空间不为DEFALUT的，对其参数进行校验
+        if (!("DEFAULT".equals(graphSpace))) {
+               E.checkArgument((Objects.nonNull(jsonTask.params.get("k8s.master_cpu")) &&
+                    StringUtils.isNoneBlank(jsonTask.params.get("k8s.master_cpu").toString())) &&
+                (Objects.nonNull(jsonTask.params.get("k8s.worker_cpu")) && 
+                    StringUtils.isNoneBlank(jsonTask.params.get("k8s.worker_cpu").toString())) &&
+                    (Objects.nonNull(jsonTask.params.get("k8s.master_request_memory")) &&
+                    StringUtils.isNoneBlank(jsonTask.params.get("k8s.master_request_memory").toString())) &&
+                    (Objects.nonNull(jsonTask.params.get("k8s.worker_request_memory")) &&
+                    StringUtils.isNoneBlank(jsonTask.params.get("k8s.worker_request_memory").toString())) &&
+                (Objects.nonNull(jsonTask.params.get("k8s.master_memory")) && 
+                    StringUtils.isNoneBlank(jsonTask.params.get("k8s.master_memory").toString())) &&
+                    (Objects.nonNull(jsonTask.params.get("k8s.worker_memory")) &&
+                    StringUtils.isNoneBlank(jsonTask.params.get("k8s.worker_memory").toString())),
+                    "The params k8s.master_cpu k8s.worker_cpu k8s.master_request_memory k8s.worker_request_memory"
+                    + " k8s.master_memory k8s.worker_memory must be set.", jsonTask.params);
+        }
         LOG.info("Schedule computer dis job: {}, graph is {}", jsonTask, graph);
 
         // username is "" means generate token from current context

@@ -65,7 +65,7 @@ public class PDAPI extends API {
                         "Please set pd addrs use config: pd.peers");
 
         this.client = PDClient.create(PDConfig.of(pdPeers)
-                                              .setEnablePDNotify(false));
+                                              .setEnablePDNotify(true));
 
         E.checkArgument(client != null,
                         "Get pd client error, The hstore api is not enable.");

@@ -20,7 +20,9 @@
 package com.baidu.hugegraph.api.graph;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +56,7 @@ import com.baidu.hugegraph.api.filter.DecompressInterceptor.Decompress;
 import com.baidu.hugegraph.api.filter.StatusFilter.Status;
 import com.baidu.hugegraph.backend.id.EdgeId;
 import com.baidu.hugegraph.backend.id.Id;
+import com.baidu.hugegraph.backend.id.IdGenerator;
 import com.baidu.hugegraph.backend.query.ConditionQuery;
 import com.baidu.hugegraph.config.HugeConfig;
 import com.baidu.hugegraph.config.ServerOptions;
@@ -147,8 +150,11 @@ public class EdgeAPI extends BatchAPI {
             List<Vertex> targetVertices = checkVertex ?
                                           getTargetVertices(g, jsonEdges) :
                                           newTargetVertices(g, jsonEdges);
-
-            for (int i = 0; i < sourceVertices.size(); i++) {
+            E.checkArgument(jsonEdges.size() == sourceVertices.size() &&
+                            jsonEdges.size() == targetVertices.size(),
+                            "There are vertex ids in creating edges not " +
+                            "exist!");
+            for (int i = 0; i < jsonEdges.size(); i++) {
                 /*
                  * NOTE: If the query param 'checkVertex' is false,
                  * then the label is correct and not matched id,
@@ -431,22 +437,51 @@ public class EdgeAPI extends BatchAPI {
         int index = 0;
         for (JsonEdge jsonEdge : jsonEdges) {
             Object id = source ? jsonEdge.source : jsonEdge.target;
+            E.checkArgumentNotNull(id, "The vertex id can't be null in " +
+                                       "JsonEdge");
             ids[index] = id;
             String label = source ? jsonEdge.sourceLabel : jsonEdge.targetLabel;
+            E.checkArgument(label != null && !label.isEmpty(),
+                            "The vertex label can't be null or empty in " +
+                            "JsonEdge");
             labels[index++] = label;
         }
         Iterator<Vertex> vertexIterator;
+        ;
         try {
-            vertexIterator = graph.vertices(ids);
+            // graph.vertices(ids) result not keep ids sequence now!
+            vertexIterator = graph.vertices(
+                             new HashSet<>(Arrays.asList(ids)).toArray());
         } catch (NoSuchElementException e) {
             throw new IllegalArgumentException("Invalid vertex id", e);
         }
-        index = 0;
+
+        Map<Object, HugeVertex> vertexMap = new HashMap<>();
         while (vertexIterator.hasNext()) {
             HugeVertex vertex = (HugeVertex) vertexIterator.next();
-            Object id = ids[index];
-            String label = labels[index++];
-            if (label != null && !vertex.label().equals(label)) {
+            vertexMap.put(vertex.id().asObject(), vertex);
+        }
+        for (int i = 0; i < jsonEdges.size(); i++) {
+            Object id = ids[i];
+            String label = labels[i];
+            Object key;
+            if (id instanceof String) {
+                key = id;
+            } else {
+                key = IdGenerator.of(id).asObject();
+            }
+            HugeVertex vertex = vertexMap.get(key);
+            if (vertex == null) {
+                throw new IllegalArgumentException(String.format(
+                          "Not exist vertex with id '%s'", key));
+            }
+            if (vertex.id().number() &&
+                vertex.id().asLong() != ((Number) id).longValue() ||
+                !vertex.id().number() && !id.equals(vertex.id().asObject())) {
+                throw new IllegalArgumentException(String.format(
+                          "The vertex with id '%s' not exist", id));
+            }
+            if (!label.equals(vertex.label())) {
                 throw new IllegalArgumentException(String.format(
                           "The label of vertex '%s' is unmatched, users " +
                           "expect label '%s', actual label stored is '%s'",

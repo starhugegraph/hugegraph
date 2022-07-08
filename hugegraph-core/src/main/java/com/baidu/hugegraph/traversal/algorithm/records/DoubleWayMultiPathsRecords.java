@@ -71,6 +71,12 @@ public abstract class DoubleWayMultiPathsRecords extends AbstractRecords {
         this.parentRecordKeys = parentRecord.keys();
     }
 
+    public void resetOneLayer() {
+        Record parentRecord = forward ? this.sourceRecords.peek() :
+                this.targetRecords.peek();
+        this.parentRecordKeys = parentRecord.keys();
+    }
+
     @Override
     public void finishOneLayer() {
         Record record = this.currentRecord();

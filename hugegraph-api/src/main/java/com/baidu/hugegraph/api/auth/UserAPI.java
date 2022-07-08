@@ -116,7 +116,12 @@ public class UserAPI extends API {
         LOGGER.logCustomDebug("List users", RestServer.EXECUTOR);
 
         AuthManager authManager = manager.authManager();
-        List<HugeUser> users = authManager.listAllUsers(limit, true);
+        // only admin and spaceAdmin could get users list
+        String username = authManager.username();
+        boolean required = !(authManager.isAdminManager(username) ||
+                             authManager.isSpaceManager(username));
+
+        List<HugeUser> users = authManager.listAllUsers(limit, required);
         return manager.serializer().writeAuthElements("users", users);
     }
 
@@ -129,7 +134,12 @@ public class UserAPI extends API {
         LOGGER.logCustomDebug("Get user: {}", RestServer.EXECUTOR, id);
 
         AuthManager authManager = manager.authManager();
-        HugeUser user = authManager.getUser(IdGenerator.of(id), true);
+        // only admin and spaceAdmin could get users list
+        String username = authManager.username();
+        boolean required = !(authManager.isAdminManager(username) ||
+                           authManager.isSpaceManager(username));
+
+        HugeUser user = authManager.getUser(IdGenerator.of(id), required);
         return manager.serializer().writeAuthElement(user);
     }
 

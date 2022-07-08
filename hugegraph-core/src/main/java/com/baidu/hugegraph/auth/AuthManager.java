@@ -41,6 +41,7 @@ public interface AuthManager {
     public Id createSpaceManager(String graphSpace, String user);
     public void deleteSpaceManager(String graphSpace, String user);
     public List<String> listSpaceManager(String graphSpace);
+    public boolean isSpaceManager(String user);
     public boolean isSpaceManager(String graphSpace, String user);
     public Id createAdminManager(String user);
     public void deleteAdminManager(String user);

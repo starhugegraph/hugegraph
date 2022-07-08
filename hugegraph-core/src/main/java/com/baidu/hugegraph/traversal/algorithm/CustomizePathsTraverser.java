@@ -64,7 +64,7 @@ public class CustomizePathsTraverser extends OltpTraverser {
         int pathCount = 0;
         long access = 0;
         MultivaluedMap<Id, Node> newVertices = null;
-        root : for (WeightedEdgeStep step : steps) {
+        for (WeightedEdgeStep step : steps) {
             stepNum--;
             newVertices = newMultivalueMap();
             sources = traverseNodesBatch(newVertices, sources, step, stepNum,
