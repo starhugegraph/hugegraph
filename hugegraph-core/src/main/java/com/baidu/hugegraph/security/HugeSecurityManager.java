@@ -116,6 +116,10 @@ public class HugeSecurityManager extends SecurityManager {
             "com.baidu.hugegraph.meta.MetaManager"
     );
 
+    private static final Set<String> RATELIMITER_CLASSES = ImmutableSet.of(
+            "com.baidu.hugegraph.util.RateLimiter"
+    );
+
     @Override
     public void checkPermission(Permission permission) {
         if (DENIED_PERMISSIONS.contains(permission.getName()) &&
@@ -157,7 +161,7 @@ public class HugeSecurityManager extends SecurityManager {
         if (callFromGremlin() && !callFromCaffeine() &&
             !callFromAsyncTasks() && !callFromEventHubNotify() &&
             !callFromRaft() && !callFromSofaRpc() &&
-            !callFromHStore() && !callFromEtcd()) {
+            !callFromHStore() && !callFromEtcd() && !callFromRateLimiter()) {
             throw newSecurityException(
                   "Not allowed to access thread via Gremlin");
         }
@@ -169,7 +173,7 @@ public class HugeSecurityManager extends SecurityManager {
         if (callFromGremlin() && !callFromCaffeine() &&
             !callFromAsyncTasks() && !callFromEventHubNotify() &&
             !callFromRaft() && !callFromSofaRpc() &&
-            !callFromHStore() && !callFromEtcd()) {
+            !callFromHStore() && !callFromEtcd() && !callFromRateLimiter()) {
             throw newSecurityException(
                   "Not allowed to access thread group via Gremlin");
         }
@@ -458,6 +462,10 @@ public class HugeSecurityManager extends SecurityManager {
 
     private static boolean callFromEtcd() {
         return callFromWorkerWithClass(ETCD_CLASSES);
+    }
+
+    private static boolean callFromRateLimiter() {
+        return callFromWorkerWithClass(RATELIMITER_CLASSES);
     }
 
     private static boolean callFromNewSecurityException() {
