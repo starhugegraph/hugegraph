@@ -192,6 +192,12 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     @Override
+    public void updatePropertyKey(PropertyKey old, PropertyKey update) {
+        verifySchemaPermission(HugePermission.WRITE, old);
+        this.hugegraph.updatePropertyKey(old, update);
+    }
+
+    @Override
     public Id removePropertyKey(Id key) {
         PropertyKey pkey = this.hugegraph.propertyKey(key);
         verifySchemaPermission(HugePermission.DELETE, pkey);
@@ -671,7 +677,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
     @Override
     public GraphMode mode() {
-        this.verifyStatusPermission();
         return this.hugegraph.mode();
     }
 
@@ -683,7 +688,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
     @Override
     public GraphReadMode readMode() {
-        this.verifyStatusPermission();
         return this.hugegraph.readMode();
     }
 
@@ -707,7 +711,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
     @Override
     public boolean started() {
-        this.verifyAdminPermission();
         return this.hugegraph.started();
     }
 
@@ -794,11 +797,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     @Override
-    public void updatePropertyKey(PropertyKey old, PropertyKey update) {
-        this.hugegraph.updatePropertyKey(old, update);
-    }
-
-    @Override
     public String creator() {
         this.verifyAnyPermission();
         return this.hugegraph.creator();
@@ -854,7 +852,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     private void verifyAdminPermission() {
-        verifyPermission(HugePermission.ANY, ResourceType.ROOT);
+        verifyPermission(HugePermission.ADMIN, ResourceType.ALL);
     }
 
     private void verifyStatusPermission() {
@@ -1041,6 +1039,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         }
         // Verify permission for one access another, like: granted <= user role
         else if (ro.type().isGrantOrUser()) {
+            // TODO check if here can be deleted
             AuthElement element = (AuthElement) ro.operated();
             RolePermission grant = this.authManager().rolePermission(element);
             if (!RolePerm.match(role, grant, ro)) {
