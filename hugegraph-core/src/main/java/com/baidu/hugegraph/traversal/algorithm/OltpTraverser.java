@@ -296,6 +296,13 @@ public abstract class OltpTraverser extends HugeTraverser
                                        Directions dir, Id label,
                                        Set<Id> excluded, long degree,
                                        long limit) {
+        return adjacentVerticesBatch(sourceV, vertices, dir, label, excluded, degree, true, limit);
+    }
+
+    protected Set<Id> adjacentVerticesBatch(Id sourceV, Set<Id> vertices,
+                                            Directions dir, Id label,
+                                            Set<Id> excluded, long degree,
+                                            boolean concurrent, long limit) {
         if (limit == 0) {
             return ImmutableSet.of();
         }
@@ -310,9 +317,13 @@ public abstract class OltpTraverser extends HugeTraverser
         AdjacentVerticesBatchConsumer consumer = new AdjacentVerticesBatchConsumer(
                 sourceV, excluded, limit, neighbors);
         edgeIts.setAvgDegreeSupplier(consumer::getAvgDegree);
-        BufferGroupEdgesOfVerticesIterator bufferEdgeIts = new BufferGroupEdgesOfVerticesIterator(edgeIts,
-                                                                                                  vids, degree);
-        this.traverseBatch(bufferEdgeIts, consumer, "traverse-ite-edge", 1);
+
+        if(concurrent == false){
+            MergingEdgesOfVerticesIterator mergingEdgesIterator = new MergingEdgesOfVerticesIterator(edgeIts, vids);
+            this.traverseBatch(mergingEdgesIterator, consumer, "traverse-ite-edge", 1);
+        }else{
+            this.traverseBatch(edgeIts, consumer, "traverse-ite-edge", 1);
+        }
 
         if (limit != NO_LIMIT && neighbors.size() > limit) {
             int redundantNeighborsCount = (int) (neighbors.size() - limit);
