@@ -1039,14 +1039,6 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         if (!RolePerm.match(role, actionPerm, ro)) {
             result = null;
         }
-        // Verify permission for one access another, like: granted <= user role
-        else if (ro.type().isGrantOrUser()) {
-            AuthElement element = (AuthElement) ro.operated();
-            RolePermission grant = this.authManager().rolePermission(element);
-            if (!RolePerm.match(role, grant, ro)) {
-                result = null;
-            }
-        }
         // Check resource detail if needed
         if (result != null && checker != null && !checker.get()) {
             result = null;
