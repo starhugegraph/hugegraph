@@ -65,7 +65,7 @@ public class ServiceApi extends API {
     @GET
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$dynamic"})
+    @RolesAllowed({"space", "$dynamic"})
     public Object list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @Context SecurityContext sc) {
@@ -98,6 +98,7 @@ public class ServiceApi extends API {
     @Status(Status.CREATED)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String create(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          JsonService jsonService) {
@@ -122,7 +123,7 @@ public class ServiceApi extends API {
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON)
     @Path("k8s-register")
-    @RolesAllowed({"admin", "$dynamic"})
+    @RolesAllowed({"space"})
     public void registerK8S(@Context GraphManager manager) throws Exception {
         // manager.registerK8StoPd();
     }
@@ -133,7 +134,7 @@ public class ServiceApi extends API {
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @Path("stop/{name}")
-    @RolesAllowed({"admin", "$dynamic"})
+    @RolesAllowed({"space", "$dynamic"})
     public void stopService(@Context GraphManager manager,
                             @PathParam("graphspace") String graphSpace,
                             @PathParam("name") String serviceName) {
@@ -156,6 +157,7 @@ public class ServiceApi extends API {
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @Path("start/{name}")
+    @RolesAllowed({"space", "$dynamic"})
     public void startService(@Context GraphManager manager,
                              @PathParam("graphspace") String graphSpace, 
                              @PathParam("name") String serviceName) {
@@ -173,7 +175,7 @@ public class ServiceApi extends API {
     @Timed
     @Path("{name}")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin"})
+    @RolesAllowed({"space"})
     public void delete(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("name") String name,
