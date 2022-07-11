@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.baidu.hugegraph.pd.common.KVPair;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.backend.BackendException;
@@ -71,7 +72,7 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner,
 
             } else if (endKey == HgStoreClientConst.EMPTY_BYTES
                     || startKey == endKey || Arrays.equals(startKey, endKey)){
-                HgPair<Metapb.Partition, Metapb.Shard> partShard =
+                KVPair<Metapb.Partition, Metapb.Shard> partShard =
                        pdClient.getPartition(graphName, startKey);
                 Metapb.Shard leader = partShard.getValue();
                 partitions = new HashSet<>(1);
@@ -99,7 +100,7 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner,
             HashSet<HgNodePartition> partitions = new HashSet<>();
             Metapb.Partition partition = null;
             while (partition == null || partition.getEndKey() < endKey){
-                HgPair<Metapb.Partition, Metapb.Shard> partShard =
+                KVPair<Metapb.Partition, Metapb.Shard> partShard =
                         pdClient.getPartitionByCode(graphName, startKey);
                 if (partShard != null){
                     partition = partShard.getKey();
@@ -161,18 +162,6 @@ public class HstoreNodePartitionerImpl implements HgStoreNodePartitioner,
         return 0;
     }
 
-    public Metapb.GraphWorkMode setWorkMode(String graphName,
-                                            Metapb.GraphWorkMode mode) {
-        try {
-            Metapb.Graph graph = pdClient.setGraph(Metapb.Graph.newBuilder()
-                                             .setGraphName(graphName)
-                                             .setWorkMode(mode).build());
-            return graph.getWorkMode();
-        } catch (PDException e) {
-            throw new BackendException("Error while calling pd method, cause:",
-                                       e.getMessage());
-        }
-    }
 
     public Metapb.Graph delGraph(String graphName){
         try {

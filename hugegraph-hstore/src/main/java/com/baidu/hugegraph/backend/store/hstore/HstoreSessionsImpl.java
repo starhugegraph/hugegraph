@@ -492,23 +492,7 @@ public class HstoreSessionsImpl extends HstoreSessions {
 
         @Override
         public void setMode(GraphMode mode) {
-            if (!mode.equals(GraphMode.LOADING)){
-                nodePartitioner.setWorkMode(this.getGraphName(),
-                                            Metapb.GraphWorkMode.Normal);
-            } else{
-                HgKvIterator results =  this.graph.scanIterator("g+v", 1);
-                if (!results.hasNext()){
-                    nodePartitioner.setWorkMode(this.getGraphName(),
-                                                Metapb.GraphWorkMode.Batch_Import);
-                } else{
-                    LOG.warn("The database already has vertex data, " +
-                             "so you cannot set the state to LOADING");
-                }
 
-            }
-            //nodePartitioner.setWorkMode(this.getGraphName(), mode.equals(GraphMode.LOADING) ?
-            //        Metapb.GraphWorkMode.Batch_Import :
-            //        Metapb.GraphWorkMode.Normal);
         }
 
         @Override
