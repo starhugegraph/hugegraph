@@ -85,7 +85,7 @@ public class KoutTraverser extends OltpTraverser {
                 all.addAll(latest);
             } else {
                 latest = this.adjacentVerticesBatch(sourceV, latest, dir, labelId,
-                                               null, degree, remaining);
+                                                    null, degree, remaining);
             }
             if (capacity != NO_LIMIT) {
                 // Update 'remaining' value to record remaining capacity
@@ -131,8 +131,11 @@ public class KoutTraverser extends OltpTraverser {
                 Id target = edge.id().otherVertexId();
                 records.addPath(v, target);
                 if (withEdge) {
-                    // for breadth, we have to collect all edge during traversal,
-                    // to avoid over occupy for memery, we collect edgeid only.
+                    /*
+                     * for breadth, we have to collect all edge during
+                     * traversal, to avoid over occupy for memery, we collect
+                     *  edgeid only.
+                     */
                     records.addEdgeId(edge.id());
                 }
                 this.checkCapacity(capacity, records.accessed(), depth[0]);
@@ -212,15 +215,16 @@ public class KoutTraverser extends OltpTraverser {
 
             Iterator<Edge> edges = edgesOfVertexAF(v, steps, false);
             while (!this.reachLimit(limit, depth[0], cur.size()) &&
-                    edges.hasNext()) {
+                   edges.hasNext()) {
                 HugeEdge edge = (HugeEdge) edges.next();
                 this.edgeIterCounter ++;
                 Id target = edge.id().otherVertexId();
                 if (!visited.contains(target) && !sources.contains(target)) {
                     cur.add(target);
                 }
-                this.checkCapacity(capacity, visited.size() + sources.size()
-                        + cur.size(), depth[0]);
+                this.checkCapacity(capacity,
+                                   visited.size() + sources.size() + cur.size(),
+                                   depth[0]);
             }
         };
 
@@ -234,7 +238,6 @@ public class KoutTraverser extends OltpTraverser {
             sources.clear();
             sources.addAll(cur);
             results.add(cur.size());
-//            LOG.info(cur.toString());
             cur.clear();
         }
 
@@ -259,10 +262,11 @@ public class KoutTraverser extends OltpTraverser {
     /**
      * @author xhtian
      */
-    private long traverseIdsKout(Iterator<Id> ids, Steps steps, Consumer<Id> consumer, boolean concurrent,
-                                   KoutRecords records,
-                                   long limit,
-                                   boolean withedge){
+    private long traverseIdsKout(Iterator<Id> ids, Steps steps,
+                                 Consumer<Id> consumer,
+                                 boolean concurrent,
+                                 KoutRecords records, long limit,
+                                 boolean withedge){
         long count = 0L;
         if (steps.isEdgeStepPropertiesEmpty() && steps.isVertexEmpty()) {
             List<Id> vids = newList();
@@ -270,14 +274,18 @@ public class KoutTraverser extends OltpTraverser {
                 vids.add(ids.next());
             }
             // 如果不过滤边属性且steps中对于节点的配置为空的话，则使用batch的方式遍历
-            EdgesOfVerticesIterator edgeIts = edgesOfVerticesAF(vids.iterator(), steps, false);
+            EdgesOfVerticesIterator edgeIts = edgesOfVerticesAF(vids.iterator(),
+                                                                steps, false);
             AdjacentVerticesBatchConsumer consumer1 =
-                    new AdjacentVerticesBatchConsumerKout(records, limit, withedge);
+                    new AdjacentVerticesBatchConsumerKout(records, limit,
+                                                          withedge);
             edgeIts.setAvgDegreeSupplier(consumer1::getAvgDegree);
-            BufferGroupEdgesOfVerticesIterator bufferEdgeIts = new BufferGroupEdgesOfVerticesIterator(edgeIts, vids,
-                                                                                                      steps.degree());
+            BufferGroupEdgesOfVerticesIterator bufferEdgeIts =
+                    new BufferGroupEdgesOfVerticesIterator(edgeIts, vids,
+                                                           steps.degree());
             // 使用单线程来做
-            this.traverseBatchCurrentThread(bufferEdgeIts, consumer1, "traverse-ite-edge", 1);
+            this.traverseBatchCurrentThread(bufferEdgeIts, consumer1,
+                                            "traverse-ite-edge", 1);
         }else{
             // 如果包含属性过滤，则使用原来的方式遍历
             count = traverseIds(ids, consumer, concurrent);
@@ -327,15 +335,19 @@ public class KoutTraverser extends OltpTraverser {
                 Id target = e.id().otherVertexId();
                 records.addPath(source, target);
                 if (withEdge) {
-                    // for breadth, we have to collect all edge during traversal,
-                    // to avoid over occupy for memory, we collect edgeId only.
+                    /*
+                     * for breadth, we have to collect all edge during
+                     * traversal, to avoid over occupy for memory, we collect
+                     *  edgeId only.
+                     */
                     records.addEdgeId(e.id());
                 }
 
                 Id owner = e.id().ownerVertexId();
                 if (ownerId == null || ownerId.compareTo(owner) != 0) {
                     vertexIterCounter++;
-                    this.avgDegree = this.avgDegreeRatio * this.avgDegree + (1 - this.avgDegreeRatio) * degree;
+                    this.avgDegree = this.avgDegreeRatio * this.avgDegree +
+                                     (1 - this.avgDegreeRatio) * degree;
                     degree = 0;
                     ownerId = owner;
                 }

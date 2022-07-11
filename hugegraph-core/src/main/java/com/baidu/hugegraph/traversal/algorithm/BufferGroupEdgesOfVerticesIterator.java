@@ -35,23 +35,22 @@ import com.baidu.hugegraph.util.collection.MappingFactory;
 import com.baidu.hugegraph.util.collection.ObjectIntMapping;
 
 public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>> {
-     private static final int MAX_LOAD_ITEMS = 1000 * 10000;
+
+    private static final int MAX_LOAD_ITEMS = 1000 * 10000;
     private static final int LOAD_ITEM_ONCE = 200;
     private int verticesOffset = 0;
     private volatile int loadedEdgesCount = 0;
     private boolean concurrent = false;
     private boolean haveMoreData = true;
-    private HugeTraverser.EdgesOfVerticesIterator edgeIts;
     private List<Id> vertices;
     private List<Iterator<Edge>> edgeIters;
     private Map<Integer, List<Edge>> bufferedData;
     private Map<Integer, AtomicInteger> remainingDataCount;
     private final ObjectIntMapping<Id> idMapping;
-    private long degree = HugeTraverser.NO_LIMIT;
+    private long degree;
 
     public BufferGroupEdgesOfVerticesIterator(HugeTraverser.EdgesOfVerticesIterator edgeIts,
                                               List<Id> requireVertices, long degree) {
-        this.edgeIts = edgeIts;
         this.vertices = requireVertices;
         this.degree = degree;
         if (vertices == null) {
@@ -98,7 +97,7 @@ public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>>
                     ++count;
                 }
             }
-            if (loaded == false) {
+            if (!loaded) {
                 return false;
             }
         }
@@ -108,7 +107,7 @@ public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>>
 
     protected synchronized boolean loadMore(){
         int beforeLoadedCount = loadedEdgesCount;
-        if (haveMoreData == true && loadedEdgesCount < MAX_LOAD_ITEMS){
+        if (haveMoreData && loadedEdgesCount < MAX_LOAD_ITEMS){
             /* load not balance */
             haveMoreData = doBufferData(LOAD_ITEM_ONCE);
         }

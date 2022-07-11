@@ -219,16 +219,8 @@ public class HugeTraverser {
         /**
          * @author xhtian
          */
-        public EdgesOfVerticesIterator(Set<Id> sources, Steps steps, boolean withEdgeProperties ){
-            this(sources.iterator(), steps, withEdgeProperties);
-
-        }
-
-        /**
-         * @author xhtian
-         */
         public EdgesOfVerticesIterator(Iterator<Id> sources, Steps steps, boolean withEdgeProperties){
-            this.steps = this.steps;
+            this.steps = steps;
             this.sources = sources;
             this.dir = steps.direction();
             this.limit = steps.limit();
@@ -275,10 +267,7 @@ public class HugeTraverser {
             if (this.currentIt != null && this.currentIt.hasNext()) {
                 return true;
             }
-            if (this.sources.hasNext()) {
-                return true;
-            }
-            return false;
+            return this.sources.hasNext();
         }
 
         @Override
@@ -293,7 +282,8 @@ public class HugeTraverser {
                 List<Query> queryList = new ArrayList<>(batchSize);
                 do {
                     Id sourceId = this.sources.next();
-                    Query query = GraphTransaction.constructEdgesQuery(sourceId, this.dir, this.labels);
+                    Query query = GraphTransaction.constructEdgesQuery(
+                                  sourceId, this.dir, this.labels);
                     if (this.limit != NO_LIMIT) {
                         query.limit(this.limit);
                         query.capacity(this.limit);
@@ -460,12 +450,14 @@ public class HugeTraverser {
                                            Map<Id, String> labels, long limit,
                                            boolean withProperties) {
         if (labels == null || labels.isEmpty()) {
-            return this.edgesOfVertex(source, dir, (Id) null, limit, withProperties);
+            return this.edgesOfVertex(source, dir, (Id) null, limit,
+                                      withProperties);
         }
         ExtendableIterator<Edge> results = new ExtendableIterator<>();
         for (Id label : labels.keySet()) {
             E.checkNotNull(label, "edge label");
-            results.extend(this.edgesOfVertex(source, dir, label, limit, withProperties));
+            results.extend(this.edgesOfVertex(source, dir, label, limit,
+                                              withProperties));
         }
 
         if (limit == NO_LIMIT) {
@@ -609,13 +601,6 @@ public class HugeTraverser {
         }
     }
 
-    protected Object getVertexLabelId(Object label) {
-        if (label == null) {
-            return null;
-        }
-        return SchemaLabel.getLabelId(this.graph, HugeType.VERTEX, label);
-    }
-
     protected Id getEdgeLabelId(Object label) {
         if (label == null) {
             return null;
@@ -647,8 +632,8 @@ public class HugeTraverser {
 
     public static void checkPositive(long value, String name) {
         E.checkArgument(value > 0,
-                "The %s parameter must be > 0, but got %s",
-                name, value);
+                        "The %s parameter must be > 0, but got %s",
+                        name, value);
     }
 
     public static void checkPositiveOrNoLimit(long value, String name) {
@@ -673,7 +658,7 @@ public class HugeTraverser {
                                      String traverse) {
         if (capacity != NO_LIMIT && access > capacity) {
             throw new HugeException("Exceed capacity '%s' while finding %s",
-                      capacity, traverse);
+                                    capacity, traverse);
         }
     }
 

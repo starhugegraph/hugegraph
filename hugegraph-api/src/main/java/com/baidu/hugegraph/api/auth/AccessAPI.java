@@ -68,7 +68,7 @@ public class AccessAPI extends API {
                          @PathParam("graphspace") String graphSpace,
                          JsonAccess jsonAccess) {
         LOGGER.logCustomDebug("Graph space [{}] create access: {}",
-                RestServer.EXECUTOR, graphSpace, jsonAccess);
+                              RestServer.EXECUTOR, graphSpace, jsonAccess);
         checkCreatingBody(jsonAccess);
         E.checkArgument(manager.graphSpace(graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);
@@ -89,7 +89,7 @@ public class AccessAPI extends API {
                          @PathParam("id") String id,
                          JsonAccess jsonAccess) {
         LOGGER.logCustomDebug("Graph space [{}] update access: {}",
-                RestServer.EXECUTOR, graphSpace, jsonAccess);
+                              RestServer.EXECUTOR, graphSpace, jsonAccess);
         checkUpdatingBody(jsonAccess);
         E.checkArgument(manager.graphSpace(graphSpace) != null,
                         "The graph space '%s' is not exist", graphSpace);

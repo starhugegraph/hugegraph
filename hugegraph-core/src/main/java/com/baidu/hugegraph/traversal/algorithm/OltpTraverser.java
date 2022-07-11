@@ -189,14 +189,16 @@ public abstract class OltpTraverser extends HugeTraverser
         return total;
     }
 
-    protected <K> long traverseBatch(Iterator<CIter<K>> iterator, Consumer<CIter<K>> consumer,
-                                String name, int queueWorkerSize) {
+    protected <K> long traverseBatch(Iterator<CIter<K>> iterator,
+                                     Consumer<CIter<K>> consumer,
+                                     String name, int queueWorkerSize) {
         if (!iterator.hasNext()) {
             return 0L;
         }
 
         Consumers<CIter<K>> consumers = new Consumers<>(executors.getExecutor(),
-                consumer, null, queueWorkerSize);
+                                                        consumer, null,
+                                                        queueWorkerSize);
         consumers.start(name);
         long total = 0L;
         try {
@@ -259,7 +261,7 @@ public abstract class OltpTraverser extends HugeTraverser
             if (labels == null || labels.isEmpty()) {
                 EdgesOfVerticesIterator edgeIts =
                         edgesOfVertices(idSet, directions,
-                                        (Id) null, edgeStep.limit(),
+                                        null, edgeStep.limit(),
                                         withProperties);
                 edgeIts.setAvgDegreeSupplier(consumer::getAvgDegree);
                 this.traverseBatch(edgeIts, consumer, "traverse-ite-edge", 1);
@@ -293,25 +295,25 @@ public abstract class OltpTraverser extends HugeTraverser
     }
 
     protected Set<Id> adjacentVerticesBatch(Id sourceV, Set<Id> vertices,
-                                       Directions dir, Id label,
-                                       Set<Id> excluded, long degree,
-                                       long limit) {
+                                            Directions dir, Id label,
+                                            Set<Id> excluded, long degree,
+                                            long limit) {
         if (limit == 0) {
             return ImmutableSet.of();
         }
         List<Id> vids = newList();
-        for (Id vid: vertices) {
-            vids.add(vid);
-        }
+        vids.addAll(vertices);
 
         Set<Id> neighbors = newSet(true);
 
-        EdgesOfVerticesIterator edgeIts = edgesOfVertices(vertices, dir, label, degree, false);
-        AdjacentVerticesBatchConsumer consumer = new AdjacentVerticesBatchConsumer(
-                sourceV, excluded, limit, neighbors);
+        EdgesOfVerticesIterator edgeIts = edgesOfVertices(vertices, dir, label,
+                                                          degree, false);
+        AdjacentVerticesBatchConsumer consumer =
+                new AdjacentVerticesBatchConsumer(sourceV, excluded,
+                                                  limit, neighbors);
         edgeIts.setAvgDegreeSupplier(consumer::getAvgDegree);
-        BufferGroupEdgesOfVerticesIterator bufferEdgeIts = new BufferGroupEdgesOfVerticesIterator(edgeIts,
-                                                                                                  vids, degree);
+        BufferGroupEdgesOfVerticesIterator bufferEdgeIts =
+                new BufferGroupEdgesOfVerticesIterator(edgeIts, vids, degree);
         this.traverseBatch(bufferEdgeIts, consumer, "traverse-ite-edge", 1);
 
         if (limit != NO_LIMIT && neighbors.size() > limit) {
@@ -329,8 +331,8 @@ public abstract class OltpTraverser extends HugeTraverser
         return neighbors;
     }
 
-    class AdjacentVerticesBatchConsumerCustomizedPaths
-            extends AdjacentVerticesBatchConsumer {
+    class AdjacentVerticesBatchConsumerCustomizedPaths extends AdjacentVerticesBatchConsumer {
+
         protected MultivaluedMap<Id, Node> newVertices;
         protected WeightedEdgeStep step;
         protected int stepNum;
@@ -382,8 +384,8 @@ public abstract class OltpTraverser extends HugeTraverser
                     Node newNode;
                     if (sorted) {
                         double w = step.weightBy() != null ?
-                                edge.value(step.weightBy().name()) :
-                                step.defaultWeight();
+                                   edge.value(step.weightBy().name()) :
+                                   step.defaultWeight();
                         newNode = new CustomizePathsTraverser.WeightNode(target,
                                                                          n, w);
                     } else {
@@ -417,13 +419,11 @@ public abstract class OltpTraverser extends HugeTraverser
             return newVertices;
         }
 
-        public void setAdjacency(
-                List<Node> adjacency) {
+        public void setAdjacency(List<Node> adjacency) {
             this.adjacency = adjacency;
         }
 
-        public void setEntryValue(
-                List<Node> entryValue) {
+        public void setEntryValue(List<Node> entryValue) {
             this.entryValue = entryValue;
         }
 
@@ -453,8 +453,8 @@ public abstract class OltpTraverser extends HugeTraverser
         protected double avgDegreeRatio;
         protected double avgDegree;
 
-        public AdjacentVerticesBatchConsumer(Id sourceV, Set<Id> excluded, long limit,
-                                             Set<Id> neighbors) {
+        public AdjacentVerticesBatchConsumer(Id sourceV, Set<Id> excluded,
+                                             long limit, Set<Id> neighbors) {
             this.sourceV = sourceV;
             this.excluded = excluded;
             this.limit = limit;
@@ -479,7 +479,8 @@ public abstract class OltpTraverser extends HugeTraverser
                 Id owner = e.id().ownerVertexId();
                 if (ownerId == null || ownerId.compareTo(owner) != 0) {
                     vertexIterCounter++;
-                    this.avgDegree = this.avgDegreeRatio * this.avgDegree + (1 - this.avgDegreeRatio) * degree;
+                    this.avgDegree = this.avgDegreeRatio * this.avgDegree +
+                                     (1 - this.avgDegreeRatio) * degree;
                     degree = 0;
                     ownerId = owner;
                 }
@@ -488,7 +489,7 @@ public abstract class OltpTraverser extends HugeTraverser
                 boolean matchExcluded = (excluded != null &&
                         excluded.contains(target));
                 if (matchExcluded || neighbors.contains(target) ||
-                        sourceV.equals(target)) {
+                    sourceV.equals(target)) {
                     continue;
                 }
                 neighbors.add(target);
@@ -516,7 +517,6 @@ public abstract class OltpTraverser extends HugeTraverser
                     } catch (Exception ex) {
                         LOG.warn("Exception when closing CIter", ex);
                     }
-                    return;
                 } else {
                     after.accept(t);
                 }

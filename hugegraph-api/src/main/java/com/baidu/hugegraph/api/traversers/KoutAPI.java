@@ -163,9 +163,9 @@ public class KoutAPI extends TraverserAPI {
             if( request.countOnly ) {
                 // optimize for count, with BFS
                 countResults = traverser.koutCount(sourceId, steps,
-                                                        request.maxDepth,
-                                                        request.capacity,
-                                                        request.limit);
+                                                   request.maxDepth,
+                                                   request.capacity,
+                                                   request.limit);
             } else if (HugeTraverser.isDeepFirstAlgorithm(request.algorithm)) {
                 results = traverser.deepFirstKout(sourceId, steps,
                                                   request.maxDepth,
