@@ -19,20 +19,6 @@
 
 package com.baidu.hugegraph.meta;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.auth.HugeAccess;
 import com.baidu.hugegraph.auth.HugeBelong;
@@ -51,17 +37,29 @@ import com.baidu.hugegraph.task.HugeTask;
 import com.baidu.hugegraph.task.TaskPriority;
 import com.baidu.hugegraph.task.TaskSerializer;
 import com.baidu.hugegraph.task.TaskStatus;
+import com.baidu.hugegraph.type.define.CollectionType;
+import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.JsonUtil;
+import com.baidu.hugegraph.util.collection.CollectionFactory;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import io.fabric8.kubernetes.api.model.Namespace;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 
-import com.baidu.hugegraph.type.define.CollectionType;
-import com.baidu.hugegraph.util.E;
-import com.baidu.hugegraph.util.collection.CollectionFactory;
-
-import io.fabric8.kubernetes.api.model.Namespace;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class MetaManager {
 
@@ -152,6 +150,10 @@ public class MetaManager {
                 case PD:
                     // TODO: uncomment after implement PdMetaDriver
                     // this.metaDriver = new PdMetaDriver(args);
+                    assert args.length > 0;
+                    String pdPeer = ((List<String>)args[0]).get(0);
+
+                    this.metaDriver = new PdMetaDriver(pdPeer);
                     break;
                 default:
                     throw new AssertionError(String.format(
@@ -449,7 +451,7 @@ public class MetaManager {
 
     public GraphSpace graphSpace(String name) {
         String space = this.metaDriver.get(this.graphSpaceConfKey(name));
-        if (space == null) {
+        if (StringUtils.isEmpty(space)) {
             return null;
         }
         return JsonUtil.fromJson(space, GraphSpace.class);
@@ -1912,7 +1914,7 @@ public class MetaManager {
         return map;
     }
 
-    
+
 
     private <V> HugeTask<V> parseTask(String jsonStr,
                                       String graphSpace,
@@ -1949,7 +1951,7 @@ public class MetaManager {
                                            TaskPriority priority) {
         String key = taskListKey(graphSpace, graphName, priority.toString());
 
-        Map<String, String> taskMap = 
+        Map<String, String> taskMap =
             this.metaDriver.scanWithPrefix(key);
 
         List<HugeTask<V>> taskList = taskMap.values().stream()
@@ -1994,9 +1996,9 @@ public class MetaManager {
         task.overwriteStatus(status);
         return task;
     }
-    
+
     /**
-     * 
+     *
      * @param <V>
      * @param graphSpace
      * @param priority
@@ -2292,7 +2294,7 @@ public class MetaManager {
     public int countTaskByStatus(String graphSpace, String graphName,
                                  TaskStatus status) {
         String key = taskStatusListKey(graphSpace, graphName, status);
-        Map<String, String> taskMap = 
+        Map<String, String> taskMap =
             this.metaDriver.scanWithPrefix(key);
         return taskMap.size();
     }
@@ -2301,7 +2303,7 @@ public class MetaManager {
                                                    String graphName,
                                                    TaskStatus status) {
         String key = taskStatusListKey(graphSpace, graphName, status);
-        Map<String, String> taskMap = 
+        Map<String, String> taskMap =
             this.metaDriver.scanWithPrefix(key);
 
         List<String> taskJsonList = taskMap.values()
@@ -2322,7 +2324,7 @@ public class MetaManager {
     }
 
     /**
-     * Used for task collection examine, when task status changed 
+     * Used for task collection examine, when task status changed
      * @param <V>
      * @param graphSpace
      * @param prevStatus

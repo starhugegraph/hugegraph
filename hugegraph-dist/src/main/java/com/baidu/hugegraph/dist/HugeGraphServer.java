@@ -19,34 +19,32 @@
 
 package com.baidu.hugegraph.dist;
 
+import com.baidu.hugegraph.HugeException;
+import com.baidu.hugegraph.HugeFactory;
 import com.baidu.hugegraph.auth.StandardAuthenticator;
+import com.baidu.hugegraph.config.HugeConfig;
+import com.baidu.hugegraph.config.ServerOptions;
+import static com.baidu.hugegraph.core.GraphManager.NAME_REGEX;
+import com.baidu.hugegraph.event.EventHub;
 import com.baidu.hugegraph.meta.MetaManager;
+import com.baidu.hugegraph.server.RestServer;
 import com.baidu.hugegraph.space.GraphSpace;
+import static com.baidu.hugegraph.space.GraphSpace.DEFAULT_GRAPH_SPACE_SERVICE_NAME;
+import com.baidu.hugegraph.task.TaskManager;
+import com.baidu.hugegraph.util.ConfigUtil;
 import com.baidu.hugegraph.util.E;
+import com.baidu.hugegraph.util.Log;
+import com.google.common.base.Strings;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tinkerpop.gremlin.server.GremlinServer;
 import org.slf4j.Logger;
-
-import com.baidu.hugegraph.HugeException;
-import com.baidu.hugegraph.HugeFactory;
-import com.baidu.hugegraph.config.HugeConfig;
-import com.baidu.hugegraph.config.ServerOptions;
-import com.baidu.hugegraph.event.EventHub;
-import com.baidu.hugegraph.server.RestServer;
-import com.baidu.hugegraph.task.TaskManager;
-import com.baidu.hugegraph.util.ConfigUtil;
-import com.baidu.hugegraph.util.Log;
-import com.google.common.base.Strings;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
-import static com.baidu.hugegraph.core.GraphManager.NAME_REGEX;
-import static com.baidu.hugegraph.space.GraphSpace.DEFAULT_GRAPH_SPACE_SERVICE_NAME;
 
 public class HugeGraphServer {
 
@@ -94,7 +92,7 @@ public class HugeGraphServer {
             clientCaFile = null;
             clientKeyFile = null;
         }
-        this.metaManager.connect(cluster, MetaManager.MetaDriverType.ETCD,
+        this.metaManager.connect(cluster, MetaManager.MetaDriverType.PD,
                                  caFile, clientCaFile, clientKeyFile,
                                  metaEndpoints);
 

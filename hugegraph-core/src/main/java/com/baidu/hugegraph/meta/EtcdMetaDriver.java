@@ -19,27 +19,13 @@
 
 package com.baidu.hugegraph.meta;
 
-import java.io.File;
-import java.net.URI;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
-
-import org.apache.commons.io.FileUtils;
-
 import com.baidu.hugegraph.HugeException;
 import com.baidu.hugegraph.meta.lock.DistributedLock;
 import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.type.define.CollectionType;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.collection.CollectionFactory;
-import com.carrotsearch.hppc.CharSet;
 import com.google.common.base.Strings;
-
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.ClientBuilder;
@@ -57,6 +43,17 @@ import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
+import org.apache.commons.io.FileUtils;
+
+import java.io.File;
+import java.net.URI;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 
 public class EtcdMetaDriver implements MetaDriver {
 
