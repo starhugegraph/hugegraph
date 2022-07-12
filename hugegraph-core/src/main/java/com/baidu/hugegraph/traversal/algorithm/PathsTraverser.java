@@ -283,7 +283,7 @@ public class PathsTraverser extends OltpTraverser {
                     new AdjacentVerticesBatchConsumerBackword(this);
 
             edgeIts.setAvgDegreeSupplier(consumer::getAvgDegree);
-            traverseBatch(bufferEdgeIts, consumer, "traverse-ite-edge", 1);
+            traverseBatchCurrentThread(bufferEdgeIts, consumer, "traverse-ite-edge", 1);
 
             this.record.finishOneLayer();
         }
