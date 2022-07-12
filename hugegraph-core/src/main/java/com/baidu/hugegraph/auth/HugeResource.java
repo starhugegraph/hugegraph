@@ -172,8 +172,7 @@ public class HugeResource {
                 return false;
             }
             try {
-                // Accessed data type should match target value type
-                if (!expected.toString().equals(prop.value().toString())) {
+                if (!TraversalUtil.testProperty(prop, expected)) {
                     return false;
                 }
             } catch (IllegalArgumentException e) {
