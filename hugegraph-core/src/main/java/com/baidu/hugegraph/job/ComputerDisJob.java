@@ -25,6 +25,7 @@ import static com.baidu.hugegraph.util.JsonUtil.toJson;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.baidu.hugegraph.task.TaskManager;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.computer.driver.JobState;
@@ -177,6 +178,10 @@ public class ComputerDisJob extends UserJob<Object> {
      * Update all job status immediately when K8s event return new state info
      */
     private void onJobStateChanged(JobState observer) {
+        // 异步执行任务保存，context默认为null
+        // 强制提升任务权限  2022-07-12
+        TaskManager.useFakeContext();
+
         JobStatus jobStatus = observer.jobStatus();
         Map<String, Object> innerMap = fromJson(this.task().input(), Map.class);
         innerMap.put(INNER_STATUS, jobStatus);
