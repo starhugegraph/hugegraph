@@ -46,7 +46,7 @@ public class KoutTraverser extends OltpTraverser {
     }
 
     public Set<Id> kout(Id sourceV, Directions dir, String label,
-                        int depth, boolean nearest,
+                        int depth, boolean nearest, boolean concurrent,
                         long degree, long capacity, long limit) {
         E.checkNotNull(sourceV, "source vertex id");
         this.checkVertexExist(sourceV, "source vertex");
@@ -81,7 +81,7 @@ public class KoutTraverser extends OltpTraverser {
             }
             if (nearest) {
                 latest = this.adjacentVerticesBatch(sourceV, latest, dir, labelId,
-                                                    all, degree, remaining);
+                                                    all, degree, concurrent, remaining);
                 all.addAll(latest);
             } else {
                 latest = this.adjacentVerticesBatch(sourceV, latest, dir, labelId,

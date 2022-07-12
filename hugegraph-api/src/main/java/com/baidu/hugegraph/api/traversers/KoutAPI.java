@@ -81,6 +81,8 @@ public class KoutAPI extends TraverserAPI {
                       @QueryParam("max_depth") int depth,
                       @QueryParam("nearest")
                       @DefaultValue("true") boolean nearest,
+                      @QueryParam("concurrent")
+                      @DefaultValue("true") boolean concurrent,
                       @QueryParam("max_degree")
                       @DefaultValue(DEFAULT_MAX_DEGREE) long maxDegree,
                       @QueryParam("capacity")
@@ -113,8 +115,8 @@ public class KoutAPI extends TraverserAPI {
                                       nearest, capacity, limit, false);
                 ids = results.ids(limit);
             } else {
-                ids = traverser.kout(sourceId, dir, edgeLabel, depth,
-                                     nearest, maxDegree, capacity, limit);
+                ids = traverser.kout(sourceId, dir, edgeLabel, depth, nearest,
+                                     concurrent, maxDegree, capacity, limit);
             }
             measure.addIterCount(1 + traverser.vertexIterCounter,
                                  traverser.edgeIterCounter);

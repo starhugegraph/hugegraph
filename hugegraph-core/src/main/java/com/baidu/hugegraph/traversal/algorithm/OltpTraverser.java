@@ -312,9 +312,13 @@ public abstract class OltpTraverser extends HugeTraverser
                 new AdjacentVerticesBatchConsumer(sourceV, excluded,
                                                   limit, neighbors);
         edgeIts.setAvgDegreeSupplier(consumer::getAvgDegree);
-        BufferGroupEdgesOfVerticesIterator bufferEdgeIts =
-                new BufferGroupEdgesOfVerticesIterator(edgeIts, vids, degree);
-        this.traverseBatch(bufferEdgeIts, consumer, "traverse-ite-edge", 1);
+
+        if(!concurrent){
+            MergingEdgesOfVerticesIterator mergingEdgesIterator = new MergingEdgesOfVerticesIterator(edgeIts, vids);
+            this.traverseBatch(mergingEdgesIterator, consumer, "traverse-ite-edge", 1);
+        }else{
+            this.traverseBatch(edgeIts, consumer, "traverse-ite-edge", 1);
+        }
 
         if (limit != NO_LIMIT && neighbors.size() > limit) {
             int redundantNeighborsCount = (int) (neighbors.size() - limit);
