@@ -19,6 +19,7 @@
 
 package com.baidu.hugegraph.traversal.algorithm;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -192,12 +193,9 @@ public class KneighborTraverser extends OltpTraverser {
                                         boolean withEdge) {
         long count = 0L;
         if (steps.isEdgeStepPropertiesEmpty() && steps.isVertexEmpty()) {
-            Id labelId = null;
+            List<Id> labels = newList();
             if (!steps.edgeSteps().isEmpty()) {
-                Steps.StepEntity step =
-                        steps.edgeSteps().values().iterator().next();
-                String label = step.getLabel();
-                labelId = this.getEdgeLabelId(label);
+                labels = Arrays.asList(steps.edgeLabels());
             }
 
             List<Id> vids = newList();
@@ -205,10 +203,9 @@ public class KneighborTraverser extends OltpTraverser {
                 Id vid = ids.next();
                 vids.add(vid);
             }
-
             EdgesOfVerticesIterator edgeIts = edgesOfVertices(vids.iterator(),
                     steps.direction(),
-                    labelId,
+                    labels,
                     steps.degree(),
                     false);
             AdjacentVerticesBatchConsumer consumer1 =
