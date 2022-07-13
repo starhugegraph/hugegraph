@@ -319,7 +319,8 @@ public abstract class OltpTraverser extends HugeTraverser
         edgeIts.setAvgDegreeSupplier(consumer::getAvgDegree);
 
         if(concurrent == false){
-            MergingEdgesOfVerticesIterator mergingEdgesIterator = new MergingEdgesOfVerticesIterator(edgeIts, vids);
+            MergingEdgesOfVerticesIterator mergingEdgesIterator =
+                    new MergingEdgesOfVerticesIterator(edgeIts, vids, limit);
             this.traverseBatch(mergingEdgesIterator, consumer, "traverse-ite-edge", 1);
         }else{
             this.traverseBatch(edgeIts, consumer, "traverse-ite-edge", 1);
