@@ -65,7 +65,6 @@ public class ServiceApi extends API {
     @GET
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"space", "$dynamic"})
     public Object list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @Context SecurityContext sc) {
@@ -134,7 +133,7 @@ public class ServiceApi extends API {
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @Path("stop/{name}")
-    @RolesAllowed({"space", "$dynamic"})
+    @RolesAllowed({"space"})
     public void stopService(@Context GraphManager manager,
                             @PathParam("graphspace") String graphSpace,
                             @PathParam("name") String serviceName) {
@@ -157,7 +156,7 @@ public class ServiceApi extends API {
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
     @Path("start/{name}")
-    @RolesAllowed({"space", "$dynamic"})
+    @RolesAllowed({"space"})
     public void startService(@Context GraphManager manager,
                              @PathParam("graphspace") String graphSpace, 
                              @PathParam("name") String serviceName) {
