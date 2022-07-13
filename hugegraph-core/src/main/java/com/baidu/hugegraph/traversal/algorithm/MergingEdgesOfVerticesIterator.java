@@ -19,18 +19,24 @@
 
 package com.baidu.hugegraph.traversal.algorithm;
 
+import static com.baidu.hugegraph.traversal.algorithm.HugeTraverser.NO_LIMIT;
+
 import java.util.Iterator;
 import java.util.List;
 
 import org.apache.tinkerpop.gremlin.structure.Edge;
+import org.slf4j.Logger;
 
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.structure.HugeEdge;
 import com.baidu.hugegraph.type.define.CollectionType;
+import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.util.collection.CollectionFactory;
 
 public class MergingEdgesOfVerticesIterator implements Iterator<CIter<Edge>>, AutoCloseable {
+    public static final Logger LOG = Log.logger(MergingEdgesOfVerticesIterator.class);
+
     private List<Id> vertices;
     private int currentVerticesIndex;
 
@@ -39,12 +45,15 @@ public class MergingEdgesOfVerticesIterator implements Iterator<CIter<Edge>>, Au
     private List<Edge> edgeItersFirstItem;
     private List<Integer> idOffsetToIterIndex;
     private Edge next;
-    boolean hasNextCIter = true;
+    private long limit;
+    private long count = 0;
+    private boolean hasNextCIter = true;
 
     public MergingEdgesOfVerticesIterator(Iterator<CIter<Edge>> edgeIts,
-                                          List<Id> requireVertices) {
+                                          List<Id> requireVertices, long limit) {
         this.edgeIts = edgeIts;
         this.vertices = requireVertices;
+        this.limit = limit;
         this.edgeIters = CollectionFactory.newList(CollectionType.JCF);
         this.edgeItersFirstItem = CollectionFactory.newList(CollectionType.JCF);
         this.idOffsetToIterIndex = CollectionFactory.newList(CollectionType.JCF);
@@ -106,6 +115,9 @@ public class MergingEdgesOfVerticesIterator implements Iterator<CIter<Edge>>, Au
     }
 
     protected boolean haveMore() {
+        if (limit != NO_LIMIT && count >= limit){
+            return false;
+        }
         loadMore();
         return next != null;
     }
@@ -114,13 +126,18 @@ public class MergingEdgesOfVerticesIterator implements Iterator<CIter<Edge>>, Au
         loadMore();
         Edge edge = next;
         next = null;
+        ++count;
         return edge;
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
         for (Iterator<Edge> iter : edgeIters) {
-            ((CIter<Edge>) iter).close();
+            try {
+                ((CIter<Edge>)iter).close();
+            } catch (Exception ex) {
+                LOG.warn("Exception when closing CIter", ex);
+            }
         }
     }
 
