@@ -1215,6 +1215,8 @@ public final class GraphManager {
             this.removingGraphs.add(graphName);
             try {
                 this.metaManager.removeGraphConfig(graphSpace, name);
+                // clear meta task infos
+                this.metaManager.removeGraphTaskInfos(graphSpace, name);
                 this.metaManager.notifyGraphRemove(graphSpace, name);
             } catch (Exception e) {
                 throw new HugeException(

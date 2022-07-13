@@ -225,6 +225,8 @@ public class GraphsAPI extends API {
                 }
                 // truncateBackend() will open tx, so must close here(commit)
                 g.tx().commit();
+                // clear task info in meta;
+                manager.meta().removeGraphTaskInfos(graphSpace, name);
                 manager.meta().notifyGraphClear(graphSpace, name);
                 LOGGER.getAuditLogger()
                     .logClearGraph(graphSpace, name, username);
