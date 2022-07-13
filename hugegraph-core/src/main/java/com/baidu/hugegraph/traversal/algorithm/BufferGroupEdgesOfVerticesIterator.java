@@ -25,17 +25,21 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.tinkerpop.gremlin.structure.Edge;
+import org.slf4j.Logger;
 
 import com.baidu.hugegraph.backend.id.Id;
 import com.baidu.hugegraph.iterator.CIter;
 import com.baidu.hugegraph.structure.HugeEdge;
 import com.baidu.hugegraph.type.define.CollectionType;
+import com.baidu.hugegraph.util.Log;
 import com.baidu.hugegraph.util.collection.CollectionFactory;
 import com.baidu.hugegraph.util.collection.MappingFactory;
 import com.baidu.hugegraph.util.collection.ObjectIntMapping;
 
-public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>> {
-     private static final int MAX_LOAD_ITEMS = 1000*10000;
+public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>>, AutoCloseable {
+    public static final Logger LOG = Log.logger(BufferGroupEdgesOfVerticesIterator.class);
+
+    private static final int MAX_LOAD_ITEMS = 1000*10000;
     private static final int LOAD_ITEM_ONCE = 200;
     private int verticesOffset = 0;
     private volatile int loadedEdgesCount = 0;
@@ -135,6 +139,17 @@ public class BufferGroupEdgesOfVerticesIterator implements Iterator<CIter<Edge>>
 
     public Iterator<Edge> get(Id id) {
         return new AutoLoadIterator(this, bufferedData.get(code(id)), degree);
+    }
+
+    @Override
+    public void close() {
+        for(Iterator<Edge> iter: edgeIters){
+            try {
+                ((CIter<Edge>)iter).close();
+            } catch (Exception ex) {
+                LOG.warn("Exception when closing CIter", ex);
+            }
+        }
     }
 
     private class CIterWrapper implements CIter<Edge> {
