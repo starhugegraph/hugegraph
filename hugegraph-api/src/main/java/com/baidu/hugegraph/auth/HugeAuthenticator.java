@@ -380,7 +380,7 @@ public interface HugeAuthenticator extends Authenticator {
                 }
             }
 
-            return false;
+            return true;
         }
 
         private static Object matchedAction(HugePermission action,
