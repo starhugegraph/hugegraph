@@ -53,6 +53,15 @@ public interface MetaDriver {
 
     public LockResult lock(String key, long ttl);
 
+    public LockResult tryLock(String key, long ttl, long timeout);
+
+    /**
+     * return if the key is Locked.
+     * @param key
+     * @return bool
+     */
+    public boolean isLocked(String key);
+
     public void unlock(String key, LockResult lockResult);
 
     /**

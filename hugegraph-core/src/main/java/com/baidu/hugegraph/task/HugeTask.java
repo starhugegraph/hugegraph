@@ -31,6 +31,8 @@ import java.util.concurrent.FutureTask;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
+import com.baidu.hugegraph.job.GremlinJob;
+import com.baidu.hugegraph.job.schema.SchemaCallable;
 import org.apache.tinkerpop.gremlin.structure.Graph.Hidden;
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
@@ -171,20 +173,7 @@ public class HugeTask<V> extends FutureTask<V> {
     }
 
     public final void context(String context) {
-        if (!Strings.isNullOrEmpty(this.context) &&
-            !TaskManager.fakeContext(this.context)) {
-            LOG.warn("Task context must be set once, but already set '{}'",
-                     this.context);
-            return;
-        }
-        E.checkArgument(this.status == TaskStatus.NEW,
-                        "Task context must be set in state NEW instead of %s",
-                        this.status);
-        if (Strings.isNullOrEmpty(context)) {
-            this.context = TaskManager.getContext(true);
-        } else {
-            this.context = context;
-        }
+        this.context = context;
     }
 
     public final String context() {
@@ -238,6 +227,10 @@ public class HugeTask<V> extends FutureTask<V> {
 
     public String result() {
         return this.result;
+    }
+
+    public synchronized void result(HugeTaskResult result) {
+        this.result = result.result();
     }
 
     public synchronized boolean result(TaskStatus status, String result) {
@@ -322,6 +315,18 @@ public class HugeTask<V> extends FutureTask<V> {
                ComputerJob.COMPUTER.equals(this.type);
     }
 
+    public boolean schemaTask() {
+        return this.callable instanceof SchemaCallable;
+    }
+
+    public boolean gremlinTask() {
+        return this.callable instanceof GremlinJob;
+    }
+
+    public boolean ephemeralTask() {
+        return this.callable instanceof EphemeralJob;
+    }
+
     @Override
     public String toString() {
         return String.format("HugeTask(%s)%s", this.id, this.asMap());
@@ -334,7 +339,13 @@ public class HugeTask<V> extends FutureTask<V> {
             return;
         }
 
-        TaskManager.setContext(this.context());
+        // 当任务的context(权限上下文)为null时，使用默认fakecontext
+        // 默认fakecontext一般初始化为ADMIN权限。
+        if (this.context != null) {
+            TaskManager.setContext(this.context());
+        } else {
+            TaskManager.useFakeContext();
+        }
         try {
             assert this.status.code() <= TaskStatus.RUNNING.code() : this.status;
             if (this.checkDependenciesSuccess()) {
@@ -605,6 +616,76 @@ public class HugeTask<V> extends FutureTask<V> {
             byte[] bytes = StringEncoding.compress(this.result);
             checkPropertySize(bytes.length, P.RESULT);
             list.add(P.RESULT);
+            list.add(bytes);
+        }
+
+        if (this.server != null) {
+            list.add(P.SERVER);
+            list.add(this.server.asString());
+        }
+
+        return list.toArray();
+    }
+
+    // 仅处理任务相关，不保存任务结果
+    protected synchronized Object[] asArrayWithoutResult() {
+        E.checkState(this.type != null, "Task type can't be null");
+        E.checkState(this.name != null, "Task name can't be null");
+
+        List<Object> list = new ArrayList<>(28);
+
+        list.add(T.label);
+        list.add(P.TASK);
+
+        list.add(T.id);
+        list.add(this.id);
+
+        list.add(P.TYPE);
+        list.add(this.type);
+
+        list.add(P.NAME);
+        list.add(this.name);
+
+        list.add(P.CALLABLE);
+        list.add(this.callable.getClass().getName());
+
+        list.add(P.STATUS);
+        list.add(this.status.code());
+
+        list.add(P.PROGRESS);
+        list.add(this.progress);
+
+        list.add(P.CREATE);
+        list.add(this.create);
+
+        list.add(P.RETRIES);
+        list.add(this.retries);
+
+        if (this.description != null) {
+            list.add(P.DESCRIPTION);
+            list.add(this.description);
+        }
+
+        if (this.context != null) {
+            list.add(P.CONTEXT);
+            list.add(this.context);
+        }
+
+        if (this.update != null) {
+            list.add(P.UPDATE);
+            list.add(this.update);
+        }
+
+        if (this.dependencies != null) {
+            list.add(P.DEPENDENCIES);
+            list.add(this.dependencies.stream().map(Id::asLong)
+                                      .collect(toOrderSet()));
+        }
+
+        if (this.input != null) {
+            byte[] bytes = StringEncoding.compress(this.input);
+            checkPropertySize(bytes.length, P.INPUT);
+            list.add(P.INPUT);
             list.add(bytes);
         }
 

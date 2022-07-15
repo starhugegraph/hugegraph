@@ -24,28 +24,31 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
-
-import com.baidu.hugegraph.util.Log;
-
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.Lease;
 import io.etcd.jetcd.Lock;
-import io.etcd.jetcd.lock.LockResponse;
+import io.etcd.jetcd.KV;
+
+import com.baidu.hugegraph.util.Log;
 
 public class DistributedLock {
 
     protected static final Logger LOG = Log.logger(DistributedLock.class);
 
     private static DistributedLock lockProvider = null;
+    private static final long UNLIMIT_TIMEOUT = -1L;
     private final static Object mutex = new Object();
 
-    private Lock lockClient;
-    private Lease leaseClient;
+    private final KV kvClient;
+    private final Lock lockClient;
+    private final Lease leaseClient;
 
     private DistributedLock(Client client) {
+        this.kvClient = client.getKVClient();
         this.lockClient = client.getLockClient();
         this.leaseClient = client.getLeaseClient();
     }
@@ -59,10 +62,10 @@ public class DistributedLock {
         return lockProvider;
     }
 
-    public LockResult lock(String lockName, long ttl) {
+    public LockResult tryLock(String lockName, long ttl, long timeout) {
         LockResult lockResult = new LockResult();
         ScheduledExecutorService service =
-                                 Executors.newSingleThreadScheduledExecutor();
+                Executors.newSingleThreadScheduledExecutor();
 
         lockResult.lockSuccess(false);
         lockResult.setService(service);
@@ -71,23 +74,36 @@ public class DistributedLock {
 
         try {
             leaseId = this.leaseClient.grant(ttl).get().getID();
-            lockResult.setLeaseId(leaseId);
-
-            long period = ttl - ttl / 5;
-            service.scheduleAtFixedRate(new KeepAliveTask(this.leaseClient,
-                                                          leaseId),
-                                        period, period, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException e) {
             LOG.warn("Thread {} failed to create lease for {} with ttl {}", e,
                      Thread.currentThread().getName(), lockName, ttl);
             return lockResult;
         }
 
+        lockResult.setLeaseId(leaseId);
+
+        long period = ttl - ttl / 5;
+        service.scheduleAtFixedRate(new KeepAliveTask(this.leaseClient, leaseId),
+                                    period, period, TimeUnit.SECONDS);
+
         try {
-            LockResponse response = this.lockClient.lock(toByteSequence(lockName), leaseId).get();
-        } catch (InterruptedException | ExecutionException e1) {
-            LOG.warn("Thread {} failed to lock {}", e1,
+            if (timeout == UNLIMIT_TIMEOUT) {
+                this.lockClient.lock(toByteSequence(lockName), leaseId).get();
+
+            } else {
+                this.lockClient.lock(toByteSequence(lockName), leaseId)
+                               .get(1, TimeUnit.SECONDS);
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            LOG.warn("Thread {} failed to lock {}", e,
                      Thread.currentThread().getName(), lockName);
+            service.shutdown();
+            return lockResult;
+        } catch (TimeoutException e) {
+            // 获取锁超时
+            LOG.warn("Thread {} timeout to lock {}", e,
+                     Thread.currentThread().getName(), lockName);
+            service.shutdown();
             return lockResult;
         }
 
@@ -96,18 +112,24 @@ public class DistributedLock {
         return lockResult;
     }
 
+    public LockResult lock(String lockName, long ttl) {
+
+        return tryLock(lockName, ttl, UNLIMIT_TIMEOUT);
+    }
+
     public void unLock(String lockName, LockResult lockResult) {
         LOG.debug("Thread {} start to unlock {}",
                   Thread.currentThread().getName(), lockName);
-        try {
-            this.lockClient.unlock(toByteSequence(lockName)).get();
-            lockResult.getService().shutdown();
-            if (lockResult.getLeaseId() != 0L) {
-                this.leaseClient.revoke(lockResult.getLeaseId());
+
+        lockResult.getService().shutdown();
+
+        if (lockResult.getLeaseId() != 0L) {
+            try {
+                this.leaseClient.revoke(lockResult.getLeaseId()).get();
+            } catch (InterruptedException | ExecutionException e) {
+                LOG.warn("Thread {} failed to unlock {}", e,
+                         Thread.currentThread().getName(), lockName);
             }
-        } catch (InterruptedException | ExecutionException e) {
-            LOG.warn("Thread {} failed to unlock {}", e,
-                     Thread.currentThread().getName(), lockName);
         }
 
         LOG.debug("Thread {} unlock {} successfully",

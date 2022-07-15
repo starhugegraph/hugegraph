@@ -30,6 +30,7 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 
+import com.baidu.hugegraph.auth.HugeGraphAuthProxy;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeGraph;
@@ -80,6 +81,7 @@ public class ComputerAPI extends API {
         JobBuilder<Object> builder = JobBuilder.of(g);
         builder.name("computer:" + computer)
                .input(JsonUtil.toJson(input))
+               .context(HugeGraphAuthProxy.getContextString())
                .job(new ComputerJob());
         HugeTask<Object> task = builder.schedule();
         return ImmutableMap.of("task_id", task.id());

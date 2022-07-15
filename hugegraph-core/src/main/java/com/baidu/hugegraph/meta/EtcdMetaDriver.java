@@ -37,7 +37,6 @@ import com.baidu.hugegraph.meta.lock.LockResult;
 import com.baidu.hugegraph.type.define.CollectionType;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.collection.CollectionFactory;
-import com.carrotsearch.hppc.CharSet;
 import com.google.common.base.Strings;
 
 import io.etcd.jetcd.ByteSequence;
@@ -246,11 +245,30 @@ public class EtcdMetaDriver implements MetaDriver {
         return resultMap;
     }
 
-
+    @Override
+    public LockResult tryLock(String key, long ttl, long timeout) {
+        return this.lock.tryLock(key, ttl, timeout);
+    }
 
     @Override
     public LockResult lock(String key, long ttl) {
         return this.lock.lock(key, ttl);
+    }
+
+    @Override
+    public boolean isLocked(String key) {
+        try {
+            long size = this.client.getKVClient().get(toByteSequence(key))
+                                   .get().getCount();
+
+            if (size > 0) {
+                return true;
+            } else {
+                return false;
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            throw new HugeException("Failed to check is locked '%s'", e, key);
+        }
     }
 
     @Override

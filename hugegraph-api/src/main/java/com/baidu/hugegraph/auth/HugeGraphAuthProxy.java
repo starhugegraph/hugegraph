@@ -1389,6 +1389,11 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     protected static final Context getContext() {
+
+        // 2022-07-06 wenchuanbo
+        // 从TaskManager获取context的逻辑不是很通顺
+        // 逻辑步骤，应该是任务在执行之前，直接设置HugeGraphAuthProxy.context。
+
         // Return task context first
         String taskContext = TaskManager.getContext();
         User user = User.fromJson(taskContext);

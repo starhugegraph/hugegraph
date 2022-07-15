@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -116,6 +117,7 @@ public class MetaManager {
     private static final String TASK_RETRY_POSTFIX = "Retry";
 
     public static final long LOCK_DEFAULT_LEASE = 30L;
+    public static final long LOCK_DEFAULT_TIMEOUT = 1L;
 
     private MetaDriver metaDriver;
     private String cluster;
@@ -575,6 +577,11 @@ public class MetaManager {
 
     public LockResult lock(String key) {
         return this.metaDriver.lock(key, LOCK_DEFAULT_LEASE);
+    }
+
+    public LockResult tryLock(String key) {
+        return this.metaDriver.tryLock(key, LOCK_DEFAULT_LEASE,
+                                       LOCK_DEFAULT_TIMEOUT);
     }
 
     /**
@@ -1918,6 +1925,7 @@ public class MetaManager {
 
     
 
+    @Deprecated
     private <V> HugeTask<V> parseTask(String jsonStr,
                                       String graphSpace,
                                       String graphName) {
@@ -1938,6 +1946,7 @@ public class MetaManager {
         }
     }
 
+    @Deprecated
     public <V> List<HugeTask<V>> listTasks(String graphSpace,
                                            String graphName) {
         List<HugeTask<V>> tasks = new ArrayList<>();
@@ -1949,6 +1958,7 @@ public class MetaManager {
         return tasks;
     }
 
+    @Deprecated
     public <V> List<HugeTask<V>> listTasks(String graphSpace, String graphName,
                                            TaskPriority priority) {
         String key = taskListKey(graphSpace, graphName, priority.toString());
@@ -1966,6 +1976,7 @@ public class MetaManager {
         return taskList;
     }
 
+    @Deprecated
     public <V> List<HugeTask<V>> listTasks(String graphSpace,
                                            String graphName,
                                            List<Id> idList) {
@@ -1980,6 +1991,7 @@ public class MetaManager {
         return taskList;
     }
 
+    @Deprecated
     public <V> HugeTask<V> getTask(String graphSpace, String graphName, Id id) {
         String taskKey = this.taskPropertyKey(graphSpace, graphName,
                                               id.asString(),
@@ -2007,6 +2019,7 @@ public class MetaManager {
      * @param id
      * @return
      */
+    @Deprecated
     public <V> HugeTask<V> getTask(String graphSpace, String graphName,
                                    TaskPriority priority, Id id) {
         String key = taskPriorityKey(graphSpace, graphName,
@@ -2022,6 +2035,7 @@ public class MetaManager {
      * @param task
      * @return
      */
+    @Deprecated
     public <V> Id createTask(String graphSpace,
                              String graphName,
                              HugeTask<V> task) {
@@ -2041,6 +2055,7 @@ public class MetaManager {
      * @param graphSpace
      * @param task
      */
+    @Deprecated
     public <V> void clearTask(String graphSpace,
                               String graphName,
                               HugeTask<V> task) {
@@ -2058,6 +2073,7 @@ public class MetaManager {
      * @param task
      * @return
      */
+    @Deprecated
     public <V> LockResult lockTask(String graphSpace,
                                    String graphName,
                                    HugeTask<V> task) {
@@ -2079,6 +2095,29 @@ public class MetaManager {
         return lockResult;
     }
 
+    public LockResult tryLockTask(String graphSpace, String graphName,
+                                  String taskId) {
+        String key = taskLockKey(graphSpace, graphName, taskId);
+        return this.tryLock(key);
+    }
+
+    public void unlockTask(String graphSpace, String graphName,
+                           String taskId, LockResult lockResult) {
+
+        String key = taskLockKey(graphSpace, graphName, taskId);
+
+        this.unlock(key, lockResult);
+    }
+
+    public boolean isLockedTask(String graphSpace, String graphName,
+                                String taskId) {
+
+        String key = taskLockKey(graphSpace, graphName, taskId);
+        // 判断当前锁下面的节点数
+        return metaDriver.scanWithPrefix(key).size() > 0;
+    }
+
+    @Deprecated
     public <V> void unlockTask(String graphSpace,
                                String graphName,
                                HugeTask<V> task) {
@@ -2152,6 +2191,7 @@ public class MetaManager {
      * @param task
      * @return
      */
+    @Deprecated
     public <V> int getTaskRetry(String graphSpace,
                                 String graphName,
                                 HugeTask<V> task) {
@@ -2169,6 +2209,7 @@ public class MetaManager {
      * @param task
      * @return
      */
+    @Deprecated
     public <V> String getTaskContext(String graphSpace, String graphName,
                                      HugeTask<V> task) {
         String key = this.taskPropertyKey(graphSpace, graphName,
@@ -2183,6 +2224,7 @@ public class MetaManager {
      * @param taskKey
      * @return
      */
+    @Deprecated
     public <V> TaskStatus getTaskStatus(String taskKey) {
         String value = this.metaDriver.get(taskKey);
         if (null == value) {
@@ -2198,6 +2240,7 @@ public class MetaManager {
      * @param task
      * @return
      */
+    @Deprecated
     public <V> TaskStatus getTaskStatus(String graphSpace,
                                         String graphName,
                                         HugeTask<V> task) {
@@ -2213,6 +2256,7 @@ public class MetaManager {
      * @param taskId
      * @return
      */
+    @Deprecated
     public TaskStatus getTaskStatus(String graphSpace,
                                     String graphName, Id taskId) {
         String key = this.taskPropertyKey(graphSpace, graphName,
@@ -2227,6 +2271,7 @@ public class MetaManager {
      * @param graphSpace
      * @param task
      */
+    @Deprecated
     public <V> void updateTaskProgress(String graphSpace,
                                        String graphName,
                                        HugeTask<V> task) {
@@ -2238,6 +2283,7 @@ public class MetaManager {
         }
     }
 
+    @Deprecated
     public <V> void updateTaskRetry(String graphSpace,
                                     String graphName,
                                     HugeTask<V> task) {
@@ -2249,6 +2295,7 @@ public class MetaManager {
         }
     }
 
+    @Deprecated
     public <V> void updateTaskContext(String graphSpace,
                                       String graphName,
                                       HugeTask<V> task) {
@@ -2269,6 +2316,7 @@ public class MetaManager {
      * @param graphSpace
      * @param task
      */
+    @Deprecated
     private <V> void updateTaskStatus(String graphSpace,
                                       String graphName,
                                       HugeTask<V> task) {
@@ -2278,6 +2326,7 @@ public class MetaManager {
         this.metaDriver.put(key, task.status().string());
     }
 
+    @Deprecated
     private <V> void removeTaskFromStatusList(String graphSpace,
                                               String graphName,
                                               String taskId,
@@ -2286,6 +2335,7 @@ public class MetaManager {
         this.metaDriver.delete(key);
     }
 
+    @Deprecated
     private <V> void addTaskToStatusList(String graphSpace, String graphName,
                                          String taskId, String jsonTask,
                                          TaskStatus status) {
@@ -2293,6 +2343,7 @@ public class MetaManager {
         this.metaDriver.put(key, jsonTask);
     }
 
+    @Deprecated
     public int countTaskByStatus(String graphSpace, String graphName,
                                  TaskStatus status) {
         String key = taskStatusListKey(graphSpace, graphName, status);
@@ -2301,6 +2352,7 @@ public class MetaManager {
         return taskMap.size();
     }
 
+    @Deprecated
     public <V> List<HugeTask<V>> listTasksByStatus(String graphSpace,
                                                    String graphName,
                                                    TaskStatus status) {
@@ -2331,6 +2383,7 @@ public class MetaManager {
      * @param graphSpace
      * @param prevStatus
      */
+    @Deprecated
     public <V> void migrateTaskStatus(String graphSpace, String graphName,
                                       HugeTask<V> task, TaskStatus prevStatus) {
         synchronized(task) {
@@ -2350,6 +2403,7 @@ public class MetaManager {
         }
     }
 
+    @Deprecated
     public <V> HugeTask<V> deleteTask(String graphSpace,
                                       String graphName,
                                       HugeTask<V> task) {
@@ -2375,6 +2429,7 @@ public class MetaManager {
         return null;
     }
 
+    @Deprecated
     public void flushAllTasks(String graphSpace, String graphName) {
         String key = taskBaseKey(graphSpace, graphName);
         this.metaDriver.deleteWithPrefix(key);

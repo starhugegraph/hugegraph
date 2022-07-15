@@ -345,7 +345,7 @@ public class CoreOptions extends OptionHolder {
                     "task.scheduler_type",
                     "use which type of scheduler" +
                     "used in distribution system",
-                    allowValues("local", "etcd"),
+                    allowValues("local", "etcd", "distributed"),
                     "local"
             );
 

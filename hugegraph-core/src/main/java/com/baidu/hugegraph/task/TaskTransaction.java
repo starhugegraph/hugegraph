@@ -107,7 +107,7 @@ public class TaskTransaction extends GraphTransaction {
         this.createIndexLabel(label, P.STATUS);
     }
 
-    private boolean existVertexLabel(String label) {
+    protected boolean existVertexLabel(String label) {
         return this.params().schemaTransaction()
                             .getVertexLabel(label) != null;
     }
@@ -134,11 +134,11 @@ public class TaskTransaction extends GraphTransaction {
         return props.toArray(new String[0]);
     }
 
-    private String createPropertyKey(String name) {
+    protected String createPropertyKey(String name) {
         return this.createPropertyKey(name, DataType.TEXT);
     }
 
-    private String createPropertyKey(String name, DataType dataType) {
+    protected String createPropertyKey(String name, DataType dataType) {
         return this.createPropertyKey(name, dataType, Cardinality.SINGLE);
     }
 

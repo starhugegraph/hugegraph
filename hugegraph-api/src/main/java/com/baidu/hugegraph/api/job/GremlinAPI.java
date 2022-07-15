@@ -36,6 +36,7 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 
+import com.baidu.hugegraph.auth.HugeGraphAuthProxy;
 import org.slf4j.Logger;
 
 import com.baidu.hugegraph.HugeException;
@@ -88,6 +89,7 @@ public class GremlinAPI extends API {
         JobBuilder<Object> builder = JobBuilder.of(g);
         builder.name(request.name())
                .input(request.toJson())
+               .context(HugeGraphAuthProxy.getContextString())
                .job(new GremlinJob());
         return ImmutableMap.of("task_id", builder.schedule().id());
     }

@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import javax.inject.Singleton;
@@ -40,6 +41,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
+import com.baidu.hugegraph.HugeException;
 import org.apache.groovy.util.Maps;
 
 import com.baidu.hugegraph.api.API;
@@ -153,8 +155,11 @@ public class TaskAPI extends API {
 
         TaskScheduler scheduler = graph(manager, graphSpace, graph)
                                   .taskScheduler();
-        HugeTask<?> task = scheduler.delete(IdGenerator.of(id), force);
+        HugeTask<?> task = scheduler.task(IdGenerator.of(id));
         E.checkArgument(task != null, "There is no task with id '%s'", id);
+
+        scheduler.delete(IdGenerator.of(id), force);
+
         LOGGER.getServerLogger().logDeleteTask(graphSpace, Long.toString(id));
     }
 
@@ -180,6 +185,12 @@ public class TaskAPI extends API {
         HugeTask<?> task = scheduler.task(IdGenerator.of(id));
         if (!task.completed() && !task.cancelling()) {
             scheduler.cancel(task);
+            try {
+                task = scheduler.waitUntilTaskCompleted(task.id(), 30);
+            } catch (TimeoutException t) {
+                throw new HugeException(String.format(
+                        "cancel task '%s' timeout", id));
+            }
             if (task.cancelling() || task.completed() || task.cancelled()) {
                 LOGGER.getServerLogger().logCancelTask(graphSpace, task.id().toString());
                 return task.asMap();
