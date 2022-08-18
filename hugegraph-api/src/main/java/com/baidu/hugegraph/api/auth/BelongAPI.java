@@ -21,6 +21,7 @@ package com.baidu.hugegraph.api.auth;
 
 import java.util.List;
 
+import javax.annotation.security.RolesAllowed;
 import javax.inject.Singleton;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -63,6 +64,7 @@ public class BelongAPI extends API {
     @Status(Status.CREATED)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String create(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          JsonBelong jsonBelong) {
@@ -74,7 +76,7 @@ public class BelongAPI extends API {
 
         HugeBelong belong = jsonBelong.build(graphSpace);
         AuthManager authManager = manager.authManager();
-        belong.id(authManager.createBelong(graphSpace, belong, true));
+        belong.id(authManager.createBelong(graphSpace, belong, false));
         return manager.serializer().writeAuthElement(belong);
     }
 
@@ -83,6 +85,7 @@ public class BelongAPI extends API {
     @Path("{id}")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String update(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          @PathParam("id") String id,
@@ -98,7 +101,7 @@ public class BelongAPI extends API {
         try {
             belong = authManager.getBelong(graphSpace,
                                            UserAPI.parseId(id),
-                                           true);
+                                           false);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid belong id: " + id);
         }
@@ -110,6 +113,7 @@ public class BelongAPI extends API {
     @GET
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @QueryParam("user") String user,
@@ -126,13 +130,13 @@ public class BelongAPI extends API {
         if (user != null) {
             Id id = UserAPI.parseId(user);
             belongs = authManager.listBelongByUser(graphSpace, id,
-                                                   limit, true);
+                                                   limit, false);
         } else if (group != null) {
             Id id = UserAPI.parseId(group);
             belongs = authManager.listBelongByGroup(graphSpace, id,
-                                                    limit, true);
+                                                    limit, false);
         } else {
-            belongs = authManager.listAllBelong(graphSpace, limit, true);
+            belongs = authManager.listAllBelong(graphSpace, limit, false);
         }
         return manager.serializer().writeAuthElements("belongs", belongs);
     }
@@ -141,6 +145,7 @@ public class BelongAPI extends API {
     @Timed
     @Path("{id}")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String get(@Context GraphManager manager,
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("id") String id) {
@@ -150,7 +155,7 @@ public class BelongAPI extends API {
         AuthManager authManager = manager.authManager();
         HugeBelong belong = authManager.getBelong(graphSpace,
                                                   UserAPI.parseId(id),
-                                                  true);
+                                                  false);
         return manager.serializer().writeAuthElement(belong);
     }
 
@@ -158,6 +163,7 @@ public class BelongAPI extends API {
     @Timed
     @Path("{id}")
     @Consumes(APPLICATION_JSON)
+    @RolesAllowed({"space"})
     public void delete(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("id") String id) {
@@ -166,7 +172,7 @@ public class BelongAPI extends API {
 
         try {
             AuthManager authManager = manager.authManager();
-            authManager.deleteBelong(graphSpace, UserAPI.parseId(id), true);
+            authManager.deleteBelong(graphSpace, UserAPI.parseId(id), false);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid belong id: " + id);
         }

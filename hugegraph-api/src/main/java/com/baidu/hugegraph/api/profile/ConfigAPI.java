@@ -53,7 +53,7 @@ public class ConfigAPI extends API {
     @Timed
     @Path("rest")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$dynamic"})
+    @RolesAllowed({"space"})
     public String getRestConfig(@Context GraphManager manager,
                                 @PathParam("graphspace") String graphSpace) {
         return manager.serializer()
@@ -64,7 +64,7 @@ public class ConfigAPI extends API {
     @Timed
     @Path("rest/{servicename}")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$dynamic"})
+    @RolesAllowed({"space"})
     public String getRestConfig(@Context GraphManager manager,
                                 @PathParam("graphspace") String graphSpace,
                                 @PathParam("servicename") String serviceName) {
@@ -77,7 +77,7 @@ public class ConfigAPI extends API {
     @Timed
     @Path("rest/config-fields")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$dynamic"})
+    @RolesAllowed({"space"})
     public String getRestConfigFields(@Context GraphManager manager) {
         return manager.serializer().writeList("fields", REST_FIELDS);
     }
@@ -88,7 +88,7 @@ public class ConfigAPI extends API {
     @Path("rest")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$dynamic"})
+    @RolesAllowed({"space"})
     public String restAll(@Context GraphManager manager,
                           @PathParam("graphspace") String graphSpace,
                           Map<String, Object> extendProperties) {
@@ -103,7 +103,7 @@ public class ConfigAPI extends API {
                                                             serviceName,
                                                             properties);
         return manager.serializer().writeMap(result);
-        
+
     }
 
     @PUT
@@ -111,7 +111,7 @@ public class ConfigAPI extends API {
     @Path("rest")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$dynamic"})
+    @RolesAllowed({"space"})
     public String rest(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        Map<String, Object> properties) {
@@ -129,7 +129,7 @@ public class ConfigAPI extends API {
     @Path("rest/{servicename}")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$dynamic"})
+    @RolesAllowed({"space"})
     public String rest(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("servicename") String serviceName,
@@ -147,7 +147,7 @@ public class ConfigAPI extends API {
     @Path("rest/{servicename}")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$dynamic"})
+    @RolesAllowed({"space"})
     public void rest(@Context GraphManager manager,
                      @PathParam("graphspace") String graphSpace,
                      @PathParam("servicename") String serviceName) {
@@ -159,7 +159,7 @@ public class ConfigAPI extends API {
     @Path("rest/{servicename}/{key}")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$dynamic"})
+    @RolesAllowed({"space"})
     public void rest(@Context GraphManager manager,
                      @PathParam("graphspace") String graphSpace,
                      @PathParam("servicename") String serviceName,
@@ -171,7 +171,7 @@ public class ConfigAPI extends API {
     @Timed
     @Path("gremlin")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin"})
+    @RolesAllowed({"space"})
     public String gremlinYaml(@Context GraphManager manager,
                               @PathParam("graphspace") String graphSpace) {
         return manager.gremlinYaml(graphSpace);
@@ -182,7 +182,7 @@ public class ConfigAPI extends API {
     @Path("gremlin")
     @Consumes(MediaType.TEXT_PLAIN)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin"})
+    @RolesAllowed({"space"})
     public String gremlinYaml(@Context GraphManager manager,
                               @PathParam("graphspace") String graphSpace,
                               String yaml) {

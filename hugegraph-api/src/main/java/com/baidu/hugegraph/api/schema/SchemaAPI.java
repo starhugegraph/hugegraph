@@ -68,7 +68,7 @@ public class SchemaAPI extends API {
     @GET
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
+    @RolesAllowed({"space", "$graphspace=$graphspace $owner=$graph " +
                             "$action=schema_read"})
     public String list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
@@ -132,7 +132,7 @@ public class SchemaAPI extends API {
     @Status(Status.ACCEPTED)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
-    @RolesAllowed({"admin", "$graphspace=$graphspace $owner=$graph " +
+    @RolesAllowed({"space", "$graphspace=$graphspace $owner=$graph " +
                    "$action=schema_write"})
     public String update(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,

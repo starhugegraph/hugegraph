@@ -20,6 +20,7 @@
 package com.baidu.hugegraph.api.auth;
 
 import java.util.List;
+import javax.annotation.security.RolesAllowed;
 import javax.inject.Singleton;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -60,6 +61,7 @@ public class GroupAPI extends API {
     @Status(Status.CREATED)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String create(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          JsonGroup jsonGroup) {
@@ -70,7 +72,7 @@ public class GroupAPI extends API {
 
         HugeGroup group = jsonGroup.build(graphSpace);
         AuthManager authManager = manager.authManager();
-        group.id(authManager.createGroup(graphSpace, group, true));
+        group.id(authManager.createGroup(graphSpace, group, false));
         return manager.serializer().writeAuthElement(group);
     }
 
@@ -79,6 +81,7 @@ public class GroupAPI extends API {
     @Path("{id}")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String update(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          @PathParam("id") String id,
@@ -90,13 +93,14 @@ public class GroupAPI extends API {
 
         HugeGroup group = jsonGroup.build(graphSpace);
         AuthManager authManager = manager.authManager();
-        group = authManager.updateGroup(graphSpace, group, true);
+        group = authManager.updateGroup(graphSpace, group, false);
         return manager.serializer().writeAuthElement(group);
     }
 
     @GET
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @QueryParam("limit") @DefaultValue("100") long limit) {
@@ -107,7 +111,7 @@ public class GroupAPI extends API {
         List<HugeGroup> groups = manager.authManager()
                                         .listAllGroups(graphSpace,
                                                        limit,
-                                                       true);
+                                                       false);
         return manager.serializer().writeAuthElements("groups", groups);
     }
 
@@ -115,6 +119,7 @@ public class GroupAPI extends API {
     @Timed
     @Path("{id}")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String get(@Context GraphManager manager,
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("id") String id) {
@@ -125,7 +130,7 @@ public class GroupAPI extends API {
         AuthManager authManager = manager.authManager();
         HugeGroup group = authManager.getGroup(graphSpace,
                                                IdGenerator.of(id),
-                                               true);
+                                               false);
         return manager.serializer().writeAuthElement(group);
     }
 
@@ -133,6 +138,7 @@ public class GroupAPI extends API {
     @Timed
     @Path("{id}")
     @Consumes(APPLICATION_JSON)
+    @RolesAllowed({"space"})
     public void delete(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("id") String id) {
@@ -142,7 +148,7 @@ public class GroupAPI extends API {
 
         try {
             AuthManager authManager = manager.authManager();
-            authManager.deleteGroup(graphSpace, IdGenerator.of(id), true);
+            authManager.deleteGroup(graphSpace, IdGenerator.of(id), false);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid group id: " + id);
         }
