@@ -302,8 +302,7 @@ public interface HugeAuthenticator extends Authenticator {
 
         public static boolean matchAuth(Object role, HugePermission required,
                                     ResourceObject<?> resourceObject) {
-            if (role == ROLE_ADMIN ||
-                RolePermission.isAdmin((RolePermission) role)) {
+            if (RolePermission.isAdmin((RolePermission) role)) {
                 return true;
             }
 
@@ -328,13 +327,15 @@ public interface HugeAuthenticator extends Authenticator {
             }
 
             String graphSpace = requiredResource.graphSpace();
-            String owner = requiredResource.graph();
+
             Map<String, Map<HugePermission, Object>> innerRoles =
                                                      this.roles.get(graphSpace);
             if (innerRoles == null) {
                 return false;
             }
 
+            // owner: prefix + * or {graph}
+            String owner = requiredResource.graph();
             for (Map.Entry<String, Map<HugePermission, Object>> e :
                     innerRoles.entrySet()) {
                 if (!matchedPrefix(e.getKey(), owner)) {
@@ -345,13 +346,13 @@ public interface HugeAuthenticator extends Authenticator {
                 if (permissions == null) {
                     permissions = innerRoles.get(GENERAL_PATTERN);
                     if (permissions == null) {
-                        return false;
+                        continue;
                     }
                 }
                 Object permission = matchedAction(requiredAction, permissions);
                 if (permission == null) {
                     // Deny all if no specified permission
-                    return false;
+                    continue;
                 }
                 List<HugeResource> ress;
                 if (permission instanceof List) {
@@ -379,7 +380,6 @@ public interface HugeAuthenticator extends Authenticator {
                     return false;
                 }
             }
-
             return true;
         }
 
@@ -407,8 +407,7 @@ public interface HugeAuthenticator extends Authenticator {
         }
 
         public static boolean match(Object role, RequiredPerm requiredPerm) {
-            if (ROLE_ADMIN.equals(role) ||
-                RolePermission.isAdmin((RolePermission) role)) {
+            if (RolePermission.isAdmin((RolePermission) role)) {
                 return true;
             }
             if (ROLE_NONE.equals(role)) {
@@ -431,8 +430,7 @@ public interface HugeAuthenticator extends Authenticator {
 
         public static boolean match(Object role, HugePermission required,
                                     ResourceObject<?> resourceObject) {
-            if (role == ROLE_ADMIN ||
-                RolePermission.isAdmin((RolePermission) role)) {
+            if (RolePermission.isAdmin((RolePermission) role)) {
                 return true;
             }
             if (role == ROLE_NONE) {
@@ -447,8 +445,7 @@ public interface HugeAuthenticator extends Authenticator {
 
         public static boolean match(Object role, RolePermission grant,
                                     ResourceObject<?> resourceObject) {
-            if (role == ROLE_ADMIN ||
-                RolePermission.isAdmin((RolePermission) role)) {
+            if (RolePermission.isAdmin((RolePermission) role)) {
                 return true;
             }
             if (role == ROLE_NONE) {

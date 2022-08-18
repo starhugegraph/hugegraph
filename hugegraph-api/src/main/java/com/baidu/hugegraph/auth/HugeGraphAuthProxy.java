@@ -854,7 +854,7 @@ public final class HugeGraphAuthProxy implements HugeGraph {
     }
 
     private void verifyAdminPermission() {
-        verifyPermission(HugePermission.ANY, ResourceType.ROOT);
+        verifyPermission(HugePermission.ADMIN, ResourceType.ROOT);
     }
 
     private void verifyStatusPermission() {
