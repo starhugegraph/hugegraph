@@ -236,7 +236,7 @@ public class StandardAuthManager implements AuthManager {
             HugeUser existed = this.findUser(user.name(), false);
             if (required && !existed.name().equals(currentUsername())) {
                 // Only admin could update user
-                verifyUserPermission("", HugePermission.ANY, user);
+                verifyUserPermission("", HugePermission.ADMIN, user);
             }
 
             this.updateCreator(user);

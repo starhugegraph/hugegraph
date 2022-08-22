@@ -225,6 +225,10 @@ public class AuthenticationFilter implements ContainerRequestFilter {
             boolean valid;
             RequiredPerm requiredPerm;
 
+            if (!isAuth()) {
+                return true;
+            }
+
             if (!required.startsWith(HugeAuthenticator.KEY_GRAPHSPACE)) {
                 // Permission format like: "admin", "space"
                 requiredPerm = new RequiredPerm();
@@ -267,11 +271,7 @@ public class AuthenticationFilter implements ContainerRequestFilter {
                     requiredPerm.owner(owner);
                 }
 
-                if (manager.isAuth()) {
-                    valid = RolePerm.match(this.role(), requiredPerm);
-                } else {
-                    valid = true;
-                }
+                valid = RolePerm.match(this.role(), requiredPerm);
             }
 
             if (!valid &&
@@ -289,6 +289,17 @@ public class AuthenticationFilter implements ContainerRequestFilter {
             E.checkState(params != null && params.size() == 1,
                          "There is no matched path parameter: '%s'", key);
             return params.get(0);
+        }
+
+        private boolean isAuth() {
+            List<String> params = this.uri.getPathParameters().get(
+                    "graphspace");
+            if (params != null && params.size() == 1) {
+                String graphSpace = params.get(0);
+                return this.manager.graphSpace(graphSpace).auth();
+            } else {
+                return true;
+            }
         }
 
         private final class UserPrincipal implements Principal {

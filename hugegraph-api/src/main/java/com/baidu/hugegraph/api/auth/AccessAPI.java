@@ -21,6 +21,7 @@ package com.baidu.hugegraph.api.auth;
 
 import java.util.List;
 
+import javax.annotation.security.RolesAllowed;
 import javax.inject.Singleton;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -64,6 +65,7 @@ public class AccessAPI extends API {
     @Status(Status.CREATED)
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String create(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          JsonAccess jsonAccess) {
@@ -75,7 +77,7 @@ public class AccessAPI extends API {
 
         HugeAccess access = jsonAccess.build(graphSpace);
         AuthManager authManager = manager.authManager();
-        access.id(authManager.createAccess(graphSpace, access, true));
+        access.id(authManager.createAccess(graphSpace, access, false));
         return manager.serializer().writeAuthElement(access);
     }
 
@@ -84,6 +86,7 @@ public class AccessAPI extends API {
     @Path("{id}")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String update(@Context GraphManager manager,
                          @PathParam("graphspace") String graphSpace,
                          @PathParam("id") String id,
@@ -103,13 +106,14 @@ public class AccessAPI extends API {
             throw new IllegalArgumentException("Invalid access id: " + id);
         }
         access = jsonAccess.build(access);
-        access = authManager.updateAccess(graphSpace, access, true);
+        access = authManager.updateAccess(graphSpace, access, false);
         return manager.serializer().writeAuthElement(access);
     }
 
     @GET
     @Timed
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String list(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @QueryParam("group") String group,
@@ -126,13 +130,13 @@ public class AccessAPI extends API {
         if (group != null) {
             Id id = UserAPI.parseId(group);
             belongs = authManager.listAccessByGroup(graphSpace, id,
-                                                    limit, true);
+                                                    limit, false);
         } else if (target != null) {
             Id id = UserAPI.parseId(target);
             belongs = authManager.listAccessByTarget(graphSpace, id,
-                                                     limit, true);
+                                                     limit, false);
         } else {
-            belongs = authManager.listAllAccess(graphSpace, limit, true);
+            belongs = authManager.listAllAccess(graphSpace, limit, false);
         }
         return manager.serializer().writeAuthElements("accesses", belongs);
     }
@@ -141,6 +145,7 @@ public class AccessAPI extends API {
     @Timed
     @Path("{id}")
     @Produces(APPLICATION_JSON_WITH_CHARSET)
+    @RolesAllowed({"space"})
     public String get(@Context GraphManager manager,
                       @PathParam("graphspace") String graphSpace,
                       @PathParam("id") String id) {
@@ -150,7 +155,7 @@ public class AccessAPI extends API {
         AuthManager authManager = manager.authManager();
         HugeAccess access = authManager.getAccess(graphSpace,
                                                   UserAPI.parseId(id),
-                                                  true);
+                                                  false);
         return manager.serializer().writeAuthElement(access);
     }
 
@@ -158,6 +163,7 @@ public class AccessAPI extends API {
     @Timed
     @Path("{id}")
     @Consumes(APPLICATION_JSON)
+    @RolesAllowed({"space"})
     public void delete(@Context GraphManager manager,
                        @PathParam("graphspace") String graphSpace,
                        @PathParam("id") String id) {
@@ -168,7 +174,7 @@ public class AccessAPI extends API {
             AuthManager authManager = manager.authManager();
             authManager.deleteAccess(graphSpace,
                                      UserAPI.parseId(id),
-                                     true);
+                                     false);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Invalid access id: " + id);
         }

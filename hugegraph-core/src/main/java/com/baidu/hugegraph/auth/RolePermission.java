@@ -46,7 +46,7 @@ public class RolePermission {
     public static final RolePermission NONE = RolePermission.role("*",
                                               "*", HugePermission.NONE);
     public static final RolePermission ADMIN = RolePermission.role("*",
-                                               "*", HugePermission.ANY);
+                                               "*", HugePermission.ADMIN);
 
     static {
         SimpleModule module = new SimpleModule();
@@ -180,7 +180,7 @@ public class RolePermission {
     }
 
     public static RolePermission all(String admin) {
-        return role("SYSTEM", "SYSTEM", HugePermission.ANY);
+        return role("SYSTEM", "SYSTEM", HugePermission.ADMIN);
     }
 
     public static RolePermission role(String graphSpace, String graph,
