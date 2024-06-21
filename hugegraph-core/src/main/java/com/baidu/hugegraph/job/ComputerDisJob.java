@@ -143,6 +143,9 @@ public class ComputerDisJob extends UserJob<Object> {
         k8sParams.put("hugegraph.token", token);
         k8sParams.put("k8s.worker_instances", String.valueOf(worker));
 
+        String algorithmUrl = map.getOrDefault("k8s.algorithm_image_url", "").toString();
+
+
         if (status == null || k8sDriverProxy == null) {
             // TODO: We should reuse driver here, use one driver (DO TASK?)
             k8sDriverProxy = new K8sDriverProxy(String.valueOf(worker * 2),
@@ -152,9 +155,11 @@ public class ComputerDisJob extends UserJob<Object> {
                       K8sDriverProxy.getAlgorithmClass(algorithm));
 
         if (jobId == null) {
-            jobId = k8sDriverProxy.getK8sDriver(namespace).submitJob(algorithm,
-                                                            k8sParams);
-            LOG.info("New computerDisJob {} is submitted to namespace {} with params {}", jobId, namespace, k8sParams);
+            jobId = k8sDriverProxy
+                                  .getK8sDriver(namespace, algorithmUrl)
+                                  .submitJob(algorithm, k8sParams);
+            LOG.info("New computerDisJob {} is submitted to namespace {} with params {}",
+                                        jobId, namespace, k8sParams);
             this.innerJobId = jobId;
             map = fromJson(this.task().input(), Map.class);
             map.put(INNER_JOB_ID, jobId);
@@ -177,6 +182,7 @@ public class ComputerDisJob extends UserJob<Object> {
     /**
      * Update all job status immediately when K8s event return new state info
      */
+    @SuppressWarnings("unchecked")
     private void onJobStateChanged(JobState observer) {
         // 异步执行任务保存，context默认为null
         // 强制提升任务权限  2022-07-12
