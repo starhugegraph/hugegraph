@@ -64,7 +64,7 @@ public final class BytesBuffer extends OutputStream {
 
     // NOTE: +1 to let code 0 represent length 1
     public static final int ID_LEN_MASK = 0x7f;
-    public static final int ID_LEN_MAX = 0x7f + 1; // 128
+    public static final int ID_LEN_MAX = 0x7fff + 1; // 32768
     public static final int BIG_ID_LEN_MAX = 0x7fff + 1; // 32768
 
     public static final byte STRING_ENDING_BYTE = (byte) 0x00;
@@ -696,22 +696,15 @@ public final class BytesBuffer extends OutputStream {
                 bytes = id.asBytes();
                 int len = bytes.length;
                 E.checkArgument(len > 0, "Can't write empty id");
-                if (!big) {
-                    E.checkArgument(len <= ID_LEN_MAX,
-                                    "Id max length is %s, but got %s {%s}",
-                                    ID_LEN_MAX, len, id);
-                    len -= 1; // mapping [1, 128] to [0, 127]
-                    this.writeUInt8(len | 0x80);
-                } else {
-                    E.checkArgument(len <= BIG_ID_LEN_MAX,
-                                    "Big id max length is %s, but got %s {%s}",
-                                    BIG_ID_LEN_MAX, len, id);
-                    len -= 1;
-                    int high = len >> 8;
-                    int low = len & 0xff;
-                    this.writeUInt8(high | 0x80);
-                    this.writeUInt8(low);
-                }
+                E.checkArgument(len <= BIG_ID_LEN_MAX,
+                                "Big id max length is %s, but got %s {%s}",
+                                BIG_ID_LEN_MAX, len, id);
+                len -= 1;
+                int high = len >> 8;
+                int low = len & 0xff;
+                this.writeUInt8(high | 0x80);
+                this.writeUInt8(low);
+
                 this.write(bytes);
                 break;
         }
@@ -739,11 +732,9 @@ public final class BytesBuffer extends OutputStream {
         } else {
             // String Id
             int len = b & ID_LEN_MASK;
-            if (big) {
-                int high = len << 8;
-                int low = this.readUInt8();
-                len = high + low;
-            }
+            int high = len << 8;
+            int low = this.readUInt8();
+            len = high + low;
             len += 1; // restore [0, 127] to [1, 128]
             byte[] id = this.read(len);
             return IdGenerator.of(id, IdType.STRING);
